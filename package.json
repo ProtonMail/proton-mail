@@ -4,7 +4,7 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "start": "git update-index --assume-unchanged package-lock.json && proton-pack dev-server",
+        "start": "proton-pack dev-server",
         "lint": "eslint src --ext .js --quiet --cache",
         "pretty": "prettier --write  $(find src/app -type f -name '*.js')",
         "preversion": "git update-index --no-assume-unchanged package-lock.json",
