@@ -59,6 +59,7 @@ const PublicApp = ({ onLogin }) => {
                             path="/signup/:step?"
                             render={({ history, match }) => (
                                 <SignupContainer
+                                    redirectUrl="/"
                                     homepageUrl={'https://protonmail.com'}
                                     stopRedirect={stopRedirect}
                                     history={history}
