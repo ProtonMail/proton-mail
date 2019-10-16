@@ -7,6 +7,7 @@ jobs:
        - checkout
        - run: npm i
        - run: npx proton-pack
+       - run: npm run check-types
        - run: npm run lint
        - run: npm run i18n:validate
        - run: npm run i18n:validate:context
