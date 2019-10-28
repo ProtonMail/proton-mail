@@ -1,12 +1,18 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
 import PropTypes from 'prop-types';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
-import { Loader, ModalsChildren, ResetPasswordContainer, ForgotUsernameContainer } from 'react-components';
+import {
+    Loader,
+    ModalsChildren,
+    ResetPasswordContainer,
+    ForgotUsernameContainer,
+    SignupContainer
+} from 'react-components';
 import { loadOpenPGP } from 'proton-shared/lib/openpgp';
+import PlansTable from 'react-components/containers/payments/PlansTable';
 
 import PublicLayout from './components/layout/PublicLayout';
 import LoginContainer from './containers/LoginContainer';
-import SignupContainer from './containers/SignupContainer';
 
 const PublicApp = ({ onLogin }) => {
     const hasStopRedirect = useRef(false);
@@ -53,10 +59,13 @@ const PublicApp = ({ onLogin }) => {
                             path="/signup/:step?"
                             render={({ history, match }) => (
                                 <SignupContainer
+                                    redirectUrl="/"
+                                    homepageUrl={'https://protonmail.com'}
                                     stopRedirect={stopRedirect}
                                     history={history}
                                     match={match}
                                     onLogin={onLogin}
+                                    renderPlansTable={(props) => <PlansTable {...props} />}
                                 />
                             )}
                         />
