@@ -21,11 +21,13 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+yarn.lock
 
 dist
 .eslintcache
 .idea
 src/app/config.js
+src/app/config.ts
 appConfig.json
 env.json
 .env
