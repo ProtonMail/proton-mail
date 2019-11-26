@@ -1,0 +1,93 @@
+image: node:lts
+
+stages:
+    - setup
+    - test
+    - deploy
+    - deploy-qa
+    - i18n-upgrade-app
+    - i18n-to-crowdin
+
+cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+
+variables:
+    NODE_OPTIONS: --max-old-space-size=4096
+
+before_script:
+ - apt-get -y update
+ - apt-get install -y gawk rsync
+ - 'which ssh-agent || apt-get -y install openssh-client'
+ - eval $(ssh-agent -s)
+ - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+ - git config --global user.email $GIT_CI_EMAIL
+ - git config --global user.name $GIT_CI_USERNAME
+ - mkdir ~/.ssh 2> /dev/null
+ - ssh-keyscan -t rsa ${CI_SERVER_HOST} > ~/.ssh/known_hosts
+ - ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+ - git remote -v
+ - git clone "$CI_SCRIPTS_GIT" --depth 1 ci-scripts
+ - ls -l
+
+setup:
+    stage: setup
+    tags:
+        - dind
+    script:
+        - ./ci-scripts/prepare-ci.sh install-app --remote "$APP_GIT"
+    artifacts:
+        expire_in: 7 days
+        paths:
+            - src/app/config.ts
+            - .env
+            - webapp-bundle.tar.gz
+            - .gitconfig
+            - appConfig.json
+
+lint:
+    stage: test
+    tags:
+        - dind
+    script:
+        - npm run lint
+        - npm run i18n:validate
+        - npm run i18n:validate:context
+
+i18n-upgrade-app:
+    stage: i18n-upgrade-app
+    tags:
+        - dind
+    script:
+        - ./ci-scripts/prepare-ci.sh i18n upgrade-app --limit "$I18N_APPROVED"
+    when: manual
+
+i18n-to-crowdin:
+    stage: i18n-to-crowdin
+    tags:
+        - dind
+    script:
+        - ./ci-scripts/prepare-ci.sh i18n to-crowdin
+    when: manual
+
+deploy:
+    stage: deploy
+    tags:
+        - dind
+    script:
+        - ./ci-scripts/prepare-ci.sh install-app-remote
+        - ./ci-scripts/prepare-ci.sh deploy-app --branch "$BRANCH_DEPLOY" --api "$API_DEPLOY"
+    when: manual
+
+deploy-qa:
+    stage: deploy-qa
+    tags:
+        - dind
+    script:
+        - ./ci-scripts/prepare-ci.sh install-app-remote --update-lock
+        - ./ci-scripts/prepare-ci.sh deploy-app --branch "$BRANCH_DEPLOY_QA" --api "$API_DEPLOY"
+    when: manual
+
+variables:
+    APP_GIT: git@github.com:ProtonMail/proton-mail.git
