@@ -10,7 +10,7 @@ default:
     image: node:lts
     before_script:
         - apt-get -y update
-        - apt-get install -y gawk rsync
+        - apt-get install -y gawk rsync connect-proxy
         - 'which ssh-agent || apt-get -y install openssh-client'
         - eval $(ssh-agent -s)
         - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
