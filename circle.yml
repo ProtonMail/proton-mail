@@ -1,8 +1,11 @@
 version: 2
 jobs:
    build:
+     branches:
+        ignore:
+          - /deploy-.*/
      docker:
-       - image: circleci/node:10.9.0-stretch-browsers
+       - image: circleci/node:lts
      steps:
        - checkout
        - run: npm i
