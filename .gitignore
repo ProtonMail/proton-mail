@@ -32,3 +32,4 @@ appConfig.json
 env.json
 .env
 po/i18n.txt
+po/template.pot
