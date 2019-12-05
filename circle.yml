@@ -13,4 +13,5 @@ jobs:
        - run: npm run lint
        - run: npm run i18n:validate
        - run: npm run i18n:validate:context
+       - run: npm run check-types
        - run: npm test
