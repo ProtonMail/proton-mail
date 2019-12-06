@@ -4,6 +4,7 @@ import * as embeddedFinder from './embeddedFinder';
 import * as embeddedUtils from './embeddedUtils';
 import * as embeddedStore from './embeddedStore';
 import * as embeddedParser from './embeddedParser';
+import { SHOW_IMAGES } from 'proton-shared/lib/constants';
 
 const REGEXP_CID_START = /^cid:/g;
 
@@ -22,14 +23,11 @@ const unescape = ({ document }) => (document.innerHTML = unescapeSrc(document.in
  * param  {String} text      Alternative body to parse
  * @return {Promise}
  */
-export const parser = async (
-    message,
-    mailSettings,
-    { direction = 'blob', isOutside = false, attachmentLoader } = {}
-) => {
+export const parser = async (message, mailSettings, { direction = 'blob', isOutside = false, cache, api } = {}) => {
     const numEmbedded = embeddedFinder.find(message).length;
+    const show = message.showEmbeddedImages === true || mailSettings.ShowImages & SHOW_IMAGES.EMBEDDED;
 
-    if (numEmbedded === 0) {
+    if (numEmbedded === 0 || !show) {
         /**
          * cf #5088 we need to escape the body again if we forgot to set the password First.
          * Prevent unescaped HTML.
@@ -47,7 +45,7 @@ export const parser = async (
     }
 
     escape(message);
-    await embeddedParser.decrypt(message, mailSettings, attachmentLoader);
+    await embeddedParser.decrypt(message, mailSettings, { cache, api });
     embeddedParser.mutateHTML(message, direction);
     unescape(message);
     return { document: message.document, numEmbedded };

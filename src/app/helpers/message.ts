@@ -154,8 +154,6 @@ export const getRecipients = ({ ToList = [], CCList = [], BCCList = [] }: Messag
 
 /**
  * Get date from message
- * @param {Integer} message.Time
- * @return {Date}
  */
 export const getDate = ({ Time = 0 }: Message = {}) => new Date(Time * 1000);
 

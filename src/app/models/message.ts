@@ -1,19 +1,9 @@
 import { Label } from './label';
+import { Attachment } from './attachment';
 
 export interface Recipient {
     Name?: string;
     Address?: string;
-}
-
-export interface Attachment {
-    ID?: number;
-    Name?: string;
-    Size?: number;
-    Preview?: any;
-    KeyPackets?: any;
-    MIMEType?: string;
-    data?: any;
-    Headers?: { [key: string]: string };
 }
 
 export interface Message {
@@ -52,4 +42,7 @@ export interface MessageExtended {
     showRemoteImages?: boolean;
     showEmbeddedImages?: boolean;
     numEmbedded?: number;
+    attachments?: Attachment[];
+    encryptedSubject?: any;
+    mimetype?: string;
 }
