@@ -57,7 +57,19 @@ lint:
         - experimental
     script:
         - npm run lint
+
+lint-translations:
+    stage: test
+    tags:
+        - experimental
+    script:
         - npm run i18n:validate
+
+lint-translations-context:
+    stage: test
+    tags:
+        - experimental
+    script:
         - npm run i18n:validate:context
 
 i18n-upgrade-app:
@@ -82,6 +94,10 @@ deploy:
         - ./ci-scripts/prepare-ci.sh install-app-remote
         - ./ci-scripts/prepare-ci.sh deploy-app --branch "$BRANCH_DEPLOY" --api "$API_DEPLOY"
     when: manual
+    artifacts:
+        expire_in: 2 days
+        paths:
+            - webapp-bundle.tar.gz
 
 deploy-qa:
     stage: deploy-qa
@@ -91,6 +107,10 @@ deploy-qa:
         - ./ci-scripts/prepare-ci.sh install-app-remote --update-lock
         - ./ci-scripts/prepare-ci.sh deploy-app --branch "$BRANCH_DEPLOY_QA" --api "$API_DEPLOY"
     when: manual
+    artifacts:
+        expire_in: 2 days
+        paths:
+            - webapp-bundle.tar.gz
 
 clean-pipeline:
     cache: {}
