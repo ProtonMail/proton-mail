@@ -25,14 +25,14 @@ export interface Message {
     Size?: number;
     Labels?: Label[];
     LabelIDs?: string[];
-    conversationID?: string;
+    ConversationID?: string;
     Order?: number;
 }
 
 export interface MessageExtended {
     data?: Message;
     raw?: string;
-    document?: HTMLElement;
+    document?: Element;
     content?: string;
     verified?: number;
     publicKeys?: any[];

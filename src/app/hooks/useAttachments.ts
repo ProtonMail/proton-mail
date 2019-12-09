@@ -1,7 +1,4 @@
-import { useCallback } from 'react';
-import { useCache, useApi } from 'react-components';
-import { parser } from '../helpers/embedded/embedded';
-import { MessageExtended } from '../models/message';
+import { useCache } from 'react-components';
 import { AttachmentData } from '../models/attachment';
 
 const CACHE_KEY = 'Attachments';
@@ -20,14 +17,14 @@ export const useAttachmentsCache = (): AttachmentsCache => {
     return globalCache.get(CACHE_KEY);
 };
 
-export const useTransformAttachments = () => {
-    const cache = useAttachmentsCache();
-    const api = useApi();
+// export const useTransformAttachments = () => {
+//     const cache = useAttachmentsCache();
+//     const api = useApi();
 
-    return useCallback(
-        async (message: MessageExtended, { mailSettings }: any) => {
-            return parser(message, mailSettings, { direction: 'blob', cache, api });
-        },
-        [cache]
-    );
-};
+//     return useCallback(
+//         async (message: MessageExtended, { mailSettings }: any) => {
+//             return parser(message, mailSettings, { direction: 'blob', cache, api });
+//         },
+//         [cache]
+//     );
+// };

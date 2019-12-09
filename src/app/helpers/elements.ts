@@ -14,7 +14,7 @@ export interface TypeParams {
 export const getCurrentType = ({ labelID, mailSettings }: TypeParams) =>
     isConversationMode(labelID, mailSettings) ? ELEMENT_TYPES.CONVERSATION : ELEMENT_TYPES.MESSAGE;
 
-export const isConversation = (element: Element): boolean => !(element as Message).conversationID;
+export const isConversation = (element: Element): boolean => !(element as Message).ConversationID;
 export const isMessage = (element: Element): boolean => !isConversation(element);
 
 export const getDate = ({ Time = 0, ContextTime = 0 }: Element = {}) => new Date((ContextTime || Time) * 1000);
