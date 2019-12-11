@@ -1,5 +1,5 @@
 import { Message } from '../../models/message';
-import { isDraft } from '../message';
+import { isDraft } from '../message/messages';
 import { getMessageCIDs } from './embeddedStoreCids';
 
 export interface BlobInfo {

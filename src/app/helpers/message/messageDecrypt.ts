@@ -2,11 +2,11 @@ import { decryptMIMEMessage, decryptMessageLegacy } from 'pmcrypto/lib/pmcrypto'
 import { MIME_TYPES } from 'proton-shared/lib/constants';
 import { c } from 'ttag';
 
-import { Message, MessageExtended } from '../models/message';
-import { convert } from './attachments/attachmentConverter';
-import { VERIFICATION_STATUS } from '../constants';
-import { getDate } from '../helpers/message';
-import { AttachmentsCache } from '../hooks/useAttachments';
+import { Message, MessageExtended } from '../../models/message';
+import { convert } from '../attachment/attachmentConverter';
+import { VERIFICATION_STATUS } from '../../constants';
+import { getDate } from './messages';
+import { AttachmentsCache } from '../../hooks/useAttachments';
 
 const getVerifiedStatus = (pmcryptoVerified: number, publicKeys: any) => {
     const signedInvalid = VERIFICATION_STATUS.SIGNED_AND_INVALID;

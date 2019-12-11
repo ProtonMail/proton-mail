@@ -3,11 +3,11 @@ import { c, msgid } from 'ttag';
 import { Icon, useApi } from 'react-components';
 import humanSize from 'proton-shared/lib/helpers/humanSize';
 
-import { attachmentsSize, getAttachments } from '../../helpers/message';
+import { attachmentsSize, getAttachments } from '../../helpers/message/messages';
 import MessageAttachment from './MessageAttachment';
 import { MessageExtended } from '../../models/message';
 import { useAttachmentsCache } from '../../hooks/useAttachments';
-import { downloadAll } from '../../helpers/attachments/attachmentDownloader';
+import { downloadAll } from '../../helpers/attachment/attachmentDownloader';
 
 interface Props {
     message: MessageExtended;

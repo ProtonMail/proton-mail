@@ -4,7 +4,7 @@ import { Api } from '../../models/utils';
 import { ENCRYPTED_STATUS } from '../../constants';
 import { listInlineAttachments, getAttachment } from './embeddedFinder';
 import { hasBlob, store, getBlob, BlobInfo } from './embeddedStoreBlobs';
-import { get } from '../attachments/attachmentLoader';
+import { get } from '../attachment/attachmentLoader';
 import { Attachment } from '../../models/attachment';
 import { noop } from 'proton-shared/lib/helpers/function';
 import { wait } from 'proton-shared/lib/helpers/promise';

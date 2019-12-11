@@ -1,8 +1,8 @@
 import { hasBit } from 'proton-shared/lib/helpers/bitset';
 import { MIME_TYPES } from 'proton-shared/lib/constants';
 
-import { MESSAGE_FLAGS, SIGNATURE_START } from '../constants';
-import { Message } from '../models/message';
+import { MESSAGE_FLAGS, SIGNATURE_START } from '../../constants';
+import { Message } from '../../models/message';
 
 const {
     FLAG_RECEIVED,

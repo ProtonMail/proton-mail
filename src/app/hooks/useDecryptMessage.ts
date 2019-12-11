@@ -2,8 +2,8 @@ import { useCallback } from 'react';
 import { useGetPublicKeys, useGetAddressKeys } from 'react-components';
 import { splitKeys } from 'proton-shared/lib/keys/keys';
 import { MessageExtended } from '../models/message';
-import { isMIME } from '../helpers/message';
-import { decryptLegacyMessage, decryptMimeMessage } from '../helpers/encryption';
+import { isMIME } from '../helpers/message/messages';
+import { decryptLegacyMessage, decryptMimeMessage } from '../helpers/message/messageDecrypt';
 import { useAttachmentsCache } from './useAttachments';
 
 // Reference: Angular/src/app/message/factories/messageModel.js decryptBody

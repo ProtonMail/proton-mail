@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import humanSize from 'proton-shared/lib/helpers/humanSize';
 import { Icon, classnames, useApi } from 'react-components';
 import { MessageExtended } from '../../models/message';
-import { isEmbeddedLocal } from '../../helpers/attachments/attachments';
+import { isEmbeddedLocal } from '../../helpers/attachment/attachments';
 import { Attachment } from '../../models/attachment';
-import { download } from '../../helpers/attachments/attachmentDownloader';
+import { download } from '../../helpers/attachment/attachmentDownloader';
 import { useAttachmentsCache } from '../../hooks/useAttachments';
 
 // Reference: Angular/src/templates/attachments/attachmentElement.tpl.html
