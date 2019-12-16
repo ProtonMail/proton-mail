@@ -1,0 +1,55 @@
+@import '~design-system/_sass/reusable-components/_design-system-config.scss';
+
+.composer {
+    position: absolute;
+    right: 2rem;
+    bottom: 1rem;
+    z-index: 300;
+
+    height: 520px;
+    width: 600px;
+
+    background: var(--bgcolor-main-area, $white);
+    box-shadow: 0 0 16px 3px rgba(0, 0, 0, 0.16);
+    color: var(--color-main-area, $pm-global-grey);
+}
+
+.composer-title-bar {
+    width: calc(100% + 1em);
+    padding: 0.5em;
+    margin-top: -0.5em;
+    margin-bottom: 0.5em;
+    margin-left: -0.5em;
+
+    background: var(--bgcolor-main-area, #3c414e);
+    color: #fff;
+}
+
+.pm-button.composer-title-bar-button {
+    padding: 0 0.5em;
+    background: unset;
+    border: unset;
+    border-radius: unset;
+
+    display: flex;
+    color: #fff;
+}
+
+.pm-button.composer-title-bar-button:hover {
+    box-shadow: unset;
+}
+
+.pm-button.composer-title-bar-button:active {
+    background: unset;
+}
+
+.pm-label.composer-meta-label {
+    padding-top: 0;
+    padding-right: 2em;
+    max-width: 8em;
+    width: 15%;
+}
+
+.composer-quill {
+    height: calc(100% - 3em);
+}
