@@ -18,6 +18,8 @@
         "test": "jest",
         "build": "cross-env NODE_ENV=production proton-pack compile $npm_package_config_publicPathFlag",
         "build:standalone": "cross-env NODE_ENV=production proton-pack compile --appMode=standalone",
+        "bundle": "cross-env NODE_ENV=production proton-pack config",
+        "postbundle": "cross-env NODE_ENV_DIST=bundle-only proton-bundler",
         "sync:lock": "npm run follow:lock && git add package-lock.json && git commit -m 'Sync package-lock.json' && git push && npm run unfollow:lock",
         "follow:lock": "git update-index --no-assume-unchanged package-lock.json",
         "unfollow:lock": "git update-index --assume-unchanged package-lock.json",
