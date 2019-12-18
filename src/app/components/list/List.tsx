@@ -12,7 +12,7 @@ interface Props {
     elements?: Element[];
     checkedIDs?: string[];
     onCheck: (IDs?: string[], checked?: boolean) => void;
-    onClick: (ID: string) => void;
+    onClick: (element: Element) => void;
 }
 
 const List = ({ labelID, elementID, mailSettings = {}, elements = [], checkedIDs = [], onCheck, onClick }: Props) => {

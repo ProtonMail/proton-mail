@@ -1,22 +1,18 @@
 import React, { useState, ChangeEvent } from 'react';
-import { useAddresses, Label, Select, Input, generateUID } from 'react-components';
-import { Message } from '../../models/message';
+import { Label, Select, Input, generateUID } from 'react-components';
+import { MessageExtended } from '../../models/message';
 import { Address } from '../../models/address';
 
 interface Props {
-    message: Message;
-    onChange: (message: Message) => void;
+    message: MessageExtended;
+    addresses: Address[];
+    onChange: (message: MessageExtended) => void;
 }
 
-const ComposerMeta = ({ message, onChange }: Props) => {
-    const [addresses, loading]: [Address[], boolean, any] = useAddresses();
+const ComposerMeta = ({ message, addresses, onChange }: Props) => {
     const [uid] = useState(generateUID('composer'));
 
-    if (loading) {
-        return null;
-    }
-
-    const selectedAddress = addresses.find((address: Address) => address.ID === message.AddressID);
+    const selectedAddress = addresses.find((address: Address) => address.ID === message.data?.AddressID);
 
     // TODO: Implement logic on available addresses
     // Reference: Angular/src/app/composer/factories/composerFromModel.js
@@ -24,18 +20,18 @@ const ComposerMeta = ({ message, onChange }: Props) => {
 
     const handleFromChange = (event: ChangeEvent) => {
         const select = event.target as HTMLSelectElement;
-        onChange({ AddressID: select.value });
+        onChange({ data: { AddressID: select.value } });
     };
 
     const handleToChange = (event: ChangeEvent) => {
         const input = event.target as HTMLInputElement;
         const recipients = input.value.split(' ').map((value) => ({ Address: value }));
-        onChange({ ToList: recipients });
+        onChange({ data: { ToList: recipients } });
     };
 
     const handleSubjectChange = (event: ChangeEvent) => {
         const input = event.target as HTMLInputElement;
-        onChange({ Subject: input.value });
+        onChange({ data: { Subject: input.value } });
     };
 
     return (
@@ -61,7 +57,7 @@ const ComposerMeta = ({ message, onChange }: Props) => {
                 <Label htmlFor={`subject-${uid}`} className="composer-meta-label">
                     Subject
                 </Label>
-                <Input id={`subject-${uid}`} onChange={handleSubjectChange} />
+                <Input id={`subject-${uid}`} value={message.data?.Subject} onChange={handleSubjectChange} />
             </div>
         </div>
     );

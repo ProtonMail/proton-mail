@@ -18,14 +18,14 @@ import { redirectTo } from 'proton-shared/lib/helpers/browser';
 import LocationAside from './LocationAside';
 import { LABEL_IDS_TO_HUMAN, MESSAGE_ACTIONS } from '../../constants';
 import { getCounterMap } from '../../helpers/elements';
+import { Message } from '../../models/message';
 import { Label } from '../../models/label';
-import { OnCompose } from '../../containers/ComposerContainer';
 
 interface Props {
     labelID: string;
     expanded?: boolean;
     location: Location;
-    onCompose: OnCompose;
+    onCompose: (message?: Message) => void;
 }
 
 const PrivateSidebar = ({ labelID: currentLabelID, expanded = false, location, onCompose }: Props) => {

@@ -1,4 +1,12 @@
 import { useContext, useEffect, useCallback, useState, useMemo } from 'react';
+import { useApi, useEventManager } from 'react-components';
+import {
+    getMessage,
+    markMessageAsRead,
+    createDraft as createDraftApi,
+    updateDraft
+} from 'proton-shared/lib/api/messages';
+
 import { transformEscape } from '../helpers/transforms/transformEscape';
 import { transformLinks } from '../helpers/transforms/transformLinks';
 import { transformEmbedded } from '../helpers/transforms/transformEmbedded';
@@ -11,9 +19,9 @@ import { useDecryptMessage } from './useDecryptMessage';
 import { AttachmentsCache, useAttachmentsCache } from './useAttachments';
 import { MessageContext } from '../containers/MessageProvider';
 import { Message, MessageExtended } from '../models/message';
-import { getMessage, markMessageAsRead } from 'proton-shared/lib/api/messages';
-import { useApi, useEventManager } from 'react-components';
+
 import { MailSettings, Api } from '../models/utils';
+import { useEncryptMessage } from './useEncryptMessage';
 
 export interface ComputationOption {
     action?: string;
@@ -34,22 +42,32 @@ interface MessageActions {
     initialize: () => Promise<void>;
     loadRemoteImages: () => Promise<void>;
     loadEmbeddedImages: () => Promise<void>;
+    createDraft: (message: MessageExtended) => Promise<void>;
+    saveDraft: (message: MessageExtended) => Promise<void>;
 }
 
 export const useMessage = (inputMessage: Message, mailSettings: any): [MessageExtended, MessageActions] => {
-    const messageID = inputMessage.ID || '';
-
     const api = useApi();
     const { call } = useEventManager();
     const cache = useContext(MessageContext);
     const computeCache = useMemo(() => new Map(), []);
     const attachmentsCache = useAttachmentsCache();
+
+    // messageID change ONLY when a draft is created
+    const [messageID, setMessageID] = useState(inputMessage.ID || '');
     const [message, setMessage] = useState<MessageExtended>(
         cache.has(messageID) ? cache.get(messageID) : { data: inputMessage }
     );
 
     const decrypt = useDecryptMessage();
-    // const transformAttachements = useTransformAttachments();
+    const encrypt = useEncryptMessage();
+
+    // Update messageID if component is reused for another message
+    useEffect(() => {
+        if (!!inputMessage.ID && inputMessage.ID !== messageID) {
+            setMessageID(inputMessage.ID);
+        }
+    }, [inputMessage]);
 
     // Update message state and listen to cache for updates on the current message
     useEffect(() => {
@@ -98,6 +116,22 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
             }
 
             return {} as MessageExtended;
+        },
+        [api]
+    );
+
+    const create = useCallback(
+        async (message: MessageExtended = {}) => {
+            const { Message } = await api(createDraftApi({ Message: message.data } as any));
+            return { data: Message };
+        },
+        [api]
+    );
+
+    const update = useCallback(
+        async (message: MessageExtended = {}) => {
+            const { Message } = await api(updateDraft(message.data?.ID, message.data));
+            return { data: Message };
         },
         [api]
     );
@@ -169,13 +203,40 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
         [messageID, message, run, cache]
     );
 
+    const createDraft = useCallback(
+        async (message: MessageExtended) => {
+            const newMessage = await run(message, [encrypt, create]);
+            cache.set(newMessage.data?.ID || '', newMessage);
+            setMessageID(newMessage.data?.ID || '');
+        },
+        [message, run, cache]
+    );
+
+    const saveDraft = useCallback(
+        async (messageModel: MessageExtended) => {
+            const messageToSave = {
+                ...message,
+                content: messageModel.content,
+                data: {
+                    ...message.data,
+                    ...messageModel.data
+                }
+            };
+            const newMessage = await run(messageToSave, [encrypt, update]);
+            cache.set(messageID, newMessage);
+        },
+        [message, run, cache]
+    );
+
     return [
         message,
         {
             load,
             initialize,
             loadRemoteImages,
-            loadEmbeddedImages
+            loadEmbeddedImages,
+            createDraft,
+            saveDraft
         }
     ];
 };

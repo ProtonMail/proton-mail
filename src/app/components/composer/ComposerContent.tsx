@@ -1,21 +1,21 @@
 import React from 'react';
 
-import { Message } from '../../models/message';
+import { MessageExtended } from '../../models/message';
 import { RichTextEditor } from 'react-components';
 
 interface Props {
-    message: Message;
-    onChange: (message: Message) => void;
+    message: MessageExtended;
+    onChange: (message: MessageExtended) => void;
 }
 
-const ComposerContent = ({ onChange }: Props) => {
+const ComposerContent = ({ message, onChange }: Props) => {
     const handleChange = (content: string) => {
-        onChange({ Body: content });
+        onChange({ content });
     };
 
     return (
         <section className="composer-content flex-item-fluid w100 mb1">
-            <RichTextEditor className="composer-quill" onChange={handleChange} />
+            <RichTextEditor className="composer-quill" value={message.content} onChange={handleChange} />
         </section>
     );
 };

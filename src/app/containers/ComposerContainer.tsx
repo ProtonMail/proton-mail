@@ -1,27 +1,33 @@
 import React, { ReactNode, useState } from 'react';
 
-import { MessageExtended } from '../models/message';
+import { Message } from '../models/message';
 import Composer from '../components/composer/Composer';
 
 import '../components/composer/composer.scss';
-import { useMailSettings } from 'react-components';
+import { useMailSettings, useAddresses } from 'react-components';
 
 interface Props {
-    children: (props: { onCompose: (message: MessageExtended) => void }) => ReactNode;
+    children: (props: { onCompose: (message?: Message) => void }) => ReactNode;
 }
 
 const ComposerContainer = ({ children }: Props) => {
-    const [mailSettings, loading] = useMailSettings();
-    const [messages, setMessages] = useState<MessageExtended[]>([]);
+    const [mailSettings, loadingSettings] = useMailSettings();
+    const [addresses, loadingAddresses] = useAddresses();
+    const [messages, setMessages] = useState<Message[]>([]);
 
-    if (loading) {
+    if (loadingSettings || loadingAddresses) {
         return null;
     }
 
-    const handleCompose = (message: MessageExtended) => {
-        setMessages([...messages, message]);
+    const handleCompose = (message: Message = {}) => {
+        !messages.some((m) => m.ID === message.ID) && setMessages([...messages, message]);
     };
-    const handleClose = (message: MessageExtended) => () => {
+    const handleChange = (oldMessage: Message) => (newMessage: Message) => {
+        const newMessages = [...messages];
+        newMessages[newMessages.indexOf(oldMessage)] = newMessage;
+        setMessages(newMessages);
+    };
+    const handleClose = (message: Message) => () => {
         setMessages(messages.filter((m) => m !== message));
     };
 
@@ -29,11 +35,13 @@ const ComposerContainer = ({ children }: Props) => {
         <>
             {children({ onCompose: handleCompose })}
             <div className="composer-container">
-                {messages.map((message) => (
+                {messages.map((message, i) => (
                     <Composer
-                        key={(message.data || {}).ID}
+                        key={message.ID || i}
                         message={message}
                         mailSettings={mailSettings}
+                        addresses={addresses}
+                        onChange={handleChange(message)}
                         onClose={handleClose(message)}
                     />
                 ))}

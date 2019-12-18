@@ -23,7 +23,7 @@ interface Props {
     element: Element;
     checked?: boolean;
     onCheck: (event: ChangeEvent) => void;
-    onClick: (ID: string) => void;
+    onClick: (element: Element) => void;
 }
 
 const Item = ({ labelID, labels, element, elementID, mailSettings = {}, checked = false, onCheck, onClick }: Props) => {
@@ -45,7 +45,7 @@ const Item = ({ labelID, labels, element, elementID, mailSettings = {}, checked 
             event.stopPropagation();
             return;
         }
-        onClick(ID);
+        onClick(element);
     };
 
     return (

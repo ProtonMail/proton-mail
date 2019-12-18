@@ -1,9 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { useToggle, Loader, classnames } from 'react-components';
 
-import { hasAttachments } from '../../helpers/message/messages';
+import { hasAttachments, isDraft } from '../../helpers/message/messages';
 import { Label } from '../../models/label';
-
 import MessageBody from './MessageBody';
 import HeaderCollapsed from './header/HeaderCollapsed';
 import HeaderExpanded from './header/HeaderExpanded';
@@ -17,6 +16,7 @@ interface Props {
     mailSettings: any;
     initialExpand?: boolean;
     conversationIndex?: number;
+    onCompose: (message?: Message) => void;
 }
 
 const MessageView = ({
@@ -24,7 +24,8 @@ const MessageView = ({
     message: inputMessage,
     mailSettings,
     initialExpand = true,
-    conversationIndex = 0
+    conversationIndex = 0,
+    onCompose
 }: Props) => {
     const { state: expanded, set: setExpanded } = useToggle(initialExpand);
     const elementRef = useRef<HTMLElement>(null);
@@ -33,6 +34,7 @@ const MessageView = ({
     const loaded = !!message.initialized;
 
     const prepareMessage = async () => {
+        console.log('initialize from MessageView');
         await initialize();
         // Don't scroll if it's the first message of the conversation and only on the first automatic expand
         if (conversationIndex !== 0 && initialExpand) {
@@ -56,6 +58,10 @@ const MessageView = ({
 
     const handleExpand = (value: boolean) => () => {
         setExpanded(value);
+
+        if (value && isDraft(message.data)) {
+            onCompose(message.data);
+        }
     };
 
     return (

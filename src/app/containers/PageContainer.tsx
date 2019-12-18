@@ -4,11 +4,11 @@ import { ErrorBoundary, useMailSettings, Loader } from 'react-components';
 import PrivateLayout from '../components/layout/PrivateLayout';
 import MailboxContainer from './MailboxContainer';
 import { HUMAN_TO_LABEL_IDS } from '../constants';
-import { MessageExtended } from '../models/message';
+import { Message } from '../models/message';
 import { RouteProps } from '../PrivateApp';
 
 interface Props extends RouteProps {
-    onCompose: (message: MessageExtended) => void;
+    onCompose: (message?: Message) => void;
 }
 
 const PageContainer = ({ match, location, history, onCompose }: Props) => {
@@ -29,6 +29,7 @@ const PageContainer = ({ match, location, history, onCompose }: Props) => {
                         elementID={elementID}
                         location={location}
                         history={history}
+                        onCompose={onCompose}
                     />
                 )}
             </ErrorBoundary>

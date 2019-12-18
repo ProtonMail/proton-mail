@@ -1,7 +1,7 @@
 import React from 'react';
 import { c } from 'ttag';
 
-import { Message } from '../../models/message';
+import { MessageExtended } from '../../models/message';
 import { Icon, Button } from 'react-components';
 
 interface ButtonProps {
@@ -18,12 +18,12 @@ const TitleBarButton = ({ onClick, iconName }: ButtonProps) => {
 };
 
 interface Props {
-    message: Message;
+    message: MessageExtended;
     onClose: () => void;
 }
 
 const ComposerTitleBar = ({ message = {}, onClose }: Props) => {
-    const title = message.Subject || c('Title').t`New message`;
+    const title = message.data?.Subject || c('Title').t`New message`;
 
     const handleMinimize = () => console.log('minimize');
     const handleExpand = () => console.log('expand');
