@@ -52,7 +52,7 @@ const ConversationView = ({ labelID, conversationID, mailSettings, onCompose }: 
                         {conversation.Subject}
                     </h2>
                     <div>
-                        <ItemLabels labels={labels} max={4} element={conversation} type={ELEMENT_TYPES.CONVERSATION} />
+                        <ItemLabels labels={labels} max={4} element={conversation} />
                         <ItemStar element={conversation} type={ELEMENT_TYPES.CONVERSATION} />
                     </div>
                 </div>

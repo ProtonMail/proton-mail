@@ -26,7 +26,7 @@ import ConversationView from '../components/conversation/ConversationView';
 import PlaceholderView from '../components/view/PlaceholderView';
 import MessageOnlyView from '../components/message/MessageOnlyView';
 import { isConversation } from '../helpers/elements';
-import { isDraft } from '../helpers/message';
+import { isDraft } from '../helpers/message/messages';
 import { Message } from '../models/message';
 import { PAGE_SIZE } from '../constants';
 

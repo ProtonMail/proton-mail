@@ -34,8 +34,9 @@ const MessageView = ({
     const loaded = !!message.initialized;
 
     const prepareMessage = async () => {
-        console.log('initialize from MessageView');
-        await initialize();
+        if (typeof message.initialized === 'undefined') {
+            await initialize();
+        }
         // Don't scroll if it's the first message of the conversation and only on the first automatic expand
         if (conversationIndex !== 0 && initialExpand) {
             elementRef.current && elementRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });

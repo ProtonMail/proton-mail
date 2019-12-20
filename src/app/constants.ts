@@ -71,3 +71,5 @@ export const MESSAGE_FLAGS = {
 export enum ENCRYPTED_STATUS {
     PGP_MIME = 8 // Used for attachment
 }
+
+export const AES256 = 'aes256';

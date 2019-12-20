@@ -27,6 +27,7 @@ export interface Message {
     LabelIDs?: string[];
     ConversationID?: string;
     Order?: number;
+    Password?: string;
 }
 
 export interface MessageExtended {

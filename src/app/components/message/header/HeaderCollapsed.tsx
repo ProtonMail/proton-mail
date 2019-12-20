@@ -47,7 +47,7 @@ const HeaderCollapsed = ({ message, labels, onExpand }: Props) => {
             </div>
             <div>
                 <ItemAttachmentIcon element={message.data} type={ELEMENT_TYPES.MESSAGE} />
-                <ItemLabels element={message.data || {}} labels={labels} type={ELEMENT_TYPES.MESSAGE} className="mr1" />
+                <ItemLabels element={message.data || {}} labels={labels} className="mr1" />
                 <ItemDate className="mr1" element={message.data || {}} mode="distance" />
                 <ItemStar element={message.data} type={ELEMENT_TYPES.MESSAGE} />
             </div>

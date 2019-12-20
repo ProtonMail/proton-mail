@@ -3,4 +3,5 @@ export interface Address {
     Email?: string;
     DisplayName?: string;
     Priority?: number;
+    Receive?: number;
 }

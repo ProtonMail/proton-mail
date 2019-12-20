@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Loader, useLabels } from 'react-components';
+import React from 'react';
+import { useLabels } from 'react-components';
 
 import MessageView from '../message/MessageView';
 import ItemStar from '../list/ItemStar';
@@ -17,18 +17,9 @@ interface Props {
 const MessageOnlyView = ({ messageID, mailSettings, onCompose }: Props) => {
     const [labels] = useLabels();
 
-    const [{ data: message, loaded }, { load }] = useMessage({ ID: messageID }, mailSettings);
-    const loading = !loaded;
-
-    useEffect(() => {
-        if (!loaded) {
-            load();
-        }
-    }, [messageID, loaded]);
-
-    if (loading) {
-        return <Loader />;
-    }
+    // There is only reading on the message here, no actions
+    // MessageView will be in charge to trigger all messages actions
+    const [{ data: message }] = useMessage({ ID: messageID }, mailSettings);
 
     if (!message) {
         return null;
@@ -39,7 +30,7 @@ const MessageOnlyView = ({ messageID, mailSettings, onCompose }: Props) => {
             <header className="flex flex-nowrap flex-spacebetween flex-items-center mb1">
                 <h2 className="mb0">{message.Subject}</h2>
                 <div>
-                    <ItemLabels labels={labels} max={4} element={message} type={ELEMENT_TYPES.MESSAGE} />
+                    <ItemLabels labels={labels} max={4} element={message} />
                     <ItemStar element={message} type={ELEMENT_TYPES.MESSAGE} />
                 </div>
             </header>

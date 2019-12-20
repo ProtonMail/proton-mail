@@ -8,6 +8,7 @@ import createCache from 'proton-shared/lib/helpers/cache';
 
 jest.mock('./useDecryptMessage', () => ({ useDecryptMessage: jest.fn() }));
 jest.mock('./useAttachments', () => ({ useAttachmentsCache: jest.fn() }));
+jest.mock('./useEncryptMessage', () => ({ useEncryptMessage: jest.fn(() => (m: any) => m) }));
 
 describe('useMessage', () => {
     const ID = 'ID';
@@ -44,15 +45,15 @@ describe('useMessage', () => {
     });
 
     describe('message actions', () => {
-        it('should load a message with an api call', async () => {
+        it('should create a draft with an api call', async () => {
             const Message = {};
             api.mockResolvedValue({ Message });
             const result = setup(createCache());
             await act(async () => {
-                await result.current[1].load();
+                await result.current[1].createDraft({});
             });
-            expect(result.current[0].data).toBe(Message);
-            expect(result.current[0].loaded).toBe(true);
+            expect(result.current[0].data).toEqual({ ID });
+            expect(api).toHaveBeenCalled();
         });
     });
 });

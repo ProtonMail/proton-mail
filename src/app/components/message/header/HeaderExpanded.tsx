@@ -82,7 +82,7 @@ const HeaderExpanded = ({
                 <div>
                     <ItemAttachmentIcon element={message.data || {}} type={ELEMENT_TYPES.MESSAGE} />
                     {' ' /* This space is important to keep a small space between elements */}
-                    <ItemLabels max={4} element={message.data || {}} labels={labels} type={ELEMENT_TYPES.MESSAGE} />
+                    <ItemLabels max={4} element={message.data || {}} labels={labels} />
                     {' ' /* This space is important to keep a small space between elements */}
                     <ItemLocation message={message.data || {}} mailSettings={mailSettings} />
                     {' ' /* This space is important to keep a small space between elements */}

@@ -19,7 +19,7 @@ import { useDecryptMessage } from './useDecryptMessage';
 import { AttachmentsCache, useAttachmentsCache } from './useAttachments';
 import { MessageContext } from '../containers/MessageProvider';
 import { Message, MessageExtended } from '../models/message';
-
+import { useSendMessage } from './useSendMessage';
 import { MailSettings, Api } from '../models/utils';
 import { useEncryptMessage } from './useEncryptMessage';
 
@@ -38,13 +38,28 @@ export interface Computation {
 }
 
 interface MessageActions {
-    load: () => Promise<void>;
     initialize: () => Promise<void>;
     loadRemoteImages: () => Promise<void>;
     loadEmbeddedImages: () => Promise<void>;
     createDraft: (message: MessageExtended) => Promise<void>;
     saveDraft: (message: MessageExtended) => Promise<void>;
+    send: (message: MessageExtended) => Promise<void>;
 }
+
+/**
+ * Apply updates from the message model to the message in state
+ */
+export const mergeMessages = (messageState: MessageExtended, messageModel: MessageExtended) => {
+    if (messageState.document) {
+        messageState.document.innerHTML = messageModel.content || '';
+    }
+    const message = {
+        ...messageState,
+        content: messageModel.content,
+        data: { ...messageState.data, ...messageModel.data }
+    };
+    return message;
+};
 
 export const useMessage = (inputMessage: Message, mailSettings: any): [MessageExtended, MessageActions] => {
     const api = useApi();
@@ -61,6 +76,7 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
 
     const decrypt = useDecryptMessage();
     const encrypt = useEncryptMessage();
+    const sendMessage = useSendMessage();
 
     // Update messageID if component is reused for another message
     useEffect(() => {
@@ -166,13 +182,9 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
         [runSingle, cache]
     );
 
-    const load = useCallback(async () => {
-        const newMessage = await run(message, [loadData]);
-        cache.set(messageID, { ...newMessage, loaded: true });
-    }, [messageID, message, run, cache]);
-
     const initialize = useCallback(
         async (action?) => {
+            cache.set(messageID, { ...message, initialized: false });
             const newMessage = await run(
                 message,
                 [loadData, decrypt, markAsRead, ...transforms] as Computation[],
@@ -214,15 +226,17 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
 
     const saveDraft = useCallback(
         async (messageModel: MessageExtended) => {
-            const messageToSave = {
-                ...message,
-                content: messageModel.content,
-                data: {
-                    ...message.data,
-                    ...messageModel.data
-                }
-            };
+            const messageToSave = mergeMessages(message, messageModel);
             const newMessage = await run(messageToSave, [encrypt, update]);
+            cache.set(messageID, newMessage);
+        },
+        [message, run, cache]
+    );
+
+    const send = useCallback(
+        async (messageModel: MessageExtended) => {
+            const messageToSave = mergeMessages(message, messageModel);
+            const newMessage = await run(messageToSave, [encrypt, update, sendMessage]);
             cache.set(messageID, newMessage);
         },
         [message, run, cache]
@@ -231,12 +245,12 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
     return [
         message,
         {
-            load,
             initialize,
             loadRemoteImages,
             loadEmbeddedImages,
             createDraft,
-            saveDraft
+            saveDraft,
+            send
         }
     ];
 };
