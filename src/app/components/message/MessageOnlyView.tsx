@@ -19,23 +19,23 @@ const MessageOnlyView = ({ messageID, mailSettings, onCompose }: Props) => {
 
     // There is only reading on the message here, no actions
     // MessageView will be in charge to trigger all messages actions
-    const [{ data: message }] = useMessage({ ID: messageID }, mailSettings);
+    const [message] = useMessage({ ID: messageID }, mailSettings);
 
-    if (!message) {
+    if (!message.data) {
         return null;
     }
 
     return (
         <>
             <header className="flex flex-nowrap flex-spacebetween flex-items-center mb1">
-                <h2 className="mb0">{message.Subject}</h2>
+                <h2 className="mb0">{message.data?.Subject}</h2>
                 <div>
-                    <ItemLabels labels={labels} max={4} element={message} />
-                    <ItemStar element={message} type={ELEMENT_TYPES.MESSAGE} />
+                    <ItemLabels labels={labels} max={4} element={message.data} />
+                    <ItemStar element={message.data} type={ELEMENT_TYPES.MESSAGE} />
                 </div>
             </header>
             <MessageView
-                message={message}
+                message={message.data}
                 initialExpand={true}
                 labels={labels}
                 mailSettings={mailSettings}

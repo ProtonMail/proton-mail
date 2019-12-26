@@ -31,10 +31,10 @@ const MessageView = ({
     const elementRef = useRef<HTMLElement>(null);
     const [message, { initialize, loadRemoteImages, loadEmbeddedImages }] = useMessage(inputMessage, mailSettings);
 
-    const loaded = !!message.initialized;
+    const loaded = !!message?.initialized;
 
     const prepareMessage = async () => {
-        if (typeof message.initialized === 'undefined') {
+        if (typeof message?.initialized === 'undefined') {
             await initialize();
         }
         // Don't scroll if it's the first message of the conversation and only on the first automatic expand
@@ -48,6 +48,11 @@ const MessageView = ({
             prepareMessage();
         }
     }, [loaded, expanded]);
+
+    // Message can be undefined when it just was deleted
+    if (!message) {
+        return null;
+    }
 
     const handleLoadRemoteImages = async () => {
         await loadRemoteImages();

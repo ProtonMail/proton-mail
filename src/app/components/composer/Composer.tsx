@@ -32,7 +32,10 @@ interface Props {
 const Composer = ({ message: inputMessage = {}, mailSettings, addresses, onChange, onClose }: Props) => {
     const [modelMessage, setModelMessage] = useState<MessageExtended>({ data: inputMessage });
     const [loading, withLoading] = useLoading(false);
-    const [syncedMessage, { initialize, createDraft, saveDraft, send }] = useMessage(inputMessage, mailSettings);
+    const [syncedMessage, { initialize, createDraft, saveDraft, send, deleteDraft }] = useMessage(
+        inputMessage,
+        mailSettings
+    );
 
     useEffect(() => {
         if (!loading && !syncedMessage.data?.ID) {
@@ -58,6 +61,10 @@ const Composer = ({ message: inputMessage = {}, mailSettings, addresses, onChang
         await send(modelMessage);
         onClose();
     };
+    const handleDelete = async () => {
+        await deleteDraft();
+        onClose();
+    };
 
     const showLoader = loading || !modelMessage.data?.ID || !modelMessage.content;
 
@@ -70,7 +77,12 @@ const Composer = ({ message: inputMessage = {}, mailSettings, addresses, onChang
                     <ComposerTitleBar message={modelMessage} onClose={onClose} />
                     <ComposerMeta message={modelMessage} addresses={addresses} onChange={handleChange} />
                     <ComposerContent message={modelMessage} onChange={handleChange} />
-                    <ComposerActions message={modelMessage} onSave={handleSave} onSend={handleSend} />
+                    <ComposerActions
+                        message={modelMessage}
+                        onSave={handleSave}
+                        onSend={handleSend}
+                        onDelete={handleDelete}
+                    />
                 </>
             )}
         </div>
