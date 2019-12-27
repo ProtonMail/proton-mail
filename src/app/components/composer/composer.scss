@@ -2,7 +2,6 @@
 
 .composer {
     position: absolute;
-    right: 2rem;
     bottom: 1rem;
     z-index: 300;
 
@@ -14,6 +13,10 @@
     color: var(--color-main-area, $pm-global-grey);
 }
 
+.composer-blur * {
+    opacity: 0.8;
+}
+
 .composer-title-bar {
     width: calc(100% + 1em);
     padding: 0.5em;
@@ -23,6 +26,10 @@
 
     background: var(--bgcolor-main-area, #3c414e);
     color: #fff;
+}
+
+.composer-minimized .composer-title-bar {
+    margin-bottom: 0;
 }
 
 .pm-button.composer-title-bar-button {

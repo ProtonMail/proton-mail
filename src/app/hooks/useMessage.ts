@@ -7,6 +7,7 @@ import {
     updateDraft,
     deleteMessages
 } from 'proton-shared/lib/api/messages';
+import { wait } from 'proton-shared/lib/helpers/promise';
 
 import { transformEscape } from '../helpers/transforms/transformEscape';
 import { transformLinks } from '../helpers/transforms/transformLinks';
@@ -243,6 +244,8 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
             const messageToSave = mergeMessages(message, messageModel);
             const newMessage = await run(messageToSave, [encrypt, update]);
             cache.set(messageID, newMessage);
+            // Allow the cache update to be dispatched in React before resolving (simplify several race conditions)
+            await wait(0);
         },
         [message, run, cache]
     );
@@ -252,6 +255,8 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
             const messageToSave = mergeMessages(message, messageModel);
             const newMessage = await run(messageToSave, [encrypt, update, sendMessage]);
             cache.set(messageID, newMessage);
+            // Allow the cache update to be dispatched in React before resolving (simplify several race conditions)
+            await wait(0);
         },
         [message, run, cache]
     );
@@ -259,6 +264,8 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
     const deleteDraft = useCallback(async () => {
         await run(message, [deleteRequest]);
         cache.delete(messageID);
+        // Allow the cache update to be dispatched in React before resolving (simplify several race conditions)
+        await wait(0);
     }, [message, run, cache]);
 
     return [

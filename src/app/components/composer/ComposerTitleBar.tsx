@@ -1,17 +1,18 @@
 import React from 'react';
 import { c } from 'ttag';
+import { Icon, Button, classnames } from 'react-components';
 
 import { MessageExtended } from '../../models/message';
-import { Icon, Button } from 'react-components';
 
 interface ButtonProps {
     onClick: () => void;
     iconName: string;
+    className?: string;
 }
 
-const TitleBarButton = ({ onClick, iconName }: ButtonProps) => {
+const TitleBarButton = ({ onClick, iconName, className = '' }: ButtonProps) => {
     return (
-        <Button className="composer-title-bar-button" onClick={onClick}>
+        <Button className={classnames(['composer-title-bar-button', className])} onClick={onClick}>
             <Icon className="mauto" name={iconName} color="currentColor" />
         </Button>
     );
@@ -19,20 +20,29 @@ const TitleBarButton = ({ onClick, iconName }: ButtonProps) => {
 
 interface Props {
     message: MessageExtended;
+    minimized: boolean;
+    maximized: boolean;
+    toggleMinimized: () => void;
+    toggleMaximized: () => void;
     onClose: () => void;
 }
 
-const ComposerTitleBar = ({ message = {}, onClose }: Props) => {
+const ComposerTitleBar = ({ message = {}, minimized, maximized, toggleMinimized, toggleMaximized, onClose }: Props) => {
     const title = message.data?.Subject || c('Title').t`New message`;
 
-    const handleMinimize = () => console.log('minimize');
-    const handleExpand = () => console.log('expand');
+    // const handleMinimize = () => console.log('minimize');
+    // const handleExpand = () => console.log('expand');
+    // contract-window
 
     return (
         <header className="composer-title-bar flex flex-row">
             <span className="flex-self-vcenter flex-item-fluid pl0-5 pr1 ellipsis">{title}</span>
-            <TitleBarButton iconName="minimize" onClick={handleMinimize} />
-            <TitleBarButton iconName="expand" onClick={handleExpand} />
+            <TitleBarButton
+                iconName="minimize"
+                className={classnames([minimized && 'rotateX-180'])}
+                onClick={toggleMinimized}
+            />
+            <TitleBarButton iconName={maximized ? 'contract-window' : 'expand'} onClick={toggleMaximized} />
             <TitleBarButton iconName="close" onClick={onClose} />
         </header>
     );

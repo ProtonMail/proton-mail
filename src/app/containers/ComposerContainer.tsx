@@ -1,10 +1,48 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, CSSProperties } from 'react';
+import { c } from 'ttag';
+import { useMailSettings, useAddresses, useWindowSize, useNotifications } from 'react-components';
+import { range } from 'proton-shared/lib/helpers/array';
 
 import { Message } from '../models/message';
 import Composer from '../components/composer/Composer';
 
 import '../components/composer/composer.scss';
-import { useMailSettings, useAddresses } from 'react-components';
+
+export const COMPOSER_WIDTH = 600;
+export const COMPOSER_HEIGHT = 520;
+export const COMPOSER_GUTTER = 20;
+export const COMPOSER_VERTICAL_GUTTER = 10;
+export const COMPOSER_ZINDEX = 300;
+export const COMPOSER_SWITCH_MODE = 20;
+export const HEADER_HEIGHT = 80;
+export const APP_BAR_WIDTH = 45;
+
+const computeRightPositions = (count: number, width: number): number[] => {
+    const neededWidth = COMPOSER_WIDTH * count + COMPOSER_GUTTER * (count + 1);
+
+    if (neededWidth < width) {
+        return range(0, count).map((i) => COMPOSER_WIDTH * i + COMPOSER_GUTTER * (i + 1));
+    }
+
+    const widthToDivide = width - COMPOSER_GUTTER * 2 - COMPOSER_WIDTH;
+    const share = widthToDivide / (count - 1);
+    return range(0, count).map((i) => COMPOSER_GUTTER + share * i);
+};
+
+const computeStyle = (
+    message: Message,
+    index: number,
+    focusedMessage: Message | undefined,
+    rightPositions: number[],
+    height: number
+): CSSProperties => {
+    const maxHeight = height - COMPOSER_VERTICAL_GUTTER - HEADER_HEIGHT;
+    return {
+        right: rightPositions[index],
+        zIndex: message === focusedMessage ? COMPOSER_ZINDEX + 1 : COMPOSER_ZINDEX,
+        height: maxHeight > COMPOSER_HEIGHT ? COMPOSER_HEIGHT : maxHeight
+    };
+};
 
 interface Props {
     children: (props: { onCompose: (message?: Message) => void }) => ReactNode;
@@ -14,22 +52,50 @@ const ComposerContainer = ({ children }: Props) => {
     const [mailSettings, loadingSettings] = useMailSettings();
     const [addresses, loadingAddresses] = useAddresses();
     const [messages, setMessages] = useState<Message[]>([]);
+    const [focusedMessage, setFocusedMessage] = useState<Message | undefined>();
+    const [width, height] = useWindowSize();
+    const { createNotification } = useNotifications();
 
     if (loadingSettings || loadingAddresses) {
         return null;
     }
 
     const handleCompose = (message: Message = {}) => {
-        !messages.some((m) => m.ID === message.ID) && setMessages([...messages, message]);
+        if (messages.length >= 3) {
+            createNotification({
+                type: 'error',
+                text: c('Error').t`Maximum composer reached`
+            });
+            return;
+        }
+        const existingMessage = messages.find((m) => m.ID === message.ID);
+
+        if (!existingMessage) {
+            setMessages([...messages, message]);
+        }
+
+        setFocusedMessage(existingMessage || message);
     };
     const handleChange = (oldMessage: Message) => (newMessage: Message) => {
         const newMessages = [...messages];
         newMessages[newMessages.indexOf(oldMessage)] = newMessage;
         setMessages(newMessages);
+        if (oldMessage === focusedMessage) {
+            setFocusedMessage(newMessage);
+        }
     };
     const handleClose = (message: Message) => () => {
-        setMessages(messages.filter((m) => m !== message));
+        const newMessages = messages.filter((m) => m !== message);
+        setMessages(newMessages);
+        if (newMessages.length > 0) {
+            setFocusedMessage(newMessages[0]);
+        }
     };
+    const handleFocus = (message: Message) => () => {
+        setFocusedMessage(message);
+    };
+
+    const rightPositions = computeRightPositions(messages.length, width);
 
     return (
         <>
@@ -38,9 +104,12 @@ const ComposerContainer = ({ children }: Props) => {
                 {messages.map((message, i) => (
                     <Composer
                         key={message.ID || i}
+                        style={computeStyle(message, i, focusedMessage, rightPositions, height)}
                         message={message}
+                        focus={message === focusedMessage}
                         mailSettings={mailSettings}
                         addresses={addresses}
+                        onFocus={handleFocus(message)}
                         onChange={handleChange(message)}
                         onClose={handleClose(message)}
                     />
