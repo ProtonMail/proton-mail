@@ -1,6 +1,8 @@
 import { Label } from './label';
 import { Attachment } from './attachment';
 
+export type RecipientType = 'ToList' | 'CCList' | 'BCCList';
+
 export interface Recipient {
     Name?: string;
     Address?: string;

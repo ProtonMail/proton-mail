@@ -1,30 +1,20 @@
-import React, { useState, ChangeEvent, useEffect } from 'react';
+import React, { useState, ChangeEvent, MutableRefObject } from 'react';
 import { Label, Select, Input, generateUID } from 'react-components';
+
 import { MessageExtended } from '../../models/message';
 import { Address } from '../../models/address';
-import { validateAddresses } from '../../helpers/addresses';
+import ComposerAddresses from './addresses/Addresses';
 
 interface Props {
     message: MessageExtended;
     addresses: Address[];
     onChange: (message: MessageExtended) => void;
+    addressesBlurRef: MutableRefObject<() => void>;
+    addressesFocusRef: MutableRefObject<() => void>;
 }
 
-const ComposerMeta = ({ message, addresses, onChange }: Props) => {
+const ComposerMeta = ({ message, addresses, onChange, addressesBlurRef, addressesFocusRef }: Props) => {
     const [uid] = useState(generateUID('composer'));
-    const [addressesModel, setAddressesModel] = useState('');
-
-    // Temporary addresses logic to move on a (or many) dedicated components
-    useEffect(() => {
-        setAddressesModel(message.data?.ToList?.map((recipient) => recipient.Address).join(' ') || '');
-    }, [message.data?.ToList]);
-    useEffect(() => {
-        const addresses = addressesModel.split(' ');
-        if (validateAddresses(addresses)) {
-            const recipients = addresses.map((value) => ({ Address: value, Name: '' }));
-            onChange({ data: { ToList: recipients } });
-        }
-    }, [addressesModel]);
 
     // TODO: Implement logic on available addresses
     // Reference: Angular/src/app/composer/factories/composerFromModel.js
@@ -36,11 +26,6 @@ const ComposerMeta = ({ message, addresses, onChange }: Props) => {
         const address = addresses.find((address: Address) => address.ID === AddressID);
         const Sender = { Name: address?.DisplayName, Address: address?.Email };
         onChange({ data: { AddressID, Sender } });
-    };
-
-    const handleToChange = (event: ChangeEvent) => {
-        const input = event.target as HTMLInputElement;
-        setAddressesModel(input.value);
     };
 
     const handleSubjectChange = (event: ChangeEvent) => {
@@ -61,19 +46,25 @@ const ComposerMeta = ({ message, addresses, onChange }: Props) => {
                     options={addressesOptions}
                     value={message.data?.AddressID}
                     onChange={handleFromChange}
+                    onFocus={addressesBlurRef.current}
                 ></Select>
             </div>
-            <div className="flex flex-row flex-nowrap flex-items-center pl0-5 mb0-5">
-                <Label htmlFor={`to-${uid}`} className="composer-meta-label">
-                    To
-                </Label>
-                <Input id={`to-${uid}`} value={addressesModel} onChange={handleToChange} />
-            </div>
+            <ComposerAddresses
+                message={message}
+                onChange={onChange}
+                addressesBlurRef={addressesBlurRef}
+                addressesFocusRef={addressesFocusRef}
+            />
             <div className="flex flex-row flex-nowrap flex-items-center pl0-5 mb0-5">
                 <Label htmlFor={`subject-${uid}`} className="composer-meta-label">
                     Subject
                 </Label>
-                <Input id={`subject-${uid}`} value={message.data?.Subject} onChange={handleSubjectChange} />
+                <Input
+                    id={`subject-${uid}`}
+                    value={message.data?.Subject}
+                    onChange={handleSubjectChange}
+                    onFocus={addressesBlurRef.current}
+                />
             </div>
         </div>
     );

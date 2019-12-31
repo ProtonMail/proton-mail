@@ -1,4 +1,4 @@
-import React, { useState, useEffect, CSSProperties } from 'react';
+import React, { useState, useEffect, CSSProperties, useRef } from 'react';
 import { classnames, useToggle, useWindowSize, useLoading, Loader, useNotifications } from 'react-components';
 import { c } from 'ttag';
 
@@ -18,6 +18,8 @@ import {
     COMPOSER_HEIGHT,
     COMPOSER_SWITCH_MODE
 } from '../../containers/ComposerContainer';
+import { noop } from 'proton-shared/lib/helpers/function';
+import { getRecipients } from '../../helpers/message/messages';
 
 /**
  * Create a new MessageExtended with props from both m1 and m2
@@ -86,6 +88,13 @@ const Composer = ({
     const [width, height] = useWindowSize();
     const { createNotification } = useNotifications();
 
+    // Manage focus from the container yet keeping logic in each component
+    const addressesBlurRef = useRef<() => void>(noop);
+    const addressesFocusRef = useRef<() => void>(noop);
+    const contentFocusRef = useRef<() => void>(noop);
+
+    const showLoader = loading || !modelMessage.data?.ID || !modelMessage.content;
+
     useEffect(() => {
         if (!loading && !syncedMessage.data?.ID) {
             withLoading(createDraft(createNewDraft(addresses)));
@@ -107,6 +116,21 @@ const Composer = ({
             toggleMaximized();
         }
     }, [height]);
+
+    // Manage focus at opening
+    useEffect(() => {
+        if (showLoader) {
+            return;
+        }
+
+        setTimeout(() => {
+            if (getRecipients(syncedMessage.data).length === 0) {
+                addressesFocusRef.current();
+            } else {
+                contentFocusRef.current();
+            }
+        });
+    }, [showLoader]);
 
     const handleChange = (message: MessageExtended) => {
         console.log('change', message);
@@ -140,8 +164,6 @@ const Composer = ({
         onClose();
     };
 
-    const showLoader = loading || !modelMessage.data?.ID || !modelMessage.content;
-
     const style = computeStyle(inputStyle, minimized, maximized, width, height);
 
     return (
@@ -169,8 +191,19 @@ const Composer = ({
                     />
                     {!minimized && (
                         <>
-                            <ComposerMeta message={modelMessage} addresses={addresses} onChange={handleChange} />
-                            <ComposerContent message={modelMessage} onChange={handleChange} />
+                            <ComposerMeta
+                                message={modelMessage}
+                                addresses={addresses}
+                                onChange={handleChange}
+                                addressesBlurRef={addressesBlurRef}
+                                addressesFocusRef={addressesFocusRef}
+                            />
+                            <ComposerContent
+                                message={modelMessage}
+                                onChange={handleChange}
+                                onFocus={addressesBlurRef.current}
+                                contentFocusRef={contentFocusRef}
+                            />
                             <ComposerActions
                                 message={modelMessage}
                                 onSave={handleSave}

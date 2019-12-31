@@ -30,10 +30,6 @@ interface Props {
 const ComposerTitleBar = ({ message = {}, minimized, maximized, toggleMinimized, toggleMaximized, onClose }: Props) => {
     const title = message.data?.Subject || c('Title').t`New message`;
 
-    // const handleMinimize = () => console.log('minimize');
-    // const handleExpand = () => console.log('expand');
-    // contract-window
-
     return (
         <header className="composer-title-bar flex flex-row">
             <span className="flex-self-vcenter flex-item-fluid pl0-5 pr1 ellipsis">{title}</span>

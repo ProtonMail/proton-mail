@@ -52,9 +52,60 @@
 
 .pm-label.composer-meta-label {
     padding-top: 0;
-    padding-right: 2em;
+    padding-right: 1em;
     max-width: 8em;
     width: 15%;
+}
+
+.composer-addresses-fakefield {
+    padding: 0.4em 0.85em;
+    max-height: 2.5em;
+    background: var(--bgcolor-input, #fcfdff);
+}
+
+.composer-addresses-container {
+    display: flex;
+    flex-wrap: wrap;
+    min-height: 2.6rem;
+    vertical-align: middle;
+    width: 100%;
+    position: relative;
+    max-height: 100px;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    padding-top: 0.4em;
+    padding-bottom: 0.1em;
+
+    input {
+        border: none;
+
+        &:focus {
+            box-shadow: none;
+        }
+    }
+}
+
+.composer-addresses-item {
+    background-color: var(--bgcolor-item-column-list, #f6f7fa);
+    margin-bottom: 5px;
+    margin-right: 5px;
+    text-shadow: none;
+}
+
+.composer-addresses-item.invalid {
+    border-color: #fc2929;
+    color: #fc2929;
+}
+
+.composer-addresses-item-label {
+    border-left: 1px solid var(--bordercolor-input, #dde6ec);
+    border-right: 1px solid var(--bordercolor-input, #dde6ec);
+}
+
+.composer-addresses-item-remove {
+    background: none;
+    border: none;
 }
 
 .composer-quill {
