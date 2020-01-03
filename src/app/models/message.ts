@@ -1,5 +1,6 @@
 import { Label } from './label';
 import { Attachment } from './attachment';
+import { MESSAGE_ACTIONS } from '../constants';
 
 export type RecipientType = 'ToList' | 'CCList' | 'BCCList';
 
@@ -10,6 +11,7 @@ export interface Recipient {
 
 export interface Message {
     ID?: string;
+    ParentID?: string;
     Subject?: string;
     AddressID?: string;
     MIMEType?: string;
@@ -21,6 +23,7 @@ export interface Message {
     ToList?: Recipient[];
     CCList?: Recipient[];
     BCCList?: Recipient[];
+    ReplyTos?: Recipient[];
     ParsedHeaders?: { [key: string]: any };
     Attachments?: Attachment[];
     Unread?: number;
@@ -30,6 +33,10 @@ export interface Message {
     ConversationID?: string;
     Order?: number;
     Password?: string;
+    RightToLeft?: number;
+    PasswordHint?: string;
+    ExpirationTime?: number;
+    ExpiresIn?: number;
 }
 
 export interface MessageExtended {
@@ -48,4 +55,6 @@ export interface MessageExtended {
     attachments?: Attachment[];
     encryptedSubject?: any;
     mimetype?: string;
+    originalTo?: string;
+    action?: MESSAGE_ACTIONS;
 }

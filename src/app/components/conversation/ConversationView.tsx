@@ -11,14 +11,14 @@ import { findMessageToExpand } from '../../helpers/message/messageExpandable';
 import TrashWarning from './TrashWarning';
 import { MAILBOX_LABEL_IDS } from 'proton-shared/lib/constants';
 import { hasLabel } from '../../helpers/elements';
-import { Message } from '../../models/message';
+import { OnCompose } from '../../containers/ComposerContainer';
 
 interface Props {
     labelID: string;
     conversationID: string;
     messageID?: string;
     mailSettings: any;
-    onCompose: (message?: Message) => void;
+    onCompose: OnCompose;
 }
 
 const ConversationView = ({ labelID, conversationID, mailSettings, onCompose }: Props) => {

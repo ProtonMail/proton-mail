@@ -2,13 +2,12 @@ import React, { useState, useEffect, CSSProperties, useRef } from 'react';
 import { classnames, useToggle, useWindowSize, useLoading, Loader, useNotifications } from 'react-components';
 import { c } from 'ttag';
 
-import { Message, MessageExtended } from '../../models/message';
+import { MessageExtended } from '../../models/message';
 import ComposerTitleBar from './ComposerTitleBar';
 import ComposerMeta from './ComposerMeta';
 import ComposerContent from './ComposerContent';
 import ComposerActions from './ComposerActions';
 import { useMessage } from '../../hooks/useMessage';
-import { createNewDraft } from '../../helpers/message/messageDraft';
 import { Address } from '../../models/address';
 import {
     COMPOSER_GUTTER,
@@ -59,11 +58,11 @@ const computeStyle = (
 interface Props {
     style?: CSSProperties;
     focus: boolean;
-    message?: Message;
+    message?: MessageExtended;
     mailSettings: any;
     addresses: Address[];
     onFocus: () => void;
-    onChange: (message: Message) => void;
+    onChange: (message: MessageExtended) => void;
     onClose: () => void;
 }
 
@@ -79,10 +78,10 @@ const Composer = ({
 }: Props) => {
     const { state: minimized, toggle: toggleMinimized } = useToggle(false);
     const { state: maximized, toggle: toggleMaximized } = useToggle(false);
-    const [modelMessage, setModelMessage] = useState<MessageExtended>({ data: inputMessage });
+    const [modelMessage, setModelMessage] = useState<MessageExtended>(inputMessage);
     const [loading, withLoading] = useLoading(false);
     const [syncedMessage, { initialize, createDraft, saveDraft, send, deleteDraft }] = useMessage(
-        inputMessage,
+        inputMessage.data,
         mailSettings
     );
     const [width, height] = useWindowSize();
@@ -97,7 +96,7 @@ const Composer = ({
 
     useEffect(() => {
         if (!loading && !syncedMessage.data?.ID) {
-            withLoading(createDraft(createNewDraft(addresses)));
+            withLoading(createDraft(inputMessage));
         }
 
         if (!loading && syncedMessage.data?.ID && typeof syncedMessage.initialized === 'undefined') {
@@ -105,7 +104,7 @@ const Composer = ({
         }
 
         setModelMessage(mergeMessages(modelMessage, syncedMessage));
-        onChange(syncedMessage.data || {});
+        onChange(syncedMessage);
     }, [loading, syncedMessage]);
 
     useEffect(() => {

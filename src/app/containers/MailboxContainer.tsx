@@ -25,9 +25,7 @@ import List from '../components/list/List';
 import ConversationView from '../components/conversation/ConversationView';
 import PlaceholderView from '../components/view/PlaceholderView';
 import MessageOnlyView from '../components/message/MessageOnlyView';
-import { isConversation } from '../helpers/elements';
-import { isDraft } from '../helpers/message/messages';
-import { Message } from '../models/message';
+import { OnCompose } from './ComposerContainer';
 import { PAGE_SIZE } from '../constants';
 
 import './main-area.scss';
@@ -38,7 +36,7 @@ interface Props {
     elementID?: string;
     location: Location;
     history: History;
-    onCompose: (message?: Message) => void;
+    onCompose: OnCompose;
 }
 
 const MailboxContainer = ({
@@ -110,13 +108,7 @@ const MailboxContainer = ({
         return [];
     }, [checkedIDs, elementID]);
 
-    const handleElement = (element: Element) => {
-        history.push(setPathInUrl(location, labelID, element.ID));
-
-        if (!isConversation(element) && isDraft(element)) {
-            onCompose(element);
-        }
-    };
+    const handleElement = (element: Element) => history.push(setPathInUrl(location, labelID, element.ID));
     const handleBack = () => history.push(setPathInUrl(location, labelID));
     const handlePage = (pageNumber: number) => history.push(setPageInUrl(location, pageNumber));
     const handleSort = (sort: Sort) => history.push(setSortInUrl(location, sort));

@@ -9,6 +9,7 @@ import createCache from 'proton-shared/lib/helpers/cache';
 jest.mock('./useDecryptMessage', () => ({ useDecryptMessage: jest.fn() }));
 jest.mock('./useAttachments', () => ({ useAttachmentsCache: jest.fn() }));
 jest.mock('./useEncryptMessage', () => ({ useEncryptMessage: jest.fn(() => (m: any) => m) }));
+jest.mock('./useSendMessage', () => ({ useSendMessage: jest.fn(() => (m: any) => m) }));
 
 describe('useMessage', () => {
     const ID = 'ID';

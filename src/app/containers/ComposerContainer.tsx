@@ -3,10 +3,12 @@ import { c } from 'ttag';
 import { useMailSettings, useAddresses, useWindowSize, useNotifications } from 'react-components';
 import { range } from 'proton-shared/lib/helpers/array';
 
-import { Message } from '../models/message';
+import { MessageExtended } from '../models/message';
 import Composer from '../components/composer/Composer';
 
 import '../components/composer/composer.scss';
+import { MESSAGE_ACTIONS } from '../constants';
+import { createNewDraft } from '../helpers/message/messageDraft';
 
 export const COMPOSER_WIDTH = 600;
 export const COMPOSER_HEIGHT = 520;
@@ -29,30 +31,53 @@ const computeRightPositions = (count: number, width: number): number[] => {
     return range(0, count).map((i) => COMPOSER_GUTTER + share * i);
 };
 
-const computeStyle = (
-    message: Message,
-    index: number,
-    focusedMessage: Message | undefined,
-    rightPositions: number[],
-    height: number
-): CSSProperties => {
+const computeStyle = (index: number, hasFocus: boolean, rightPositions: number[], height: number): CSSProperties => {
     const maxHeight = height - COMPOSER_VERTICAL_GUTTER - HEADER_HEIGHT;
     return {
         right: rightPositions[index],
-        zIndex: message === focusedMessage ? COMPOSER_ZINDEX + 1 : COMPOSER_ZINDEX,
+        zIndex: hasFocus ? COMPOSER_ZINDEX + 1 : COMPOSER_ZINDEX,
         height: maxHeight > COMPOSER_HEIGHT ? COMPOSER_HEIGHT : maxHeight
     };
 };
 
+export interface ComposeExisting {
+    existingDraft: MessageExtended;
+}
+
+export interface ComposeNew {
+    action: MESSAGE_ACTIONS;
+    referenceMessage?: MessageExtended;
+}
+
+export type ComposeArgs = ComposeExisting | ComposeNew;
+
+export const getComposeExisting = (composeArgs: ComposeArgs) =>
+    (composeArgs as ComposeExisting).existingDraft ? (composeArgs as ComposeExisting) : undefined;
+
+export const getComposeNew = (composeArgs: ComposeArgs) =>
+    typeof (composeArgs as ComposeNew).action === 'number' ? (composeArgs as ComposeNew) : undefined;
+
+export const getComposeArgs = (composeArgs: ComposeArgs) => ({
+    composeExisting: getComposeExisting(composeArgs),
+    composeNew: getComposeNew(composeArgs)
+});
+
+export interface OnCompose {
+    (args: ComposeArgs): void;
+}
+
 interface Props {
-    children: (props: { onCompose: (message?: Message) => void }) => ReactNode;
+    children: (props: { onCompose: OnCompose }) => ReactNode;
 }
 
 const ComposerContainer = ({ children }: Props) => {
     const [mailSettings, loadingSettings] = useMailSettings();
     const [addresses, loadingAddresses] = useAddresses();
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [focusedMessage, setFocusedMessage] = useState<Message | undefined>();
+
+    // Handling simple Message would have been simpler
+    // But in order to create new drafts from here, MessageExtended was mandatory
+    const [messages, setMessages] = useState<MessageExtended[]>([]);
+    const [focusedMessage, setFocusedMessage] = useState<MessageExtended | undefined>();
     const [width, height] = useWindowSize();
     const { createNotification } = useNotifications();
 
@@ -60,7 +85,7 @@ const ComposerContainer = ({ children }: Props) => {
         return null;
     }
 
-    const handleCompose = (message: Message = {}) => {
+    const handleCompose = (composeArgs: ComposeArgs) => {
         if (messages.length >= 3) {
             createNotification({
                 type: 'error',
@@ -68,15 +93,33 @@ const ComposerContainer = ({ children }: Props) => {
             });
             return;
         }
-        const existingMessage = messages.find((m) => m.ID === message.ID);
 
-        if (!existingMessage) {
-            setMessages([...messages, message]);
+        const { composeExisting, composeNew } = getComposeArgs(composeArgs);
+
+        console.log('compose', composeExisting, composeNew);
+
+        if (composeExisting) {
+            const { existingDraft } = composeExisting;
+
+            const existingMessage = messages.find((m) => m.data?.ID === existingDraft.data?.ID);
+            if (existingMessage) {
+                setFocusedMessage(existingMessage);
+                return;
+            }
+
+            setMessages([...messages, existingDraft]);
+            setFocusedMessage(existingDraft);
+            return;
         }
 
-        setFocusedMessage(existingMessage || message);
+        if (composeNew) {
+            const { action, referenceMessage } = composeNew;
+            const newMessage = createNewDraft(action, referenceMessage, mailSettings, addresses);
+            setMessages([...messages, newMessage]);
+            setFocusedMessage(newMessage);
+        }
     };
-    const handleChange = (oldMessage: Message) => (newMessage: Message) => {
+    const handleChange = (oldMessage: MessageExtended) => (newMessage: MessageExtended) => {
         const newMessages = [...messages];
         newMessages[newMessages.indexOf(oldMessage)] = newMessage;
         setMessages(newMessages);
@@ -84,14 +127,14 @@ const ComposerContainer = ({ children }: Props) => {
             setFocusedMessage(newMessage);
         }
     };
-    const handleClose = (message: Message) => () => {
+    const handleClose = (message: MessageExtended) => () => {
         const newMessages = messages.filter((m) => m !== message);
         setMessages(newMessages);
         if (newMessages.length > 0) {
             setFocusedMessage(newMessages[0]);
         }
     };
-    const handleFocus = (message: Message) => () => {
+    const handleFocus = (message: MessageExtended) => () => {
         setFocusedMessage(message);
     };
 
@@ -103,8 +146,8 @@ const ComposerContainer = ({ children }: Props) => {
             <div className="composer-container">
                 {messages.map((message, i) => (
                     <Composer
-                        key={message.ID || i}
-                        style={computeStyle(message, i, focusedMessage, rightPositions, height)}
+                        key={message.data?.ID || i}
+                        style={computeStyle(i, message === focusedMessage, rightPositions, height)}
                         message={message}
                         focus={message === focusedMessage}
                         mailSettings={mailSettings}

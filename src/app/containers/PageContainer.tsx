@@ -4,14 +4,14 @@ import { ErrorBoundary, useMailSettings, Loader, useEventManager } from 'react-c
 import PrivateLayout from '../components/layout/PrivateLayout';
 import MailboxContainer from './MailboxContainer';
 import { HUMAN_TO_LABEL_IDS } from '../constants';
-import { Message } from '../models/message';
+import { OnCompose } from './ComposerContainer';
 import { RouteProps } from '../PrivateApp';
 import { Event } from '../models/event';
 import { EVENT_ACTIONS } from 'proton-shared/lib/constants';
 import { setPathInUrl } from '../helpers/mailboxUrl';
 
 interface Props extends RouteProps {
-    onCompose: (message?: Message) => void;
+    onCompose: OnCompose;
 }
 
 const PageContainer = ({ match, location, history, onCompose }: Props) => {

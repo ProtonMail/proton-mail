@@ -9,6 +9,7 @@ import HeaderExpanded from './header/HeaderExpanded';
 import MessageFooter from './MessageFooter';
 import { Message } from '../../models/message';
 import { useMessage } from '../../hooks/useMessage';
+import { OnCompose } from '../../containers/ComposerContainer';
 
 interface Props {
     labels: Label[];
@@ -16,7 +17,7 @@ interface Props {
     mailSettings: any;
     initialExpand?: boolean;
     conversationIndex?: number;
-    onCompose: (message?: Message) => void;
+    onCompose: OnCompose;
 }
 
 const MessageView = ({
@@ -47,12 +48,11 @@ const MessageView = ({
         if (!loaded && expanded) {
             prepareMessage();
         }
-    }, [loaded, expanded]);
 
-    // Message can be undefined when it just was deleted
-    if (!message) {
-        return null;
-    }
+        if (loaded && expanded && isDraft(message.data)) {
+            onCompose({ existingDraft: message });
+        }
+    }, [loaded, expanded]);
 
     const handleLoadRemoteImages = async () => {
         await loadRemoteImages();
@@ -64,10 +64,6 @@ const MessageView = ({
 
     const handleExpand = (value: boolean) => () => {
         setExpanded(value);
-
-        if (value && isDraft(message.data)) {
-            onCompose(message.data);
-        }
     };
 
     return (
@@ -82,6 +78,7 @@ const MessageView = ({
                         labels={labels}
                         mailSettings={mailSettings}
                         onCollapse={handleExpand(false)}
+                        onCompose={onCompose}
                     />
                     {loaded ? (
                         <>

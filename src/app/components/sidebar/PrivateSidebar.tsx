@@ -17,15 +17,15 @@ import { redirectTo } from 'proton-shared/lib/helpers/browser';
 
 import LocationAside from './LocationAside';
 import { LABEL_IDS_TO_HUMAN, MESSAGE_ACTIONS } from '../../constants';
-import { getCounterMap } from '../../helpers/elements';
-import { Message } from '../../models/message';
 import { Label } from '../../models/label';
+import { OnCompose } from '../../containers/ComposerContainer';
+import { getCounterMap } from '../../helpers/elements';
 
 interface Props {
     labelID: string;
     expanded?: boolean;
     location: Location;
-    onCompose: (message?: Message) => void;
+    onCompose: OnCompose;
 }
 
 const PrivateSidebar = ({ labelID: currentLabelID, expanded = false, location, onCompose }: Props) => {
@@ -48,10 +48,6 @@ const PrivateSidebar = ({ labelID: currentLabelID, expanded = false, location, o
     if (loadingMailSettings || loadingLabels || loadingConversationCounts || loadingMessageCounts) {
         return <Loader />;
     }
-
-    const handleCompose = () => {
-        onCompose({ action: MESSAGE_ACTIONS.NEW });
-    };
 
     const getItemParams = (labelID: MAILBOX_LABEL_IDS | string) => {
         const humanID = LABEL_IDS_TO_HUMAN[labelID as MAILBOX_LABEL_IDS]
@@ -137,6 +133,10 @@ const PrivateSidebar = ({ labelID: currentLabelID, expanded = false, location, o
             ...getItemParams(ID)
         }))
     ];
+
+    const handleCompose = () => {
+        onCompose({ action: MESSAGE_ACTIONS.NEW });
+    };
 
     return (
         <div className="sidebar flex flex-column noprint" data-expanded={expanded}>

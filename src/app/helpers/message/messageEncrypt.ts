@@ -1,16 +1,17 @@
 import { encryptMessage } from 'pmcrypto';
 import { MessageExtended } from '../../models/message';
+import { Key } from '../../models/key';
 
 // Reference: Angular/src/app/message/factories/messageModel.js encryptBody
 
 export const encryptBody = async (
     message: MessageExtended,
-    privateKeys: any,
-    publicKeys: any
+    privateKeys: Key[],
+    publicKeys: Key[]
 ): Promise<MessageExtended> => {
     const { data } = await encryptMessage({
         data: message.content,
-        publicKeys,
+        publicKeys: [publicKeys[0]],
         privateKeys,
         format: 'utf8',
         compression: true

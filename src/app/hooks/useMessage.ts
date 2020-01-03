@@ -24,9 +24,9 @@ import { Message, MessageExtended } from '../models/message';
 import { useSendMessage } from './useSendMessage';
 import { MailSettings, Api } from '../models/utils';
 import { useEncryptMessage } from './useEncryptMessage';
+import { MESSAGE_ACTIONS } from '../constants';
 
 export interface ComputationOption {
-    action?: string;
     cache: any;
     mailSettings: MailSettings;
     api: Api;
@@ -64,7 +64,7 @@ export const mergeMessages = (messageState: MessageExtended, messageModel: Messa
     return message;
 };
 
-export const useMessage = (inputMessage: Message, mailSettings: any): [MessageExtended, MessageActions] => {
+export const useMessage = (inputMessage: Message = {}, mailSettings: any): [MessageExtended, MessageActions] => {
     const api = useApi();
     const { call } = useEventManager();
     const cache = useContext(MessageContext);
@@ -142,7 +142,12 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
 
     const create = useCallback(
         async (message: MessageExtended = {}) => {
-            const { Message } = await api(createDraftApi({ Message: message.data } as any));
+            const { Message } = await api(
+                createDraftApi({
+                    Action: message.action !== MESSAGE_ACTIONS.NEW ? message.action : undefined,
+                    Message: message.data
+                } as any)
+            );
             call();
             return { data: Message };
         },
@@ -172,9 +177,8 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
      * Return the message extanded with the result of the computation
      */
     const runSingle = useCallback(
-        async (message: MessageExtended, compute: Computation, action?: string) => {
-            const result =
-                (await compute(message, { action, cache: computeCache, mailSettings, api, attachmentsCache })) || {};
+        async (message: MessageExtended, compute: Computation) => {
+            const result = (await compute(message, { cache: computeCache, mailSettings, api, attachmentsCache })) || {};
 
             if (result.document) {
                 result.content = result.document.innerHTML;
@@ -189,50 +193,33 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
      * Run a list of computation sequentially
      */
     const run = useCallback(
-        async (message: MessageExtended, computes: Computation[], action?: string) => {
+        async (message: MessageExtended, computes: Computation[]) => {
             return computes.reduce(async (messagePromise: Promise<MessageExtended>, compute: Computation) => {
-                return runSingle(await messagePromise, compute, action);
+                return runSingle(await messagePromise, compute);
             }, Promise.resolve(message));
         },
         [runSingle, cache]
     );
 
-    const initialize = useCallback(
-        async (action?) => {
-            cache.set(messageID, { ...message, initialized: false });
-            const newMessage = await run(
-                message,
-                [loadData, decrypt, markAsRead, ...transforms] as Computation[],
-                action
-            );
-            cache.set(messageID, { ...newMessage, initialized: true });
-        },
-        [messageID, message, run, cache]
-    );
+    const initialize = useCallback(async () => {
+        cache.set(messageID, { ...message, initialized: false });
+        const newMessage = await run(message, [loadData, decrypt, markAsRead, ...transforms] as Computation[]);
+        cache.set(messageID, { ...newMessage, initialized: true });
+    }, [messageID, message, run, cache]);
 
-    const loadRemoteImages = useCallback(
-        async (action?) => {
-            const newMessage = await run(
-                { ...message, showRemoteImages: true },
-                [transformRemote as Computation],
-                action
-            );
-            cache.set(messageID, newMessage);
-        },
-        [messageID, message, message, run, cache]
-    );
+    const loadRemoteImages = useCallback(async () => {
+        const newMessage = await run({ ...message, showRemoteImages: true }, [transformRemote as Computation]);
+        cache.set(messageID, newMessage);
+    }, [messageID, message, message, run, cache]);
 
-    const loadEmbeddedImages = useCallback(
-        async (action?) => {
-            const newMessage = await run({ ...message, showEmbeddedImages: true }, [transformEmbedded], action);
-            cache.set(messageID, newMessage);
-        },
-        [messageID, message, run, cache]
-    );
+    const loadEmbeddedImages = useCallback(async () => {
+        const newMessage = await run({ ...message, showEmbeddedImages: true }, [transformEmbedded]);
+        cache.set(messageID, newMessage);
+    }, [messageID, message, run, cache]);
 
     const createDraft = useCallback(
         async (message: MessageExtended) => {
-            const newMessage = await run(message, [encrypt, create]);
+            const newMessage = await run(message, [encrypt, create] as Computation[]);
             cache.set(newMessage.data?.ID || '', newMessage);
             setMessageID(newMessage.data?.ID || '');
         },

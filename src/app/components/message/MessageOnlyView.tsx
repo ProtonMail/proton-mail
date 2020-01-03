@@ -6,12 +6,12 @@ import ItemStar from '../list/ItemStar';
 import { ELEMENT_TYPES } from '../../constants';
 import ItemLabels from '../list/ItemLabels';
 import { useMessage } from '../../hooks/useMessage';
-import { Message } from '../../models/message';
+import { OnCompose } from '../../containers/ComposerContainer';
 
 interface Props {
     messageID: string;
     mailSettings: any;
-    onCompose: (message?: Message) => void;
+    onCompose: OnCompose;
 }
 
 const MessageOnlyView = ({ messageID, mailSettings, onCompose }: Props) => {

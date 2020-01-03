@@ -4,4 +4,8 @@ export interface Address {
     DisplayName?: string;
     Priority?: number;
     Receive?: number;
+    Status?: number;
+    Order?: number;
+    Send?: number;
+    Signature?: string;
 }

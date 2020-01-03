@@ -5,7 +5,7 @@ import humanSize from 'proton-shared/lib/helpers/humanSize';
 
 import ItemStar from '../../list/ItemStar';
 import ItemDate from '../../list/ItemDate';
-import { ELEMENT_TYPES } from '../../../constants';
+import { ELEMENT_TYPES, MESSAGE_ACTIONS } from '../../../constants';
 import ItemLabels from '../../list/ItemLabels';
 import ItemLocation from '../../list/ItemLocation';
 import MoveDropdown from '../../dropdown/MoveDropdown';
@@ -18,9 +18,10 @@ import HeaderRecipientsDetails from './HeaderRecipientsDetails';
 import ItemAttachmentIcon from '../../list/ItemAttachmentIcon';
 import { MessageExtended } from '../../../models/message';
 import { Label } from '../../../models/label';
+import HeaderDropdown from './HeaderDropdown';
+import { OnCompose } from '../../../containers/ComposerContainer';
 
 import './MessageHeader.scss';
-import HeaderDropdown from './HeaderDropdown';
 
 interface Props {
     labels?: Label[];
@@ -30,6 +31,7 @@ interface Props {
     onLoadRemoteImages: () => void;
     onLoadEmbeddedImages: () => void;
     onCollapse: () => void;
+    onCompose: OnCompose;
 }
 
 const HeaderExpanded = ({
@@ -39,7 +41,8 @@ const HeaderExpanded = ({
     onLoadRemoteImages,
     onLoadEmbeddedImages,
     mailSettings,
-    onCollapse
+    onCollapse,
+    onCompose
 }: Props) => {
     const { state: showDetails, toggle: toggleDetails } = useToggle();
 
@@ -53,6 +56,12 @@ const HeaderExpanded = ({
         }
 
         onCollapse();
+    };
+    const handleCompose = (action: MESSAGE_ACTIONS) => () => {
+        onCompose({
+            action,
+            referenceMessage: message
+        });
     };
 
     return (
@@ -127,13 +136,13 @@ const HeaderExpanded = ({
                     </Group>
 
                     <Group>
-                        <ButtonGroup disabled={!messageLoaded}>
+                        <ButtonGroup disabled={!messageLoaded} onClick={handleCompose(MESSAGE_ACTIONS.REPLY)}>
                             <Icon name="reply" />
                         </ButtonGroup>
-                        <ButtonGroup disabled={!messageLoaded}>
+                        <ButtonGroup disabled={!messageLoaded} onClick={handleCompose(MESSAGE_ACTIONS.REPLY_ALL)}>
                             <Icon name="reply-all" />
                         </ButtonGroup>
-                        <ButtonGroup disabled={!messageLoaded}>
+                        <ButtonGroup disabled={!messageLoaded} onClick={handleCompose(MESSAGE_ACTIONS.FORWARD)}>
                             <Icon name="forward" />
                         </ButtonGroup>
                     </Group>

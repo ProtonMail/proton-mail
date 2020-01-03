@@ -6,14 +6,14 @@ import { normalize } from 'proton-shared/lib/helpers/string';
 import PrivateHeader from '../header/PrivateHeader';
 import PrivateSidebar from '../sidebar/PrivateSidebar';
 import { Location, History } from 'history';
-import { Message } from '../../models/message';
+import { OnCompose } from '../../containers/ComposerContainer';
 
 interface Props {
     children: ReactNode;
     location: Location;
     history: History;
     labelID: string;
-    onCompose: (message?: Message) => void;
+    onCompose: OnCompose;
 }
 
 const PrivateLayout = ({ children, location, history, labelID, onCompose }: Props) => {

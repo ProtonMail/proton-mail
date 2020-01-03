@@ -5,7 +5,7 @@ import { PACKAGE_TYPE, RECIPIENT_TYPE, MIME_TYPES, KEY_FLAGS } from 'proton-shar
 
 import { Message } from '../../models/message';
 import { isEO, isSign } from '../message/messages';
-import { normalizeEmail } from '../string';
+import { normalizeEmail } from '../addresses';
 import { Address } from '../../models/address';
 import { getByEmail, isOwnAddress, isFallbackAddress } from '../addresses';
 import { KeyData, Key } from '../../models/key';

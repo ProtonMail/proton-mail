@@ -73,3 +73,10 @@ export enum ENCRYPTED_STATUS {
 }
 
 export const AES256 = 'aes256';
+
+export enum MESSAGE_ACTIONS {
+    NEW = -1,
+    REPLY = 0,
+    REPLY_ALL = 1,
+    FORWARD = 2
+}

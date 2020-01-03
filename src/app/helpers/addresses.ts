@@ -1,14 +1,44 @@
 import { REGEX_EMAIL } from 'proton-shared/lib/constants';
 import { Address } from '../models/address';
 import { Key } from '../models/key';
-import { removeEmailAlias } from './string';
-import { Recipient } from '../models/message';
+import { Recipient, Message } from '../models/message';
 
 export const REGEX_RECIPIENT = /(.*)\s*<([^>]*)>/;
 
 export const validateAddress = (address = '') => REGEX_EMAIL.test(address);
 
 export const validateAddresses = (addresses: string[]) => addresses.every(validateAddress);
+
+/**
+ * Transform value to be normalized (lowercase)
+ */
+export const normalizeEmail = (email = '') => email.toLowerCase();
+
+/**
+ * Remove plus alias part present in the email value
+ */
+export const removeEmailAlias = (email = '') => {
+    return normalizeEmail(email)
+        .replace(/(\+[^@]*)@/, '@')
+        .replace(/[._-](?=[^@]*@)/g, '');
+};
+
+/**
+ * Add plus alias part for an email
+ */
+export const addPlusAlias = (email = '', plus = '') => {
+    const atIndex = email.indexOf('@');
+    const plusIndex = email.indexOf('+');
+
+    if (atIndex === -1 || plusIndex > -1) {
+        return email;
+    }
+
+    const name = email.substring(0, atIndex);
+    const domain = email.substring(atIndex, email.length);
+
+    return `${name}+${plus}${domain}`;
+};
 
 /**
  * Get address from email
@@ -42,7 +72,7 @@ export const inputToRecipient = (input: string): Recipient => {
     };
 };
 
-export const recipientToInput = (recipient: Recipient): string => {
+export const recipientToInput = (recipient: Recipient = {}): string => {
     if (recipient.Address && recipient.Name && recipient.Address !== recipient.Name) {
         return `${recipient.Name} <${recipient.Address}>`;
     }
@@ -52,4 +82,66 @@ export const recipientToInput = (recipient: Recipient): string => {
     }
 
     return `${recipient.Name} ${recipient.Address}`;
+};
+
+/**
+ * Detect if the email address is a valid plus alias and returns the address model appropriate
+ */
+export const getAddressFromPlusAlias = (addresses: Address[], email = ''): Address | undefined => {
+    const plusIndex = email.indexOf('+');
+    const atIndex = email.indexOf('@');
+
+    if (plusIndex === -1 || atIndex === -1) {
+        return;
+    }
+
+    // Remove the plus alias part to find a match with existing addresses
+    const address = getByEmail(addresses, removeEmailAlias(email));
+    const { Status, Receive, Send } = address || {};
+
+    if (!Status || !Receive || !Send) {
+        // pm.me addresses on free accounts (Send = 0)
+        return;
+    }
+
+    const plusPart = email.substring(plusIndex + 1, atIndex);
+
+    // Returns an address where the Email is build to respect the exising capitalization and add the plus part
+    return { ...address, Email: addPlusAlias(address?.Email, plusPart) };
+};
+
+/**
+ * Return list of addresses available in the FROM select
+ */
+export const getFromAdresses = (addresses: Address[], originalTo = '') => {
+    const result = addresses
+        .filter(({ Status, Receive }) => Status === 1 && Receive === 1)
+        .sort((a1, a2) => (a1.Order || 0) - (a2.Order || 0));
+
+    const plusAddress = getAddressFromPlusAlias(addresses, originalTo);
+
+    if (plusAddress) {
+        // It's important to unshift the plus address to be found first with find()
+        result.unshift(plusAddress);
+    }
+
+    return result;
+};
+
+/**
+ * Find the current sender for a message
+ */
+export const findSender = (addresses: Address[] = [], { AddressID = '' }: Message = {}): Address | undefined => {
+    const enabledAddresses = addresses
+        .filter((address) => address.Status === 1)
+        .sort((a1, a2) => (a1.Order || 0) - (a2.Order || 0));
+
+    if (AddressID) {
+        const originalAddress = enabledAddresses.find((address) => address.ID === AddressID);
+        if (originalAddress) {
+            return originalAddress;
+        }
+    }
+
+    return enabledAddresses[0];
 };
