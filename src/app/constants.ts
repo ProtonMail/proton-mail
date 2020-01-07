@@ -68,6 +68,6 @@ export const MESSAGE_FLAGS = {
     FLAG_SIGN: 262144 // whether to sign the message
 };
 
-export const ENCRYPTED_STATUS = {
-    PGP_MIME: 8 // Used for attachment
-};
+export enum ENCRYPTED_STATUS {
+    PGP_MIME = 8 // Used for attachment
+}

@@ -70,7 +70,6 @@ export const useMessage = (inputMessage: Message, mailSettings: any): [MessageEx
         transformWelcome,
         transformBlockquotes,
         transformStylesheet,
-        // transformAttachements,
         transformRemote
     ];
 
