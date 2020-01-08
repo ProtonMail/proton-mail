@@ -1,5 +1,5 @@
 import React, { useState, useEffect, CSSProperties, useRef } from 'react';
-import { classnames, useToggle, useWindowSize, useLoading, Loader, useNotifications } from 'react-components';
+import { classnames, useToggle, useWindowSize, useLoading, Loader, useNotifications, useApi } from 'react-components';
 import { c } from 'ttag';
 
 import { MessageExtended } from '../../models/message';
@@ -19,6 +19,7 @@ import {
 } from '../../containers/ComposerContainer';
 import { noop } from 'proton-shared/lib/helpers/function';
 import { getRecipients } from '../../helpers/message/messages';
+import { upload, ATTACHMENT_ACTION } from '../../helpers/attachment/attachmentUploader';
 
 /**
  * Create a new MessageExtended with props from both m1 and m2
@@ -76,6 +77,7 @@ const Composer = ({
     onChange,
     onClose
 }: Props) => {
+    const api = useApi();
     const { state: minimized, toggle: toggleMinimized } = useToggle(false);
     const { state: maximized, toggle: toggleMaximized } = useToggle(false);
     const [modelMessage, setModelMessage] = useState<MessageExtended>(inputMessage);
@@ -135,9 +137,18 @@ const Composer = ({
         console.log('change', message);
         setModelMessage(mergeMessages(modelMessage, message));
     };
-    const save = async () => {
-        await saveDraft(modelMessage);
+    const save = async (messageToSave = modelMessage) => {
+        await saveDraft(messageToSave);
         createNotification({ text: c('Info').t`Message saved` });
+    };
+    const handleAddAttachments = async (files: File[]) => {
+        const attachments = await upload(files, modelMessage, ATTACHMENT_ACTION.ATTACHMENT, api);
+        if (attachments) {
+            const Attachments = [...(modelMessage.data?.Attachments || []), ...attachments];
+            const newModelMessage = mergeMessages(modelMessage, { data: { Attachments } });
+            setModelMessage(newModelMessage);
+            save(newModelMessage);
+        }
     };
     const handleSave = async () => {
         await save();
@@ -205,6 +216,7 @@ const Composer = ({
                             />
                             <ComposerActions
                                 message={modelMessage}
+                                onAddAttachments={handleAddAttachments}
                                 onSave={handleSave}
                                 onSend={handleSend}
                                 onDelete={handleDelete}

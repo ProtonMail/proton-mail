@@ -52,7 +52,7 @@ export interface MessageExtended {
     showRemoteImages?: boolean;
     showEmbeddedImages?: boolean;
     numEmbedded?: number;
-    attachments?: Attachment[];
+    // attachments?: Attachment[];
     encryptedSubject?: any;
     mimetype?: string;
     originalTo?: string;

@@ -111,3 +111,17 @@
 .composer-quill {
     height: calc(100% - 3em);
 }
+
+.composer-attachments-button-wrapper {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+
+    input[type='file'] {
+        font-size: 100px;
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+    }
+}

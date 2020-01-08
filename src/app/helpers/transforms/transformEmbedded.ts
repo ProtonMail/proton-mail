@@ -29,7 +29,7 @@ export const transformEmbedded: Computation = async (message, { attachmentsCache
             mutateHTML(message, direction);
         }
     } else {
-        await decrypt(message, api, attachmentsCache);
+        await decrypt(message, api, attachmentsCache.data);
         mutateHTML(message, direction);
     }
 
