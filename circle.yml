@@ -8,7 +8,7 @@ jobs:
        - image: circleci/node:lts
      steps:
        - checkout
-       - run: npm i
+       - run: npm ci
        - run: npx proton-pack
        - run: npm run lint
        - run: npm run i18n:validate
