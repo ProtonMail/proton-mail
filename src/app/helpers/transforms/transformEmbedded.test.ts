@@ -1,7 +1,8 @@
+import { BinaryResult } from 'pmcrypto';
+
 import { MessageExtended } from '../../models/message';
 import { MailSettings, Api } from '../../models/utils';
 import { transformEmbedded } from './transformEmbedded';
-import { AttachmentData } from '../../models/attachment';
 import { prepareImages } from '../embedded/embeddedParser';
 import { SHOW_IMAGES } from 'proton-shared/lib/constants';
 
@@ -17,7 +18,7 @@ jest.mock('../embedded/embeddedParser', () => ({
     prepareImages: jest.fn()
 }));
 
-const attachmentsCache = new Map<string, AttachmentData>();
+const attachmentsCache = new Map<string, BinaryResult>();
 const api: Api = jest.fn();
 const cache: any = {};
 

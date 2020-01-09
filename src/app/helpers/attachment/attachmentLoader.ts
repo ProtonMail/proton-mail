@@ -4,36 +4,30 @@ import {
     decodeBase64,
     decryptMessage,
     decryptSessionKey,
-    getMessage
+    getMessage,
+    SessionKey,
+    BinaryResult
 } from 'pmcrypto';
 
 import { getAttachment } from '../../api/attachments';
 import { MessageExtended } from '../../models/message';
-import { Attachment, AttachmentData } from '../../models/attachment';
+import { Attachment } from '../../models/attachment';
 import { AttachmentsCache } from '../../hooks/useAttachments';
 import { Api } from '../../models/utils';
 
 // Reference: Angular/src/app/attachments/services/AttachmentLoader.js
 
-interface SessionKey {
-    data?: Uint8Array;
-    algorithm?: string;
-}
-
 // TODO: Handle isOutside()
 
-export const decrypt = async (
-    encryptedBinaryBuffer: ArrayBuffer,
-    sessionKey: SessionKey = {}
-): Promise<AttachmentData> => {
+export const decrypt = async (encryptedBinaryBuffer: ArrayBuffer, sessionKey: SessionKey): Promise<BinaryResult> => {
     const encryptedBinary = new Uint8Array(encryptedBinaryBuffer);
 
     try {
-        return await decryptMessage({
+        return decryptMessage({
             message: await getMessage(encryptedBinary),
             sessionKeys: [sessionKey],
             format: 'binary'
-        });
+        }) as BinaryResult;
     } catch (err) {
         console.error(err);
         throw err;
@@ -55,17 +49,20 @@ export const getSessionKey = async (attachment: Attachment, message: MessageExte
     //     return attachment;
     // }
 
-    const keyPackets = binaryStringToArray(decodeBase64(attachment.KeyPackets));
-    const options: any = { message: await getMessage(keyPackets) };
+    const keyPackets = binaryStringToArray(decodeBase64(attachment.KeyPackets) || '');
+    const options = { message: await getMessage(keyPackets), privateKeys: message.privateKeys as any };
 
     // if (isOutside()) {
     //     options.passwords = [eoStore.getPassword()];
     // } else {
-    // options.privateKeys = keysModel.getPrivateKeys(message.AddressID);
-    options.privateKeys = message.privateKeys;
+    //     options.privateKeys = keysModel.getPrivateKeys(message.AddressID);
     // }
 
     const sessionKey = await decryptSessionKey(options);
+
+    if (sessionKey === undefined) {
+        throw new Error('Error while decrypting session keys');
+    }
 
     return sessionKey;
 };
@@ -74,14 +71,14 @@ export const getDecryptedAttachment = async (
     attachment: Attachment,
     message: MessageExtended,
     api: Api
-): Promise<AttachmentData> => {
+): Promise<BinaryResult> => {
     const encryptedBinary = await getRequest(attachment, api);
     try {
         const sessionKey = await getSessionKey(attachment, message);
         return await decrypt(encryptedBinary, sessionKey);
     } catch (error) {
         const blob = concatArrays([
-            binaryStringToArray(decodeBase64(attachment.KeyPackets)),
+            binaryStringToArray(decodeBase64(attachment.KeyPackets) || ''),
             new Uint8Array(encryptedBinary)
         ]);
         // Fallback download raw attachment
@@ -95,17 +92,17 @@ export const getAndVerify = async (
     reverify = false,
     cache: AttachmentsCache,
     api: Api
-): Promise<AttachmentData> => {
-    let attachmentdata: AttachmentData;
+): Promise<BinaryResult> => {
+    let attachmentdata: BinaryResult;
 
     const attachmentID = attachment.ID || '';
 
     if (attachment.Preview) {
-        return { data: attachment.Preview };
+        return { data: attachment.Preview, filename: 'preview', signatures: [] };
     }
 
     if (cache.has(attachmentID)) {
-        attachmentdata = cache.get(attachmentID) as AttachmentData;
+        attachmentdata = cache.get(attachmentID) as BinaryResult;
     } else {
         attachmentdata = await getDecryptedAttachment(attachment, message, api);
 
@@ -124,11 +121,11 @@ export const get = (
     message: MessageExtended = {},
     cache: AttachmentsCache,
     api: Api
-): Promise<AttachmentData> => getAndVerify(attachment, message, false, cache, api);
+): Promise<BinaryResult> => getAndVerify(attachment, message, false, cache, api);
 
 export const reverify = (
     attachment: Attachment = {},
     message: MessageExtended = {},
     cache: AttachmentsCache,
     api: Api
-): Promise<AttachmentData> => getAndVerify(attachment, message, true, cache, api);
+): Promise<BinaryResult> => getAndVerify(attachment, message, true, cache, api);

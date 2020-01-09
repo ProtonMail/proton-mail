@@ -13,11 +13,6 @@ export interface Attachment {
     Signature?: any;
 }
 
-export interface AttachmentData {
-    data: Binary;
-    signatures?: any[];
-}
-
 export interface AttachmentMime {
     checksum?: string;
     content: Binary;

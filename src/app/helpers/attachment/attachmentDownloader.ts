@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import downloadFile from 'proton-shared/lib/helpers/downloadFile';
+import { splitExtension } from 'proton-shared/lib/helpers/file';
 
 import { MessageExtended, Message } from '../../models/message';
 import { Attachment } from '../../models/attachment';
@@ -26,7 +27,7 @@ const formatDownload = async (
         const { data } = await getAndVerify(attachment, message, false, cache, api);
         return {
             attachment,
-            data
+            data: data as Binary
         };
     } catch (e) {
         // If the decryption fails we download the encrypted version
@@ -82,8 +83,8 @@ export const download = async (
 };
 
 /**
- * The attachment's Name is not uniq we need a uniq name in order
- * to make the zip. The lib doesn't allow duplicates
+ * The attachment's Name is not unique we need a unique name in order to make the zip.
+ * The lib doesn't allow duplicates
  */
 const formatDownloadAll = async (message: MessageExtended, cache: AttachmentsCache, api: Api): Promise<Download[]> => {
     const { Attachments = [] } = message.data || {};
@@ -94,10 +95,8 @@ const formatDownloadAll = async (message: MessageExtended, cache: AttachmentsCac
                 acc.map[name] = { index: 0 };
             } else {
                 acc.map[name].index++;
-                // We can have an extension
-                const currentName = name.split('.');
-                const ext = currentName.pop();
-                const newName = `${currentName.join('.')} (${acc.map[name].index}).${ext}`;
+                const [fileName, ext] = splitExtension(name);
+                const newName = `${fileName} (${acc.map[name].index}).${ext}`;
                 att.Name = newName;
             }
             acc.list.push(att);

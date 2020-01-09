@@ -1,6 +1,8 @@
+import { BinaryResult } from 'pmcrypto';
+
 import { Message } from '../../models/message';
 import { ENCRYPTED_STATUS } from '../../constants';
-import { Attachment, AttachmentMime, AttachmentData } from '../../models/attachment';
+import { Attachment, AttachmentMime } from '../../models/attachment';
 import { AttachmentsCache } from '../../hooks/useAttachments';
 
 // This prefix is really useful to distinguish 'real' attachments from pgp attachments.
@@ -59,8 +61,10 @@ const convertSingle = (
         Encrypted: ENCRYPTED_STATUS.PGP_MIME
     };
 
-    const attachmentData: AttachmentData = {
-        data: parsedAttachment.content
+    const attachmentData: BinaryResult = {
+        data: parsedAttachment.content,
+        filename: '',
+        signatures: []
     };
 
     cache.set(ID, attachmentData /*, verified*/);

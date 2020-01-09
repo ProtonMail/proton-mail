@@ -1,4 +1,4 @@
-import { decryptMIMEMessage, decryptMessageLegacy } from 'pmcrypto/lib/pmcrypto';
+import { decryptMIMEMessage, decryptMessageLegacy } from 'pmcrypto';
 import { MIME_TYPES } from 'proton-shared/lib/constants';
 import { c } from 'ttag';
 
