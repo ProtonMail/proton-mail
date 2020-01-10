@@ -109,7 +109,9 @@
 }
 
 .composer-quill {
-    height: calc(100% - 3em);
+    // height: calc(100% - 3em);
+    height: 100px;
+    margin-bottom: 50px;
 }
 
 .composer-attachments-button-wrapper {
@@ -124,4 +126,9 @@
         top: 0;
         opacity: 0;
     }
+}
+
+.composer-attachments-expand {
+    overflow: auto;
+    border-top: 1px solid #dde6ec;
 }

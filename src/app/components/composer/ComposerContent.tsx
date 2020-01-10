@@ -3,6 +3,8 @@ import ReactQuill from 'react-quill';
 import Quill from 'quill';
 import { noop } from 'proton-shared/lib/helpers/function';
 import { MessageExtended } from '../../models/message';
+import { getAttachments } from '../../helpers/message/messages';
+import AttachmentsList from './attachments/AttachmensList';
 
 const Block = Quill.import('blots/block');
 Block.tagName = 'div';
@@ -26,15 +28,18 @@ const ComposerContent = ({ message, onChange, onFocus, contentFocusRef }: Props)
         onChange({ content });
     };
 
+    const attachments = getAttachments(message.data);
+
     return (
-        <section className="composer-content flex-item-fluid w100 mb1">
+        <section className="composer-content flex-item-fluid w100 mb1 flex flex-column">
             <ReactQuill
-                className="composer-quill"
+                className="composer-quill w100"
                 value={message.content}
                 onChange={handleChange}
                 onFocus={onFocus}
                 ref={inputRef}
             />
+            {attachments.length > 0 && <AttachmentsList message={message.data} />}
         </section>
     );
 };
