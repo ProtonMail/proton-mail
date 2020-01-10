@@ -121,11 +121,17 @@ export const get = (
     message: MessageExtended = {},
     cache: AttachmentsCache,
     api: Api
-): Promise<BinaryResult> => getAndVerify(attachment, message, false, cache, api);
+): Promise<BinaryResult> => {
+    const reverify = false;
+    return getAndVerify(attachment, message, reverify, cache, api);
+};
 
 export const reverify = (
     attachment: Attachment = {},
     message: MessageExtended = {},
     cache: AttachmentsCache,
     api: Api
-): Promise<BinaryResult> => getAndVerify(attachment, message, true, cache, api);
+): Promise<BinaryResult> => {
+    const reverify = true;
+    return getAndVerify(attachment, message, reverify, cache, api);
+};
