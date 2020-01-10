@@ -36,7 +36,7 @@ describe('transformEmbedded', () => {
         });
 
         it('should load embedded images when showEmbeddedImages = true', async () => {
-            const show = await setup({ showEmbeddedImages: true }, { ShowImages: 0 });
+            const show = await setup({ showEmbeddedImages: true }, { ShowImages: SHOW_IMAGES.NONE });
             expect(show).toBe(true);
         });
 
@@ -46,12 +46,12 @@ describe('transformEmbedded', () => {
         });
 
         it('should not load embedded images when showEmbedded = false and showImages = false', async () => {
-            const show = await setup({ showEmbeddedImages: false }, { ShowImages: 0 });
+            const show = await setup({ showEmbeddedImages: false }, { ShowImages: SHOW_IMAGES.NONE });
             expect(show).toBe(false);
         });
 
         it('should not load embedded images when showEmbedded = false and showImages = false', async () => {
-            const show = await setup({ showEmbeddedImages: false }, { ShowImages: 0 });
+            const show = await setup({ showEmbeddedImages: false }, { ShowImages: SHOW_IMAGES.NONE });
             expect(show).toBe(false);
         });
     });

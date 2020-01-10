@@ -69,7 +69,7 @@
         "jszip": "^3.2.2",
         "mimemessage": "github:ProtonMail/mimemessage.js#semver:~v1.1.4",
         "proton-pack": "github:ProtonMail/proton-pack.git#semver:^3.0.0",
-        "proton-shared": "github:ProtonMail/proton-shared.git#master",
+        "proton-shared": "github:ProtonMail/proton-shared#master",
         "react": "^16.8.6",
         "react-components": "github:ProtonMail/react-components.git#master",
         "react-dom": "^16.8.6",

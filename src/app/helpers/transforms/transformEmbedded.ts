@@ -4,7 +4,7 @@ import { find } from '../embedded/embeddedFinder';
 import { mutateHTML, decrypt, prepareImages } from '../embedded/embeddedParser';
 
 export const transformEmbedded: Computation = async (message, { attachmentsCache, api, action = '', mailSettings }) => {
-    const { ShowImages = 0 } = mailSettings as { ShowImages: number };
+    const { ShowImages = SHOW_IMAGES.NONE } = mailSettings as { ShowImages: SHOW_IMAGES };
     const show = message.showEmbeddedImages === true || ShowImages === SHOW_IMAGES.EMBEDDED;
     const isReplyForward = /^reply|forward/.test(action);
     const isOutside = false; // TODO: const isEoReply = $state.is('eo.reply');
