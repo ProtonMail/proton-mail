@@ -6,6 +6,8 @@ import { MapPreference } from './sendPreferences';
 import { constructMime } from './sendMimeBuilder';
 import { addReceived, getPlainText, getHTML } from '../message/messages';
 import { PmcryptoKey } from 'pmcrypto';
+import { AttachmentsDataCache } from '../../hooks/useAttachments';
+import { Api } from '../../models/utils';
 
 // Reference: Angular/src/app/composer/services/encryptMessage.js
 // Reference: Angular/src/app/composer/services/generateTopPackages.js
@@ -29,17 +31,23 @@ export interface Package {
     BodyKeyPacket?: string;
     Type?: PACKAGE_TYPE;
     PublicKey?: PmcryptoKey;
+    AttachmentKeys?: { [AttachmentID: string]: { Key: string; Algorithm: string } };
+    AttachmentKeyPackets?: { [AttachmentID: string]: string };
 }
 
 /**
  * Generates the mime top-level packages, which include all attachments in the body.
  * Build the multipart/alternate MIME entity containing both the HTML and plain text entities.
  */
-const generateMimePackage = async (message: MessageExtended): Promise<Package> => ({
+const generateMimePackage = async (
+    message: MessageExtended,
+    cache: AttachmentsDataCache,
+    api: Api
+): Promise<Package> => ({
     Flags: addReceived(message.data?.Flags),
     Addresses: {},
     MIMEType: MIME,
-    Body: await constructMime(message)
+    Body: await constructMime(message, cache, api)
 });
 
 const generatePlainTextPackage = async (message: MessageExtended): Promise<Package> => ({
@@ -61,7 +69,12 @@ const generateHTMLPackage = async (message: MessageExtended): Promise<Package> =
  * once the sub level packages are attached, so we know with which keys we need to encrypt the bodies with.
  * Top level packages that are not needed are not generated.
  */
-export const generateTopPackages = async (message: MessageExtended, sendPrefs: MapPreference): Promise<Packages> => {
+export const generateTopPackages = async (
+    message: MessageExtended,
+    sendPrefs: MapPreference,
+    cache: AttachmentsDataCache,
+    api: Api
+): Promise<Packages> => {
     const packagesStatus: PackageStatus = Object.values(sendPrefs).reduce(
         (packages, info) => ({
             [PLAINTEXT]: packages[PLAINTEXT] || info.mimetype === MIME_TYPES.PLAINTEXT,
@@ -86,7 +99,7 @@ export const generateTopPackages = async (message: MessageExtended, sendPrefs: M
         demandedPackages.map(async (type) => {
             switch (type) {
                 case MIME:
-                    packages[MIME] = await generateMimePackage(message);
+                    packages[MIME] = await generateMimePackage(message, cache, api);
                     return;
                 case PLAINTEXT:
                     packages[PLAINTEXT] = await generatePlainTextPackage(message);

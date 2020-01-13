@@ -15,13 +15,20 @@ import { getAttachments } from '../message/messages';
 import { getSessionKey } from '../attachment/attachmentLoader';
 import { AddressKeys } from '../../models/key';
 import { arrayToBase64 } from '../base64';
-import { PACKAGE_TYPE } from 'proton-shared/lib/constants';
+import { PACKAGE_TYPE, MIME_TYPES } from 'proton-shared/lib/constants';
 import { AES256 } from '../../constants';
 import { SEND_MIME } from './sendSubPackages';
 import { identity } from 'proton-shared/lib/helpers/function';
 import { splitKeys } from 'proton-shared/lib/keys/keys';
+import { Attachment } from '../../models/attachment';
+import { hasBit } from 'proton-shared/lib/helpers/bitset';
 
 // Reference: Angular/src/app/composer/services/encryptPackages.js
+
+interface AttachmentKeys {
+    Attachment: Attachment;
+    SessionKey: SessionKey;
+}
 
 const { SEND_CLEAR, SEND_EO } = PACKAGE_TYPE;
 
@@ -54,45 +61,39 @@ const encryptKeyPacket = async ({
 /**
  * Encrypt the attachment session keys and add them to the package
  */
-const encryptAttachmentKeys = (pack: Package, message: MessageExtended, attachmentKeys: SessionKey[]) => {
-    console.log('encryptAttachmentKeys not implemented yet', pack, message, attachmentKeys);
+const encryptAttachmentKeys = async (pack: Package, message: MessageExtended, attachmentKeys: AttachmentKeys[]) => {
+    // multipart/mixed bodies already include the attachments so we don't add them here
+    if (pack.MIMEType === MIME_TYPES.MIME) {
+        return;
+    }
 
-    // TODO
+    const promises = Object.values(pack.Addresses || {}).map(async (address) => {
+        const isEo = hasBit(address.Type, PACKAGE_TYPE.SEND_EO);
 
-    return;
+        if (!(isEo || address.PublicKey)) {
+            return;
+        }
 
-    //     // multipart/mixed bodies already include the attachments so we don't add them here
-    //     if (pack.MIMEType !== 'multipart/mixed') {
-    //         const promises = _.map(pack.Addresses, (address) => {
-    //             if (!(address.Type & SEND_TYPES.SEND_EO || address.PublicKey)) {
-    //                 return Promise.resolve();
-    //             }
-    //             address.AttachmentKeyPackets = [];
-    //             return encryptKeyPacket({
-    //                 sessionKeys: _.map(attachmentKeys, ({ sessionKey }) => sessionKey),
-    //                 passwords: address.Type & SEND_TYPES.SEND_EO ? [message.Password] : undefined,
-    //                 publicKeys: address.Type & SEND_TYPES.SEND_EO ? undefined : [address.PublicKey]
-    //             })
-    //                 .then((keys) =>
-    //                     _.zipObject(
-    //                         _.map(attachmentKeys, ({ AttachmentID, ID }) => AttachmentID || ID),
-    //                         keys
-    //                     )
-    //                 )
-    //                 .then((AttachmentKeyPackets) => {
-    //                     address.AttachmentKeyPackets = AttachmentKeyPackets;
-    //                 });
-    //         });
-    //         if (pack.Type & SEND_TYPES.SEND_CLEAR) {
-    //             pack.AttachmentKeys = _.extend(
-    //                 ..._.map(attachmentKeys, ({ sessionKey = {}, AttachmentID, ID } = {}) => ({
-    //                     [AttachmentID || ID]: packToBase64(sessionKey)
-    //                 }))
-    //             );
-    //         }
-    //         return Promise.all(promises);
-    //     }
-    //     return Promise.resolve();
+        const keys = await encryptKeyPacket({
+            sessionKeys: attachmentKeys.map(({ SessionKey }) => SessionKey),
+            passwords: isEo ? [message.data?.Password || ''] : undefined,
+            publicKeys: isEo ? undefined : [address.PublicKey as PmcryptoKey]
+        });
+
+        const AttachmentKeyPackets: { [AttachmentID: string]: string } = {};
+        attachmentKeys.forEach(({ Attachment }, i) => (AttachmentKeyPackets[Attachment.ID || ''] = keys[i]));
+        address.AttachmentKeyPackets = AttachmentKeyPackets;
+    });
+
+    if (hasBit(pack.Type, PACKAGE_TYPE.SEND_CLEAR)) {
+        const AttachmentKeys: { [AttachmentID: string]: { Key: string; Algorithm: string } } = {};
+        attachmentKeys.forEach(({ Attachment, SessionKey }) => {
+            AttachmentKeys[Attachment.ID || ''] = packToBase64(SessionKey);
+        });
+        pack.AttachmentKeys = AttachmentKeys;
+    }
+
+    return Promise.all(promises);
 };
 
 /**
@@ -218,7 +219,7 @@ const encryptPackage = async (
     pack: Package,
     message: MessageExtended,
     ownKeys: AddressKeys[],
-    attachmentKeys: SessionKey[]
+    attachmentKeys: AttachmentKeys[]
 ): Promise<Package> => {
     await Promise.all([encryptBody(pack, ownKeys, message), encryptAttachmentKeys(pack, message, attachmentKeys)]);
 
@@ -227,8 +228,13 @@ const encryptPackage = async (
     return pack;
 };
 
-const getAttachmentKeys = async (message: MessageExtended) =>
-    Promise.all(getAttachments(message.data).map((attachment) => getSessionKey(message, attachment)));
+const getAttachmentKeys = async (message: MessageExtended): Promise<AttachmentKeys[]> =>
+    Promise.all(
+        getAttachments(message.data).map(async (attachment) => ({
+            Attachment: attachment,
+            SessionKey: await getSessionKey(attachment, message)
+        }))
+    );
 
 /**
  * Encrypts the packages and removes all temporary values that should not be send to the API
@@ -238,8 +244,15 @@ export const encryptPackages = async (
     packages: Packages,
     getAddressKeys: (addressID?: string) => Promise<AddressKeys[]>
 ): Promise<Packages> => {
+    console.log('encryptPackages 0');
+
     const attachmentKeys = await getAttachmentKeys(message);
+
+    console.log('encryptPackages 1', attachmentKeys);
+
     const ownKeys = await getAddressKeys(message.data?.AddressID); // Original code: message.From.ID, don't know of From property
+
+    console.log('encryptPackages 2', attachmentKeys, ownKeys);
 
     const packageList = Object.values(packages) as Package[];
     await Promise.all(packageList.map((pack) => encryptPackage(pack, message, ownKeys, attachmentKeys)));

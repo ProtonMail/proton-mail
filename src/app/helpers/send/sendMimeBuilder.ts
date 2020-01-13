@@ -1,50 +1,59 @@
 import mimemessage from 'mimemessage';
+import { BinaryResult, arrayToBinaryString } from 'pmcrypto';
 
 import { MessageExtended } from '../../models/message';
-import { getPlainText, getHTML } from '../message/messages';
+import { getPlainText, getHTML, getAttachments } from '../message/messages';
 import { Attachment } from '../../models/attachment';
+import { MIME_TYPES } from 'proton-shared/lib/constants';
+import { get } from '../attachment/attachmentLoader';
+import { AttachmentsDataCache } from '../../hooks/useAttachments';
+import { Api } from '../../models/utils';
+import { getBodyParser, extractEmbedded } from '../embedded/embeddedUtils';
 
 // Reference: Angular/src/app/composer/services/mimeMessageBuilder.js
+
+interface AttachmentData {
+    attachment: Attachment;
+    data: BinaryResult;
+}
 
 /**
  * Remove '; name=' and '; filename=' values
  */
-// const extractContentValue = (value = '') => {
-//     const semicolonIndex = value.indexOf(';');
-//     if (semicolonIndex === -1) {
-//         return value;
-//     }
-//     return value.substr(0, semicolonIndex);
-// };
+const extractContentValue = (value = '') => {
+    const semicolonIndex = value.indexOf(';');
+    if (semicolonIndex === -1) {
+        return value;
+    }
+    return value.substr(0, semicolonIndex);
+};
 
-// const buildAttachments = (attachments) => {
-//     return _.map(attachments, ({ attachment, data }) => {
-//         const attachmentName = JSON.stringify(attachment.Name);
-//         const contentTypeValue =
-//             extractContentValue(attachment.Headers['content-type']) ||
-//             attachment.MIMEType ||
-//             'application/octet-stream';
-//         const contentDispositionValue = extractContentValue(attachment.Headers['content-disposition']) || 'attachment';
-//         const entity = mimemessage.factory({
-//             contentType: `${contentTypeValue}; filename=${attachmentName}; name=${attachmentName}`,
-//             contentTransferEncoding: 'base64',
-//             body: arrayToBinaryString(data)
-//         });
+const buildAttachments = (attachments: AttachmentData[]) =>
+    attachments.map(({ attachment, data }) => {
+        const attachmentName = JSON.stringify(attachment.Name);
+        const headers = attachment.Headers || {};
+        const contentTypeValue =
+            extractContentValue(headers['content-type']) || attachment.MIMEType || 'application/octet-stream';
+        const contentDispositionValue = extractContentValue(headers['content-disposition']) || 'attachment';
+        const entity = mimemessage.factory({
+            contentType: `${contentTypeValue}; filename=${attachmentName}; name=${attachmentName}`,
+            contentTransferEncoding: 'base64',
+            body: arrayToBinaryString(data.data)
+        });
 
-//         entity.header(
-//             'content-disposition',
-//             `${contentDispositionValue}; filename=${attachmentName}; name=${attachmentName}`
-//         );
+        entity.header(
+            'content-disposition',
+            `${contentDispositionValue}; filename=${attachmentName}; name=${attachmentName}`
+        );
 
-//         if (attachment.Headers['content-id']) {
-//             entity.header('content-id', attachment.Headers['content-id']);
-//         }
+        if (headers['content-id']) {
+            entity.header('content-id', headers['content-id']);
+        }
 
-//         return entity;
-//     });
-// };
+        return entity;
+    });
 
-const buildEmbeddedHtml = (html?: string, attachments?: Attachment[]) => {
+const buildEmbeddedHtml = (html?: string, attachments?: AttachmentData[]) => {
     const htmlEntity = mimemessage.factory({
         contentType: 'text/html;charset=utf-8',
         contentTransferEncoding: 'base64',
@@ -82,7 +91,7 @@ const buildPlaintextEntity = (plaintext?: string) =>
 /**
  * Build the multipart/alternate MIME entity containing both the HTML and plain text entities.
  */
-const buildAlternateEntity = (plaintext?: string, html?: string, attachments?: Attachment[]) =>
+const buildAlternateEntity = (plaintext?: string, html?: string, attachments?: AttachmentData[]) =>
     mimemessage.factory({
         contentType: 'multipart/alternative',
         body: [buildPlaintextEntity(plaintext), buildEmbeddedHtml(html, attachments)]
@@ -91,7 +100,7 @@ const buildAlternateEntity = (plaintext?: string, html?: string, attachments?: A
 /**
  * Builds a mime body given the plaintext, html source and a list of attachments to fetch embedded images from
  */
-const buildBodyEntity = (plaintext?: string, html?: string, attachments?: Attachment[]) => {
+const buildBodyEntity = (plaintext?: string, html?: string, attachments?: AttachmentData[]) => {
     if (html !== undefined && plaintext !== undefined) {
         return buildAlternateEntity(plaintext, html, attachments);
     }
@@ -101,62 +110,61 @@ const buildBodyEntity = (plaintext?: string, html?: string, attachments?: Attach
 /**
  * Extracts the non-inline attachments from the given html.
  */
-// const getNormalAttachments = (html?: string, attachments?: Attachment[]) => {
-//     if (html === undefined) {
-//         return attachments;
-//     }
-//     const testDiv = embeddedUtils.getBodyParser(html);
-//     const embeddedAttachments = embeddedUtils.extractEmbedded(attachments, testDiv);
-//     return _.difference(attachments, embeddedAttachments);
-// };
+const getNormalAttachments = (html?: string, attachments: AttachmentData[] = []) => {
+    if (html === undefined) {
+        return attachments;
+    }
+    const testDiv = getBodyParser(html);
+    const embeddedAttachments = extractEmbedded(attachments, testDiv);
+    return attachments.filter((attachment) => !embeddedAttachments.includes(attachment));
+};
 
 /**
  * Builds a multipart message from the given plaintext, html bodies and attachments.
  * The html body is not necessary to create a valid mime body
  */
-const build = (plaintext?: string, html?: string, attachments?: Attachment[]): string => {
+const build = (plaintext?: string, html?: string, attachments?: AttachmentData[]): string => {
     const bodyEntity = buildBodyEntity(plaintext, html, attachments);
-
-    if (attachments && attachments.length > 0) {
-        console.log('attachments in mime message ignored as not supported yet', attachments);
-    }
-    // const normalAttachments = getNormalAttachments(html, attachments);
-    // const attachmentEntities = buildAttachments(normalAttachments);
-    // const body = [bodyEntity].concat(attachmentEntities);
-    const body = [bodyEntity];
+    const normalAttachments = getNormalAttachments(html, attachments);
+    const attachmentEntities = buildAttachments(normalAttachments);
+    const body = [bodyEntity].concat(attachmentEntities);
 
     const msgentity = mimemessage.factory({
         contentType: 'multipart/mixed',
         body
     });
+
     // this trailing line space is important: if it's not there outlook.com adds it and breaks pgp/mime signatures.
     return msgentity.toString() + '\r\n';
 };
 
-// const fetchMimeDependencies = async (message: Message, downconvert: boolean) => {
-//     const attachments = await Promise.all(
-//         message.getAttachments().map(async (attachment) => ({
-//             attachment,
-//             data: await AttachmentLoader.get(attachment, message)
-//         }))
-//     );
-//     return [attachments, generatePlaintext(message, downconvert)];
-// };
+const fetchMimeDependencies = async (
+    message: MessageExtended,
+    cache: AttachmentsDataCache,
+    api: Api
+): Promise<AttachmentData[]> => {
+    return Promise.all(
+        getAttachments(message.data).map(async (attachment) => ({
+            attachment,
+            data: await get(attachment, message, cache, api)
+        }))
+    );
+};
 
-export const constructMime = async (message: MessageExtended, downconvert = true) => {
-    // console.log('construct mime not implemented', message, downconvert);
-    // // TODO
-    // return 'not implemented';
-
+export const constructMime = async (
+    message: MessageExtended,
+    cache: AttachmentsDataCache,
+    api: Api,
+    downconvert = true
+) => {
     // TODO: ?
     // if (message.isMIME() && message.decryptedMIME) {
     //     return message.decryptedMIME;
     // }
 
-    // TODO: add attachments
-    // const [attachments, plaintext] = await fetchMimeDependencies(message, downconvert);
-
     const plaintext = getPlainText(message, downconvert);
-    const html = getHTML(message);
-    return build(plaintext, html, []);
+    const html = message.data?.MIMEType === MIME_TYPES.DEFAULT ? getHTML(message) : undefined;
+    const attachments = await fetchMimeDependencies(message, cache, api);
+
+    return build(plaintext, html, attachments);
 };

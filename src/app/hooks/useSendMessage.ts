@@ -10,6 +10,7 @@ import { getSendPreferences } from '../helpers/send/sendPreferences';
 import { generateTopPackages } from '../helpers/send/sendTopPackages';
 import { attachSubPackages } from '../helpers/send/sendSubPackages';
 import { encryptPackages } from '../helpers/send/sendEncrypt';
+import { useAttachmentsCache } from './useAttachments';
 
 // Reference: Angular/src/app/composer/services/sendMessage.js
 
@@ -20,6 +21,7 @@ export const useSendMessage = () => {
     const getPublicKeys = useGetPublicKeys();
     const getAddressKeys = useGetAddressKeys();
     const api = useApi();
+    const { data } = useAttachmentsCache();
 
     return useCallback(
         async (message: MessageExtended) => {
@@ -41,11 +43,13 @@ export const useSendMessage = () => {
 
             console.log('sendPrefs', sendPrefs);
 
-            let packages = await generateTopPackages(message, sendPrefs);
+            let packages = await generateTopPackages(message, sendPrefs, data, api);
             packages = await attachSubPackages(packages, message, emails, sendPrefs);
             packages = await encryptPackages(message, packages, getAddressKeys);
 
             console.log('packages', packages);
+
+            // return;
 
             // Old code save the draft here
             // New one should have saved it just before
