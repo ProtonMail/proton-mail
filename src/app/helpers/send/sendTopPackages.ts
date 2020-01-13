@@ -4,8 +4,8 @@ import { MessageExtended } from '../../models/message';
 import { MapPreference } from './sendPreferences';
 
 import { constructMime } from './sendMimeBuilder';
-import { Key } from '../../models/key';
 import { addReceived, getPlainText, getHTML } from '../message/messages';
+import { PmcryptoKey } from 'pmcrypto';
 
 // Reference: Angular/src/app/composer/services/encryptMessage.js
 // Reference: Angular/src/app/composer/services/generateTopPackages.js
@@ -28,7 +28,7 @@ export interface Package {
     BodyKey?: any;
     BodyKeyPacket?: string;
     Type?: PACKAGE_TYPE;
-    PublicKey?: Key;
+    PublicKey?: PmcryptoKey;
 }
 
 /**

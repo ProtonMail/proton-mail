@@ -4,15 +4,16 @@ import {
     armorBytes,
     concatArrays,
     generateSessionKey,
-    encryptSessionKey
+    encryptSessionKey,
+    SessionKey,
+    PmcryptoKey
 } from 'pmcrypto';
 
 import { MessageExtended, Message } from '../../models/message';
 import { Packages, Package } from './sendTopPackages';
 import { getAttachments } from '../message/messages';
 import { getSessionKey } from '../attachment/attachmentLoader';
-import { Key, AddressKeys } from '../../models/key';
-import { SessionKey } from '../attachment/attachmentLoader';
+import { AddressKeys } from '../../models/key';
 import { arrayToBase64 } from '../base64';
 import { PACKAGE_TYPE } from 'proton-shared/lib/constants';
 import { AES256 } from '../../constants';
@@ -34,7 +35,7 @@ const encryptKeyPacket = async ({
     passwords = []
 }: {
     sessionKeys?: SessionKey[];
-    publicKeys?: Key[];
+    publicKeys?: PmcryptoKey[];
     passwords?: string[];
 }) =>
     Promise.all(
@@ -46,7 +47,7 @@ const encryptKeyPacket = async ({
                 passwords
             });
             const data = message.packets.write();
-            return arrayToBase64(data);
+            return arrayToBase64(data as Uint8Array);
         })
     );
 
@@ -106,12 +107,12 @@ const generateSessionKeyHelper = async (): Promise<SessionKey> => ({
  * Encrypt the body in the given package. Should only be used if the package body differs from message body
  * (i.e. the draft body)
  */
-const encryptBodyPackage = async (pack: Package, ownKeys: AddressKeys[], publicKeys: Key[]) => {
+const encryptBodyPackage = async (pack: Package, ownKeys: AddressKeys[], publicKeys: PmcryptoKey[]) => {
     const { privateKeys } = splitKeys(ownKeys) as any;
     const cleanPublicKeys = publicKeys.filter(identity);
 
     const { data, sessionKey } = await encryptMessage({
-        data: pack.Body,
+        data: pack.Body || '',
         publicKeys: cleanPublicKeys,
         sessionKey: cleanPublicKeys.length ? undefined : await generateSessionKeyHelper(),
         privateKeys,
@@ -131,7 +132,7 @@ const encryptBodyPackage = async (pack: Package, ownKeys: AddressKeys[], publicK
 const encryptDraftBodyPackage = async (
     pack: Package,
     ownKeys: AddressKeys[],
-    publicKeys: Key[],
+    publicKeys: PmcryptoKey[],
     message: MessageExtended
 ) => {
     // TODO: Do the change is equivalent?
@@ -142,7 +143,7 @@ const encryptDraftBodyPackage = async (
     const cleanPublicKeys = [...ownPublicKeys, ...publicKeys].filter(identity);
 
     const { data, sessionKey } = await encryptMessage({
-        data: pack.Body,
+        data: pack.Body || '',
         publicKeys: cleanPublicKeys,
         privateKeys,
         returnSessionKey: true,
@@ -154,9 +155,9 @@ const encryptDraftBodyPackage = async (
     const { asymmetric, encrypted } = packets;
 
     // rebuild the data without the send keypackets
-    packets.asymmetric = packets.asymmetric.slice(0, ownPublicKeys.length) as any;
+    packets.asymmetric = packets.asymmetric.slice(0, ownPublicKeys.length);
     // combine message
-    const value = concatArrays(Object.values(packets).flat());
+    const value = concatArrays(Object.values(packets).flat() as Uint8Array[]);
     // _.flowRight(concatArrays, _.flatten, _.values)(packets);
 
     (message.data as Message).Body = await armorBytes(value);
@@ -171,7 +172,7 @@ const encryptDraftBodyPackage = async (
 const encryptBody = async (pack: Package, ownKeys: AddressKeys[], message: MessageExtended): Promise<void> => {
     const addressKeys = Object.keys(pack.Addresses || {});
     const addresses = Object.values(pack.Addresses || {});
-    const publicKeysList = addresses.map(({ PublicKey }) => PublicKey as Key);
+    const publicKeysList = addresses.map(({ PublicKey }) => PublicKey as PmcryptoKey);
     /*
      * Special case: reuse the encryption packet from the draft, this allows us to do deduplication on the back-end.
      * In fact, this will be the most common case.

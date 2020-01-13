@@ -1,4 +1,4 @@
-import { getKeys, decodeBase64, binaryStringToArray, getFingerprint, isExpiredKey } from 'pmcrypto';
+import { getKeys, decodeBase64, binaryStringToArray, getFingerprint, isExpiredKey, PmcryptoKey } from 'pmcrypto';
 
 import { unique } from 'proton-shared/lib/helpers/array';
 import { PACKAGE_TYPE, RECIPIENT_TYPE, MIME_TYPES, KEY_FLAGS } from 'proton-shared/lib/constants';
@@ -19,7 +19,7 @@ export interface SendPreference {
     encrypt: boolean;
     sign: boolean;
     mimetype: MIME_TYPES;
-    publickeys: Key[];
+    publickeys: PmcryptoKey[];
     primaryPinned: boolean;
     scheme: PACKAGE_TYPE;
     pinned: boolean;
@@ -192,17 +192,15 @@ const extractInfo = async (
     // In case the pgp packet list contains multiple keys, only the first one is taken.
     const keyObjs = await Promise.all(
         emailKeys
-            .map(decodeBase64)
+            .map((s) => decodeBase64(s) || '')
             .map(binaryStringToArray)
             .map((a) => {
-                return getKeys(a).then(([k]: any) =>
-                    isExpiredKey(k).then((isExpired: boolean) => (isExpired ? null : [k]))
-                );
+                return getKeys(a).then(([k]) => isExpiredKey(k).then((isExpired: boolean) => (isExpired ? null : [k])));
             })
     );
-    const keyObjects = keyObjs.filter((k) => k !== null);
+    const keyObjects = (keyObjs.filter((k) => k !== null) as unknown) as PmcryptoKey[];
 
-    const publickeys = keyObjects.length && primaryPinned ? keyObjects[0] : pmKey;
+    const publickeys = keyObjects.length && primaryPinned ? [keyObjects[0]] : pmKey;
     const warnings = Warnings;
     let encrypt = isInternal || isExternalWithKeys || (encryptFlag && !!keyObjects.length);
     let sign = isInternal || isExternalWithKeys || (signFlag === null ? !!globalSign : signFlag);
@@ -424,7 +422,7 @@ export const getSendPreferences = async (
     mailSettings: any,
     addresses: Address[],
     cache: ContactEmailCache,
-    getPublicKeys: (email: string) => Promise<any>,
+    getPublicKeys: (email: string) => Promise<KeyData>,
     catchErrors = false
 ): Promise<MapPreference> => {
     const defaultMimeType: MIME_TYPES = message ? (message.MIMEType as MIME_TYPES) : MIME_TYPES.DEFAULT;
@@ -434,7 +432,7 @@ export const getSendPreferences = async (
     const normInfos = await Promise.all(
         normEmails.map(async (email) => {
             try {
-                const keyData: KeyData = await getPublicKeys(email);
+                const keyData = await getPublicKeys(email);
                 return getInfo(email, keyData, defaultMimeType, eoEnabled, globalSign, mailSettings, addresses, cache);
             } catch (e) {
                 if (!catchErrors) {

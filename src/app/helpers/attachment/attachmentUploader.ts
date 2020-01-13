@@ -1,14 +1,15 @@
 import { c } from 'ttag';
-import { encryptMessage, splitMessage } from 'pmcrypto';
+import { encryptMessage, splitMessage, PmcryptoKey } from 'pmcrypto';
 
 import { MessageExtended } from '../../models/message';
-import { Key } from '../../models/key';
 import { Api, Binary } from '../../models/utils';
 import { getAttachments } from '../message/messages';
 import { readFileAsBuffer } from '../file';
 import { uploadAttachment } from '../../api/attachments';
 import { isEmbeddable } from './attachments';
 import { Attachment } from '../../models/attachment';
+
+// Reference: Angular/src/app/attachments/factories/attachmentModel.js
 
 type UploadQueryResult = Promise<{ Attachment: Attachment }>;
 
@@ -21,8 +22,8 @@ const encrypt = async (
     data: Binary,
     { name, type, size }: File = {} as File,
     inline: boolean,
-    publicKeys: Key[],
-    privateKeys: Key[]
+    publicKeys: PmcryptoKey[],
+    privateKeys: PmcryptoKey[]
 ) => {
     const { message, signature } = await encryptMessage({
         filename: name,
@@ -50,7 +51,7 @@ const encrypt = async (
 /**
  * Read the file locally, and encrypt it. return the encrypted file.
  */
-const encryptFile = async (file: File, inline: boolean, pubKeys: Key[], privKey: Key[]) => {
+const encryptFile = async (file: File, inline: boolean, pubKeys: PmcryptoKey[], privKey: PmcryptoKey[]) => {
     if (!file) {
         throw new TypeError(c('Error').t`You did not provide a file.`);
     }
@@ -97,9 +98,9 @@ const uploadFile = async (file: File, message: MessageExtended, inline: boolean,
             MessageID: message.data?.ID || '',
             ContentID: tempPacket.ContentID,
             MIMEType: packets.MIMEType,
-            KeyPackets: new Blob([packets.keys]),
-            DataPacket: new Blob([packets.data]),
-            Signature: packets.signature ? new Blob([packets.signature]) : undefined
+            KeyPackets: new Blob([packets.keys] as any),
+            DataPacket: new Blob([packets.data] as any),
+            Signature: packets.signature ? new Blob([packets.signature] as any) : undefined
         })
     ) as UploadQueryResult);
 

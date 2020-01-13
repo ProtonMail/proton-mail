@@ -1,3 +1,5 @@
+import { PmcryptoKey } from 'pmcrypto';
+
 export interface KeyData {
     Code: number;
     RecipientType: number;
@@ -20,16 +22,6 @@ export interface Key {
     Token: any;
     Signature: any;
 }
-
-export interface PmcryptoKey {
-    directSignatures: any[];
-    keyPacket: KeyPacket;
-    revocationSignatures: any[];
-    subKeys: any[];
-    users: any[];
-}
-
-export type KeyPacket = any;
 
 export interface AddressKeys {
     Key: Key;

@@ -20,6 +20,8 @@ import {
 import { noop } from 'proton-shared/lib/helpers/function';
 import { getRecipients } from '../../helpers/message/messages';
 import { upload, ATTACHMENT_ACTION } from '../../helpers/attachment/attachmentUploader';
+import { Attachment } from '../../models/attachment';
+import { removeAttachment } from '../../api/attachments';
 
 /**
  * Create a new MessageExtended with props from both m1 and m2
@@ -147,8 +149,15 @@ const Composer = ({
             const Attachments = [...(modelMessage.data?.Attachments || []), ...attachments];
             const newModelMessage = mergeMessages(modelMessage, { data: { Attachments } });
             setModelMessage(newModelMessage);
-            save(newModelMessage);
+            save(modelMessage);
         }
+    };
+    const handleRemoveAttachment = (attachment: Attachment) => async () => {
+        await api(removeAttachment(attachment.ID || '', modelMessage.data?.ID || ''));
+        const Attachments = modelMessage.data?.Attachments?.filter((a: Attachment) => a.ID !== attachment.ID);
+        const newModelMessage = mergeMessages(modelMessage, { data: { Attachments } });
+        setModelMessage(newModelMessage);
+        save(modelMessage);
     };
     const handleSave = async () => {
         await save();
@@ -212,6 +221,7 @@ const Composer = ({
                                 message={modelMessage}
                                 onChange={handleChange}
                                 onFocus={addressesBlurRef.current}
+                                onRemoveAttachment={handleRemoveAttachment}
                                 contentFocusRef={contentFocusRef}
                             />
                             <ComposerActions

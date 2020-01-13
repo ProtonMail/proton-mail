@@ -18,3 +18,9 @@ export const uploadAttachment = (data: {
     input: 'form',
     data
 });
+
+export const removeAttachment = (attachmentID: string, messageID: string) => ({
+    method: 'delete',
+    url: `attachments/${attachmentID}`,
+    params: { MessageID: messageID }
+});

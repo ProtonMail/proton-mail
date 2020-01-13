@@ -5,6 +5,7 @@ import { noop } from 'proton-shared/lib/helpers/function';
 import { MessageExtended } from '../../models/message';
 import { getAttachments } from '../../helpers/message/messages';
 import AttachmentsList from './attachments/AttachmensList';
+import { Attachment } from '../../models/attachment';
 
 const Block = Quill.import('blots/block');
 Block.tagName = 'div';
@@ -14,10 +15,11 @@ interface Props {
     message: MessageExtended;
     onChange: (message: MessageExtended) => void;
     onFocus: () => void;
+    onRemoveAttachment: (attachment: Attachment) => () => void;
     contentFocusRef: MutableRefObject<() => void>;
 }
 
-const ComposerContent = ({ message, onChange, onFocus, contentFocusRef }: Props) => {
+const ComposerContent = ({ message, onChange, onFocus, onRemoveAttachment, contentFocusRef }: Props) => {
     const inputRef: RefObject<ReactQuill> = useRef(null);
 
     useEffect(() => {
@@ -39,7 +41,7 @@ const ComposerContent = ({ message, onChange, onFocus, contentFocusRef }: Props)
                 onFocus={onFocus}
                 ref={inputRef}
             />
-            {attachments.length > 0 && <AttachmentsList message={message.data} />}
+            {attachments.length > 0 && <AttachmentsList message={message.data} onRemove={onRemoveAttachment} />}
         </section>
     );
 };

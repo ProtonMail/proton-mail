@@ -132,3 +132,19 @@
     overflow: auto;
     border-top: 1px solid #dde6ec;
 }
+
+.composer-attachments-item {
+    margin-top: 10px;
+    width: 50%;
+
+    &:first-child,
+    &:nth-child(2) {
+        margin-top: 0;
+    }
+    &:nth-child(even) {
+        padding-left: 5px;
+    }
+    &:nth-child(odd) {
+        padding-right: 5px;
+    }
+}
