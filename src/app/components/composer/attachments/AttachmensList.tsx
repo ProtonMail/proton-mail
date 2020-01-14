@@ -19,8 +19,8 @@ const AttachmentsList = ({ message, onRemove }: Props) => {
     const size = humanSize(attachmentsSize(message));
 
     return (
-        <div className="flex flex-column p0-5 relative w100 flex-item-fluid flex-nowrap">
-            <button className="flex flex-row flex-spacebetween p0-5 w100" onClick={toggleExpanded}>
+        <div className="flex flex-column relative w100 flex-nowrap">
+            <button className="flex flex-row flex-spacebetween w100 p0-5" onClick={toggleExpanded}>
                 <div>
                     <strong className="mr0-5">{size}</strong>
                     <Icon name="attach" className="mr0-5" />
@@ -33,7 +33,7 @@ const AttachmentsList = ({ message, onRemove }: Props) => {
                 <div className="color-pm-blue">{expanded ? c('Action').t`Hide` : c('Action').t`Show`}</div>
             </button>
             {expanded && (
-                <div className="composer-attachments-expand flex flex-row flex-wrap p1">
+                <div className="composer-attachments-expand flex flex-row flex-wrap pt1 pb0-5 pl0-5 pr0-5">
                     {attachments.map((attachment) => (
                         <div key={attachment.ID} className="composer-attachments-item">
                             <div className="flex flex-spacebetween bordered-container p0-25 flex-nowrap flex-items-center pm_button bg-white-dm p0">

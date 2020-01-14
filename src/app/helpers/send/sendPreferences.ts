@@ -182,7 +182,6 @@ const extractInfo = async (
     mailSettings: any,
     addresses: Address[]
 ): Promise<SendPreference> => {
-    // const info: SendPreference = {};
     const { RecipientType, Warnings = [], Keys = [] } = keyData;
     const isInternal = RecipientType === RECIPIENT_TYPE.TYPE_INTERNAL;
     const isExternalWithKeys = RecipientType === RECIPIENT_TYPE.TYPE_EXTERNAL && Keys.length > 0;
@@ -261,7 +260,17 @@ const getApiInfo = async (
     }
 
     // TODO: Decrypt contacts
-    throw 'Unsupported';
+
+    ////////////////////////////////////
+    ////////////// MOCK ////////////////
+    ////////////////////////////////////
+
+    const info = await getDefaultInfo(email, keyData, defaultMimeType, eoEnabled, globalSign, mailSettings, addresses);
+    return { [email]: info };
+
+    ////////////////////////////////////
+    ////////////// MOCK ////////////////
+    ////////////////////////////////////
 
     // const { vCard, errors } = await Contact.get(contactEmail.ContactID);
 

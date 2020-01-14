@@ -55,7 +55,7 @@ export const getByEmail = (addresses: Address[], email = '') => {
 export const isFallbackAddress = (address?: Address, keys: Key[] = []) =>
     !!address && !address.Receive && !!keys.length;
 
-export const isOwnAddress = (address?: Address, keys: Key[] = []) => !isFallbackAddress(address, keys);
+export const isOwnAddress = (address?: Address, keys: Key[] = []) => !!address && !isFallbackAddress(address, keys);
 
 export const inputToRecipient = (input: string): Recipient => {
     const match = REGEX_RECIPIENT.exec(input);

@@ -9,6 +9,10 @@ import {
     PmcryptoKey
 } from 'pmcrypto';
 
+import { identity } from 'proton-shared/lib/helpers/function';
+import { splitKeys } from 'proton-shared/lib/keys/keys';
+import { hasBit } from 'proton-shared/lib/helpers/bitset';
+
 import { MessageExtended, Message } from '../../models/message';
 import { Packages, Package } from './sendTopPackages';
 import { getAttachments } from '../message/messages';
@@ -18,10 +22,7 @@ import { arrayToBase64 } from '../base64';
 import { PACKAGE_TYPE, MIME_TYPES } from 'proton-shared/lib/constants';
 import { AES256 } from '../../constants';
 import { SEND_MIME } from './sendSubPackages';
-import { identity } from 'proton-shared/lib/helpers/function';
-import { splitKeys } from 'proton-shared/lib/keys/keys';
 import { Attachment } from '../../models/attachment';
-import { hasBit } from 'proton-shared/lib/helpers/bitset';
 
 // Reference: Angular/src/app/composer/services/encryptPackages.js
 
@@ -244,16 +245,8 @@ export const encryptPackages = async (
     packages: Packages,
     getAddressKeys: (addressID?: string) => Promise<AddressKeys[]>
 ): Promise<Packages> => {
-    console.log('encryptPackages 0');
-
     const attachmentKeys = await getAttachmentKeys(message);
-
-    console.log('encryptPackages 1', attachmentKeys);
-
     const ownKeys = await getAddressKeys(message.data?.AddressID); // Original code: message.From.ID, don't know of From property
-
-    console.log('encryptPackages 2', attachmentKeys, ownKeys);
-
     const packageList = Object.values(packages) as Package[];
     await Promise.all(packageList.map((pack) => encryptPackage(pack, message, ownKeys, attachmentKeys)));
 

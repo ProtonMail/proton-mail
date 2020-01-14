@@ -22,8 +22,7 @@ const Addresses = ({ message, onChange, addressesBlurRef, addressesFocusRef }: P
     );
 
     useEffect(() => {
-        const handleBlur = () => setEditor(false);
-        addressesBlurRef.current = handleBlur;
+        addressesBlurRef.current = () => setEditor(false);
     }, []);
 
     const handleFocus = () => {

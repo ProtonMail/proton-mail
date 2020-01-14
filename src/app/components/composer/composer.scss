@@ -50,6 +50,7 @@
     background: unset;
 }
 
+.composer-meta-label,
 .pm-label.composer-meta-label {
     padding-top: 0;
     padding-right: 1em;
@@ -57,10 +58,24 @@
     width: 15%;
 }
 
-.composer-addresses-fakefield {
-    padding: 0.4em 0.85em;
+.composer-meta-label .pm-label {
+    padding-top: 7px;
+    padding-bottom: 7px;
+
+    &:not(:first-child) {
+        margin-top: 7px;
+    }
+}
+
+.composer-meta .composer-addresses-fakefield {
+    padding: 6px 0.85em;
+    min-height: 35px;
     max-height: 2.5em;
     background: var(--bgcolor-input, #fcfdff);
+}
+
+.composer-addresses-container-line:not(:first-child) {
+    padding-right: 30px;
 }
 
 .composer-addresses-container {
@@ -74,11 +89,14 @@
     overflow-y: auto;
     overflow-x: hidden;
 
-    padding-top: 0.4em;
-    padding-bottom: 0.1em;
+    padding-top: 6px;
+    padding-bottom: 1px;
 
     input {
         border: none;
+        padding: 0;
+        margin-bottom: 5px;
+        min-width: 100px;
 
         &:focus {
             box-shadow: none;
@@ -109,22 +127,37 @@
 }
 
 .composer-quill {
-    // height: calc(100% - 3em);
-    height: 100px;
-    margin-bottom: 50px;
+    height: 100%;
+    margin-bottom: 42px; // compensate for Quill strange auto sizing
 }
 
 .composer-attachments-button-wrapper {
     position: relative;
     overflow: hidden;
     display: inline-block;
+    padding: 5px; // hack to save space for the hover halo on the button
+    margin: -5px;
 
     input[type='file'] {
-        font-size: 100px;
+        font-size: 22px;
+        margin: 5px;
         position: absolute;
         left: 0;
         top: 0;
         opacity: 0;
+        cursor: pointer;
+    }
+
+    input[type='file']:hover + .pm-button,
+    input[type='file']:focus + .pm-button,
+    input[type='file']:focus-within + .pm-button {
+        color: $pm-global-grey;
+        box-shadow: 0 0 em(5) 0 rgba(0, 0, 0, 0.2);
+    }
+
+    input[type='file']:active + .pm-button {
+        background: radial-gradient(closest-side, $white, $pm-global-border 90%);
+        box-shadow: none;
     }
 }
 

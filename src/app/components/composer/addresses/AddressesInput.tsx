@@ -17,6 +17,11 @@ const AddressesInput = ({ id, addresses = [], onChange, addressesFocusRef }: Pro
     const [inputModel, setInputModel] = useState('');
     const inputRef = useRef<HTMLInputElement>();
 
+    const confirmInput = () => {
+        onChange([...addresses, inputToRecipient(inputModel)]);
+        setInputModel('');
+    };
+
     useEffect(() => {
         if (addressesFocusRef) {
             addressesFocusRef.current = inputRef.current?.focus.bind(inputRef.current) || noop;
@@ -30,10 +35,18 @@ const AddressesInput = ({ id, addresses = [], onChange, addressesFocusRef }: Pro
 
     const handleInputKey = (event: KeyboardEvent) => {
         // Enter or Tab
-        if (event.keyCode === 13 || event.keyCode === 9) {
-            onChange([...addresses, inputToRecipient(inputModel)]);
-            setInputModel('');
+        if ((event.keyCode === 13 || event.keyCode === 9) && inputModel.length !== 0) {
+            confirmInput();
             event.preventDefault(); // Prevent tab to switch field
+        }
+        if (event.keyCode === 8 && inputModel.length === 0) {
+            onChange(addresses.slice(0, -1));
+        }
+    };
+
+    const handleBlur = () => {
+        if (inputModel.trim().length > 0) {
+            confirmInput();
         }
     };
 
@@ -56,7 +69,10 @@ const AddressesInput = ({ id, addresses = [], onChange, addressesFocusRef }: Pro
     };
 
     return (
-        <div className="composer-addresses-container flex-item-fluid bordered-container pl1-25" onClick={handleClick}>
+        <div
+            className="composer-addresses-container flex-item-fluid bordered-container pl1-25 pr1-25"
+            onClick={handleClick}
+        >
             {addresses.map((recipient, i) => (
                 <AddressesItem
                     key={i}
@@ -65,12 +81,13 @@ const AddressesInput = ({ id, addresses = [], onChange, addressesFocusRef }: Pro
                     onRemove={handleExistingRemove(recipient)}
                 />
             ))}
-            <div>
+            <div className="flex-item-fluid">
                 <Input
                     id={id}
                     value={inputModel}
                     onChange={handleInputChange}
                     onKeyDown={handleInputKey}
+                    onBlur={handleBlur}
                     ref={inputRef}
                 />
             </div>

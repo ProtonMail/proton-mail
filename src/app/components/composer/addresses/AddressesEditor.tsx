@@ -1,6 +1,6 @@
 import React, { useState, MutableRefObject } from 'react';
 import { c } from 'ttag';
-import { Label, generateUID, Button, Tooltip } from 'react-components';
+import { Label, generateUID, Button, Tooltip, classnames } from 'react-components';
 
 import { MessageExtended, RecipientType, Recipient } from '../../../models/message';
 import AddressesInput from './AddressesInput';
@@ -26,36 +26,52 @@ const AddressesEditor = ({ message, onChange, expanded, toggleExpanded, addresse
 
     return (
         <div className="flex flex-row flex-nowrap flex-items-start pl0-5 mb0-5">
-            <div className="flex flex-column flex-items-start flex-item-fluid">
-                <div className="flex flex-row w100">
-                    <Label htmlFor={`to-${uid}`} className="composer-meta-label">
-                        <Tooltip title={c('Title').t`Add contacts`}>
-                            <a onClick={handleContactModal('ToList')}>{c('Title').t`To`}</a>
-                        </Tooltip>
-                    </Label>
+            <div className="flex flex-column composer-meta-label">
+                <Label htmlFor={`to-${uid}`}>
+                    <Tooltip title={c('Title').t`Add contacts`}>
+                        <a onClick={handleContactModal('ToList')}>{c('Title').t`To`}</a>
+                    </Tooltip>
+                </Label>
+                {expanded && (
+                    <>
+                        <Label htmlFor={`cc-${uid}`}>
+                            <Tooltip title={c('Title').t`Add contacts`}>
+                                <a onClick={handleContactModal('CCList')}>{c('Title').t`CC`}</a>
+                            </Tooltip>
+                        </Label>
+                        <Label htmlFor={`bcc-${uid}`}>
+                            <Tooltip title={c('Title').t`Add contacts`}>
+                                <a onClick={handleContactModal('BCCList')}>{c('Title').t`BCC`}</a>
+                            </Tooltip>
+                        </Label>
+                    </>
+                )}
+            </div>
+
+            <div className="flex flex-column w100">
+                <div className="flex flex-row w100 composer-addresses-container-line">
                     <AddressesInput
                         id={`to-${uid}`}
                         addresses={message.data?.ToList}
                         onChange={handleChange('ToList')}
                         addressesFocusRef={addressesFocusRef}
                     />
+                    <Button
+                        icon="caret"
+                        className={classnames(['pm-button--link ml0-5 mr0-5', expanded && 'rotateX-180'])}
+                        onClick={toggleExpanded}
+                    />
                 </div>
                 {expanded && (
                     <>
-                        <div className="flex flex-row w100 mt0-5">
-                            <Label htmlFor={`cc-${uid}`} className="composer-meta-label">
-                                <a onClick={handleContactModal('CCList')}>{c('Title').t`CC`}</a>
-                            </Label>
+                        <div className="flex flex-row w100 mt0-5 composer-addresses-container-line">
                             <AddressesInput
                                 id={`cc-${uid}`}
                                 addresses={message.data?.CCList}
                                 onChange={handleChange('CCList')}
                             />
                         </div>
-                        <div className="flex flex-row w100 mt0-5">
-                            <Label htmlFor={`bcc-${uid}`} className="composer-meta-label">
-                                <a onClick={handleContactModal('BCCList')}>{c('Title').t`BCC`}</a>
-                            </Label>
+                        <div className="flex flex-row w100 mt0-5 composer-addresses-container-line">
                             <AddressesInput
                                 id={`bcc-${uid}`}
                                 addresses={message.data?.BCCList}
@@ -65,7 +81,6 @@ const AddressesEditor = ({ message, onChange, expanded, toggleExpanded, addresse
                     </>
                 )}
             </div>
-            <Button icon="caret" className="pm-button--link ml0-5 mr0-5" onClick={toggleExpanded} />
         </div>
     );
 };

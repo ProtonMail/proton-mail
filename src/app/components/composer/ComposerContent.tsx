@@ -33,9 +33,9 @@ const ComposerContent = ({ message, onChange, onFocus, onRemoveAttachment, conte
     const attachments = getAttachments(message.data);
 
     return (
-        <section className="composer-content flex-item-fluid w100 mb1 flex flex-column">
+        <section className="composer-content flex-item-fluid w100 mb0-5 flex flex-column flex-nowrap">
             <ReactQuill
-                className="composer-quill w100"
+                className="composer-quill w100 flex-item-fluid"
                 value={message.content}
                 onChange={handleChange}
                 onFocus={onFocus}

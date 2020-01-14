@@ -30,9 +30,10 @@ const ComposerActions = ({ message, onSave, onSend, onDelete, onAddAttachments }
 
     return (
         <footer className="composer-actions flex flex-row flex-spacebetween w100">
-            <div>
-                <AttachmentsButton onAddAttachments={onAddAttachments} /> <Button icon="expiration" />{' '}
-                <Button icon="lock" />
+            <div className="flex">
+                <AttachmentsButton onAddAttachments={onAddAttachments} />
+                <Button icon="expiration" className="ml0-5" />
+                <Button icon="lock" className="ml0-5" />
             </div>
             <div className="flex-self-vcenter">
                 <span>Saved at {formatSimpleDate(getDate(message.data))}</span>
