@@ -12,6 +12,7 @@ export interface Contact {
 
 export interface ContactEmail {
     ID?: string;
+    Name?: string;
     Email?: string;
     Type?: string;
     Defaults?: number;

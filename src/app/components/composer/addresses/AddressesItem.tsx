@@ -1,16 +1,17 @@
 import React, { SyntheticEvent, useState, useEffect, useRef } from 'react';
 import { Icon, classnames } from 'react-components';
+import { noop } from 'proton-shared/lib/helpers/function';
 
 import { Recipient } from '../../../models/message';
 import { validateAddress, recipientToInput, inputToRecipient } from '../../../helpers/addresses';
 
 interface Props {
     recipient: Recipient;
-    onChange: (value: Recipient) => void;
+    onChange?: (value: Recipient) => void;
     onRemove: () => void;
 }
 
-const AddressesItem = ({ recipient, onChange, onRemove }: Props) => {
+const AddressesItem = ({ recipient, onChange = noop, onRemove }: Props) => {
     const [model, setModel] = useState(recipientToInput(recipient));
     const editableRef = useRef<HTMLSpanElement>(null);
 
@@ -50,7 +51,7 @@ const AddressesItem = ({ recipient, onChange, onRemove }: Props) => {
             {/* TODO: Icon lock */}
             <span
                 className="composer-addresses-item-label mtauto mbauto pl0-5 ellipsis pr0-5"
-                contentEditable
+                contentEditable={onChange !== noop}
                 onKeyUp={handleChange}
                 onPaste={handleChange}
                 onBlur={handleBlur}

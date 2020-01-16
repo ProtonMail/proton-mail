@@ -2,6 +2,7 @@ import { REGEX_EMAIL } from 'proton-shared/lib/constants';
 import { Address } from '../models/address';
 import { Key } from '../models/key';
 import { Recipient, Message } from '../models/message';
+import { ContactEmail } from '../models/contact';
 
 export const REGEX_RECIPIENT = /(.*)\s*<([^>]*)>/;
 
@@ -83,6 +84,13 @@ export const recipientToInput = (recipient: Recipient = {}): string => {
 
     return `${recipient.Name} ${recipient.Address}`;
 };
+
+export const contactToRecipient = (contact: ContactEmail = {}): Recipient => ({
+    Name: contact.Name,
+    Address: contact.Email
+});
+
+export const contactToInput = (contact: ContactEmail = {}): string => recipientToInput(contactToRecipient(contact));
 
 /**
  * Detect if the email address is a valid plus alias and returns the address model appropriate

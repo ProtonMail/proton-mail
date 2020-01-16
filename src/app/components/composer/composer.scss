@@ -104,6 +104,35 @@
     }
 }
 
+.composer-addresses-autocomplete {
+    ul {
+        position: absolute;
+        left: 0;
+        top: calc(100% + 5px);
+        z-index: 10;
+        list-style: none;
+        box-shadow: 0 0 15px 0 rgba(0, 0, 0, 0.16);
+        background: var(--bgcolor-input, #fcfdff);
+        width: calc(100% - 40px);
+        margin: 0 0 0 20px;
+        padding: 0;
+    }
+
+    li {
+        cursor: pointer;
+        padding: 0.5em;
+
+        &[aria-selected='true'] {
+            background-color: rgba($pm-primary, 0.2);
+        }
+    }
+
+    .visually-hidden {
+        position: absolute;
+        clip: rect(0, 0, 0, 0);
+    }
+}
+
 .composer-addresses-item {
     background-color: var(--bgcolor-item-column-list, #f6f7fa);
     margin-bottom: 5px;
@@ -124,6 +153,12 @@
 .composer-addresses-item-remove {
     background: none;
     border: none;
+}
+
+.addresses-contacts-table {
+    th:first-child {
+        width: 35px;
+    }
 }
 
 .composer-quill {

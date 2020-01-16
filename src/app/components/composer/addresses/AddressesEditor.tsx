@@ -1,9 +1,11 @@
 import React, { useState, MutableRefObject } from 'react';
 import { c } from 'ttag';
-import { Label, generateUID, Button, Tooltip, classnames } from 'react-components';
+import { Label, generateUID, Button, Tooltip, classnames, useModals, useContactEmails } from 'react-components';
 
 import { MessageExtended, RecipientType, Recipient } from '../../../models/message';
 import AddressesInput from './AddressesInput';
+import AddressesContactsModals from './AddressesContactsModal';
+import { ContactEmail } from '../../../models/contact';
 
 interface Props {
     message: MessageExtended;
@@ -15,14 +17,24 @@ interface Props {
 
 const AddressesEditor = ({ message, onChange, expanded, toggleExpanded, addressesFocusRef }: Props) => {
     const [uid] = useState(generateUID('composer'));
+    const [contacts, loading]: [ContactEmail[], boolean] = useContactEmails();
+    const { createModal } = useModals();
 
     const handleChange = (type: RecipientType) => (value: Recipient[]) => {
         onChange({ data: { [type]: value } });
     };
 
-    const handleContactModal = (type: RecipientType) => () => {
-        console.log('Open contact modal for', type);
+    const handleContactModal = (type: RecipientType) => async () => {
+        const recipients = await new Promise((resolve) => {
+            createModal(<AddressesContactsModals inputValue={message.data?.[type]} onSubmit={resolve} />);
+        });
+
+        onChange({ data: { [type]: recipients } });
     };
+
+    if (loading) {
+        return null;
+    }
 
     return (
         <div className="flex flex-row flex-nowrap flex-items-start pl0-5 mb0-5">
@@ -55,12 +67,15 @@ const AddressesEditor = ({ message, onChange, expanded, toggleExpanded, addresse
                         addresses={message.data?.ToList}
                         onChange={handleChange('ToList')}
                         addressesFocusRef={addressesFocusRef}
+                        contacts={contacts}
                     />
-                    <Button
-                        icon="caret"
-                        className={classnames(['pm-button--link ml0-5 mr0-5', expanded && 'rotateX-180'])}
-                        onClick={toggleExpanded}
-                    />
+                    <Tooltip originalPlacement="left" title={c('Title').t`CC BCC`}>
+                        <Button
+                            icon="caret"
+                            className={classnames(['pm-button--link ml0-5 mr0-5', expanded && 'rotateX-180'])}
+                            onClick={toggleExpanded}
+                        />
+                    </Tooltip>
                 </div>
                 {expanded && (
                     <>
@@ -69,6 +84,7 @@ const AddressesEditor = ({ message, onChange, expanded, toggleExpanded, addresse
                                 id={`cc-${uid}`}
                                 addresses={message.data?.CCList}
                                 onChange={handleChange('CCList')}
+                                contacts={contacts}
                             />
                         </div>
                         <div className="flex flex-row w100 mt0-5 composer-addresses-container-line">
@@ -76,6 +92,7 @@ const AddressesEditor = ({ message, onChange, expanded, toggleExpanded, addresse
                                 id={`bcc-${uid}`}
                                 addresses={message.data?.BCCList}
                                 onChange={handleChange('BCCList')}
+                                contacts={contacts}
                             />
                         </div>
                     </>

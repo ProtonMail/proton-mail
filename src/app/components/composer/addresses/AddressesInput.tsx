@@ -4,16 +4,19 @@ import { noop } from 'proton-shared/lib/helpers/function';
 
 import { Recipient } from '../../../models/message';
 import AddressesItem from './AddressesItem';
-import { inputToRecipient } from '../../../helpers/addresses';
+import { inputToRecipient, contactToRecipient } from '../../../helpers/addresses';
+import { ContactEmail } from '../../../models/contact';
+import AddressesAutocomplete from './AddressesAutocomplete';
 
 interface Props {
     id: string;
     addresses?: Recipient[];
     onChange: (value: Recipient[]) => void;
     addressesFocusRef?: MutableRefObject<() => void>;
+    contacts: ContactEmail[];
 }
 
-const AddressesInput = ({ id, addresses = [], onChange, addressesFocusRef }: Props) => {
+const AddressesInput = ({ id, addresses = [], onChange, addressesFocusRef, contacts }: Props) => {
     const [inputModel, setInputModel] = useState('');
     const inputRef = useRef<HTMLInputElement>();
 
@@ -60,7 +63,6 @@ const AddressesInput = ({ id, addresses = [], onChange, addressesFocusRef }: Pro
     };
 
     const handleExistingChange = (toChange: Recipient) => (value: Recipient) => {
-        console.log('handleExistingChange', toChange, value);
         onChange(addresses.map((recipient) => (recipient === toChange ? value : recipient)));
     };
 
@@ -68,30 +70,42 @@ const AddressesInput = ({ id, addresses = [], onChange, addressesFocusRef }: Pro
         onChange(addresses.filter((recipient) => recipient !== toRemove));
     };
 
+    const handleAutocompleteSelect = (contact: ContactEmail) => {
+        onChange([...addresses, contactToRecipient(contact)]);
+        setInputModel('');
+    };
+
     return (
-        <div
-            className="composer-addresses-container flex-item-fluid bordered-container pl1-25 pr1-25"
-            onClick={handleClick}
+        <AddressesAutocomplete
+            inputRef={inputRef}
+            contacts={contacts}
+            onSelect={handleAutocompleteSelect}
+            currentValue={addresses}
         >
-            {addresses.map((recipient, i) => (
-                <AddressesItem
-                    key={i}
-                    recipient={recipient}
-                    onChange={handleExistingChange(recipient)}
-                    onRemove={handleExistingRemove(recipient)}
-                />
-            ))}
-            <div className="flex-item-fluid">
-                <Input
-                    id={id}
-                    value={inputModel}
-                    onChange={handleInputChange}
-                    onKeyDown={handleInputKey}
-                    onBlur={handleBlur}
-                    ref={inputRef}
-                />
+            <div
+                className="composer-addresses-container flex-item-fluid bordered-container pl1-25 pr1-25"
+                onClick={handleClick}
+            >
+                {addresses.map((recipient, i) => (
+                    <AddressesItem
+                        key={i}
+                        recipient={recipient}
+                        onChange={handleExistingChange(recipient)}
+                        onRemove={handleExistingRemove(recipient)}
+                    />
+                ))}
+                <div className="flex-item-fluid">
+                    <Input
+                        id={id}
+                        value={inputModel}
+                        onChange={handleInputChange}
+                        onKeyDown={handleInputKey}
+                        onBlur={handleBlur}
+                        ref={inputRef}
+                    />
+                </div>
             </div>
-        </div>
+        </AddressesAutocomplete>
     );
 };
 
