@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, useEffect } from 'react';
+import React, { useState, ChangeEvent } from 'react';
 import { c } from 'ttag';
 import {
     Table,
@@ -6,32 +6,25 @@ import {
     Checkbox,
     TableRow,
     TableBody,
-    useContactEmails,
     FormModal,
     SearchInput as SearchInputUntyped
 } from 'react-components';
 import { ContactEmail } from '../../../models/contact';
-import { Recipient } from '../../../models/message';
-import AddressesItem from './AddressesItem';
+import AddressesRecipientItem from './AddressesRecipientItem';
+import { Recipient } from '../../../models/address';
 
 const SearchInput = SearchInputUntyped as any;
 
 interface Props {
     inputValue?: Recipient[];
+    allContacts?: ContactEmail[];
     onClose?: () => void;
     onSubmit: (recipients: Recipient[]) => void;
 }
 
-const AddressesContactsModals = ({ onSubmit, onClose, inputValue = [], ...rest }: Props) => {
-    const [allContacts, loading]: [ContactEmail[], boolean] = useContactEmails();
+const AddressesContactsModal = ({ onSubmit, onClose, inputValue = [], allContacts = [], ...rest }: Props) => {
     const [value, setValue] = useState(inputValue);
     const [contacts, setContacts] = useState<ContactEmail[]>(allContacts);
-
-    useEffect(() => {
-        if (!loading) {
-            setContacts(allContacts);
-        }
-    }, [loading]);
 
     const handleChangeSearch = (searchInput = '') => {
         const search = searchInput.toLowerCase();
@@ -72,31 +65,29 @@ const AddressesContactsModals = ({ onSubmit, onClose, inputValue = [], ...rest }
             {...rest}
         >
             <SearchInput placeholder={c('Info').t`Search for contacts`} onChange={handleChangeSearch} />
-            {!loading && (
-                <Table className="addresses-contacts-table">
-                    <TableHeader cells={[<Checkbox key={0} />, c('Info').t`Name`, c('Info').t`Email`]} />
-                    <TableBody colSpan={0}>
-                        {contacts.map((contact) => (
-                            <TableRow
-                                key={contact.ID}
-                                cells={[
-                                    <Checkbox
-                                        key={0}
-                                        checked={isChecked(contact)}
-                                        onChange={handleChangeCheckbox(contact)}
-                                    />,
-                                    contact.Name,
-                                    contact.Email
-                                ]}
-                            />
-                        ))}
-                    </TableBody>
-                </Table>
-            )}
+            <Table className="addresses-contacts-table">
+                <TableHeader cells={[<Checkbox key={0} />, c('Info').t`Name`, c('Info').t`Email`]} />
+                <TableBody colSpan={0}>
+                    {contacts.map((contact) => (
+                        <TableRow
+                            key={contact.ID}
+                            cells={[
+                                <Checkbox
+                                    key={0}
+                                    checked={isChecked(contact)}
+                                    onChange={handleChangeCheckbox(contact)}
+                                />,
+                                contact.Name,
+                                contact.Email
+                            ]}
+                        />
+                    ))}
+                </TableBody>
+            </Table>
             {value.length > 0 && (
                 <div className="composer-addresses-container flex-item-fluid bordered-container pl1-25 pr1-25">
                     {value.map((recipient, i) => (
-                        <AddressesItem key={i} recipient={recipient} onRemove={handleRemove(recipient)} />
+                        <AddressesRecipientItem key={i} recipient={recipient} onRemove={handleRemove(recipient)} />
                     ))}
                 </div>
             )}
@@ -104,4 +95,4 @@ const AddressesContactsModals = ({ onSubmit, onClose, inputValue = [], ...rest }
     );
 };
 
-export default AddressesContactsModals;
+export default AddressesContactsModal;

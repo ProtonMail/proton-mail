@@ -1,6 +1,6 @@
 import React, { MouseEvent } from 'react';
 import { c } from 'ttag';
-import { Icon, Group, ButtonGroup, useToggle } from 'react-components';
+import { Icon, Group, ButtonGroup, useToggle, useContactEmails } from 'react-components';
 import humanSize from 'proton-shared/lib/helpers/humanSize';
 
 import ItemStar from '../../list/ItemStar';
@@ -22,6 +22,8 @@ import HeaderDropdown from './HeaderDropdown';
 import { OnCompose } from '../../../containers/ComposerContainer';
 
 import './MessageHeader.scss';
+import { ContactEmail } from '../../../models/contact';
+import { useContactGroups } from '../../../hooks/useContactGroups';
 
 interface Props {
     labels?: Label[];
@@ -44,6 +46,8 @@ const HeaderExpanded = ({
     onCollapse,
     onCompose
 }: Props) => {
+    const [contacts]: [ContactEmail[]] = useContactEmails();
+    const [contactGroups] = useContactGroups();
     const { state: showDetails, toggle: toggleDetails } = useToggle();
 
     const { Name, Address } = (message.data || {}).Sender || {};
@@ -84,9 +88,9 @@ const HeaderExpanded = ({
             </div>
             <div className="flex flex-nowrap flex-items-start flex-spacebetween ml1 mr1 mb0-5">
                 {showDetails ? (
-                    <HeaderRecipientsDetails message={message.data} />
+                    <HeaderRecipientsDetails message={message.data} contacts={contacts} contactGroups={contactGroups} />
                 ) : (
-                    <HeaderRecipientsSimple message={message.data} />
+                    <HeaderRecipientsSimple message={message.data} contacts={contacts} contactGroups={contactGroups} />
                 )}
                 <div>
                     <ItemAttachmentIcon element={message.data || {}} type={ELEMENT_TYPES.MESSAGE} />

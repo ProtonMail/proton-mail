@@ -2,8 +2,8 @@ import React, { SyntheticEvent, useState, useEffect, useRef } from 'react';
 import { Icon, classnames } from 'react-components';
 import { noop } from 'proton-shared/lib/helpers/function';
 
-import { Recipient } from '../../../models/message';
 import { validateAddress, recipientToInput, inputToRecipient } from '../../../helpers/addresses';
+import { Recipient } from '../../../models/address';
 
 interface Props {
     recipient: Recipient;
@@ -11,7 +11,7 @@ interface Props {
     onRemove: () => void;
 }
 
-const AddressesItem = ({ recipient, onChange = noop, onRemove }: Props) => {
+const AddressesRecipientItem = ({ recipient, onChange = noop, onRemove }: Props) => {
     const [model, setModel] = useState(recipientToInput(recipient));
     const editableRef = useRef<HTMLSpanElement>(null);
 
@@ -67,4 +67,4 @@ const AddressesItem = ({ recipient, onChange = noop, onRemove }: Props) => {
     );
 };
 
-export default AddressesItem;
+export default AddressesRecipientItem;

@@ -1,13 +1,7 @@
 import { Label } from './label';
 import { Attachment } from './attachment';
 import { MESSAGE_ACTIONS } from '../constants';
-
-export type RecipientType = 'ToList' | 'CCList' | 'BCCList';
-
-export interface Recipient {
-    Name?: string;
-    Address?: string;
-}
+import { Recipient } from './address';
 
 export interface Message {
     ID?: string;

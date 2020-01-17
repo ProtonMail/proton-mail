@@ -1,8 +1,8 @@
 import { c } from 'ttag';
 import { setBit } from 'proton-shared/lib/helpers/bitset';
 
-import { Message, MessageExtended, Recipient } from '../../models/message';
-import { Address } from '../../models/address';
+import { Message, MessageExtended } from '../../models/message';
+import { Address, Recipient } from '../../models/address';
 import { MESSAGE_ACTIONS, MESSAGE_FLAGS } from '../../constants';
 import { MailSettings } from '../../models/utils';
 import { findSender } from '../addresses';

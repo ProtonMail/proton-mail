@@ -3,17 +3,18 @@ import { c } from 'ttag';
 import { Label, Button } from 'react-components';
 
 import { MessageExtended } from '../../../models/message';
-import { RecipientType } from '../../../models/message';
-import { getRecipientLabel } from '../../../helpers/conversation';
+import { Recipient, recipientTypes } from '../../../models/address';
+import { recipientsToRecipientOrGroup, getRecipientOrGroupLabel } from '../../../helpers/addresses';
+import { ContactEmail, ContactGroup } from '../../../models/contact';
 
 interface Props {
     message: MessageExtended;
+    contacts: ContactEmail[];
+    contactGroups: ContactGroup[];
     onFocus: () => void;
 }
 
-const AddressesSummary = ({ message: { data = {} }, onFocus }: Props) => {
-    const types: RecipientType[] = ['ToList', 'CCList', 'BCCList'];
-
+const AddressesSummary = ({ message: { data = {} }, contacts, contactGroups, onFocus }: Props) => {
     return (
         <div className="flex flex-row flex-nowrap flex-items-center pl0-5 mb0-5" onClick={onFocus}>
             <Label htmlFor={null} className="composer-meta-label color-pm-blue">
@@ -22,11 +23,12 @@ const AddressesSummary = ({ message: { data = {} }, onFocus }: Props) => {
             <div className="flex flex-row w100">
                 <span className="flex-item-fluid bordered-container flex composer-addresses-fakefield">
                     <span className="ellipsis mw100">
-                        {types.map((type) => {
-                            const list = data[type] || [];
-                            if (list.length === 0) {
+                        {recipientTypes.map((type) => {
+                            const recipients: Recipient[] = data[type] || [];
+                            if (recipients.length === 0) {
                                 return null;
                             }
+                            const recipientOrGroups = recipientsToRecipientOrGroup(recipients, contactGroups);
                             return (
                                 <Fragment key={type}>
                                     {type === 'CCList' && (
@@ -35,10 +37,10 @@ const AddressesSummary = ({ message: { data = {} }, onFocus }: Props) => {
                                     {type === 'BCCList' && (
                                         <span className="mr0-5 color-pm-blue">{c('Title').t`BCC`}:</span>
                                     )}
-                                    {list.map((recipient, i) => (
+                                    {recipientOrGroups.map((recipientOrGroup, i) => (
                                         <span key={i} className="mr0-5">
-                                            {getRecipientLabel(recipient)}
-                                            {i !== list.length - 1 && ','}
+                                            {getRecipientOrGroupLabel(recipientOrGroup, contacts)}
+                                            {i !== recipientOrGroups.length - 1 && ','}
                                         </span>
                                     ))}
                                 </Fragment>

@@ -1,3 +1,8 @@
+export interface ContactOrGroup {
+    contact?: ContactEmail;
+    group?: ContactGroup;
+}
+
 export interface Contact {
     ID?: string;
     Name?: string;
@@ -19,6 +24,18 @@ export interface ContactEmail {
     Order?: number;
     ContactID?: string;
     LabelIDs?: string[];
+}
+
+export interface ContactGroup {
+    ID?: string;
+    Name?: string;
+    Color?: string;
+    Path?: string;
+    Display?: number;
+    Exclusive?: number;
+    Notify?: number;
+    Order?: number;
+    Type?: number;
 }
 
 export interface Card {

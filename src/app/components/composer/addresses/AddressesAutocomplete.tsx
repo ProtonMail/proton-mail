@@ -1,29 +1,23 @@
 import React, { useState, useEffect, MutableRefObject, useRef, ReactNode } from 'react';
 import Awesomplete from 'awesomplete';
 
-import { contactToInput, inputToRecipient } from '../../../helpers/addresses';
-import { ContactEmail } from '../../../models/contact';
+import { contactToInput } from '../../../helpers/addresses';
+import { ContactEmail, ContactGroup, ContactOrGroup } from '../../../models/contact';
 import useEventListener from '../../../hooks/useEventListener';
-import { Recipient } from '../../../models/message';
+import { Recipient } from '../../../models/address';
 
 interface Props {
     inputRef: MutableRefObject<HTMLInputElement | undefined>;
     contacts: ContactEmail[];
+    contactGroups: ContactGroup[];
     children: ReactNode;
-    onSelect: (contact: ContactEmail) => void;
+    onSelect: (value: ContactOrGroup) => void;
     currentValue: Recipient[];
 }
 
-const AddressesAutocomplete = ({ inputRef, contacts, onSelect, currentValue, children }: Props) => {
-    const [awesomplete, setAwesomplete] = useState();
+const AddressesAutocomplete = ({ inputRef, contacts, contactGroups, onSelect, currentValue, children }: Props) => {
+    const [awesomplete, setAwesomplete] = useState<Awesomplete>();
     const containerRef = useRef<HTMLDivElement>(null);
-
-    const handleSelect = (event: any) => {
-        const contact = contacts.find((contact) => contact.Email === inputToRecipient(event.text.value).Address);
-        if (contact) {
-            onSelect(contact);
-        }
-    };
 
     useEffect(() => {
         const awesompleteInstance = new Awesomplete(
@@ -35,18 +29,46 @@ const AddressesAutocomplete = ({ inputRef, contacts, onSelect, currentValue, chi
             } as Awesomplete.Options
         );
         setAwesomplete(awesompleteInstance);
+
         return () => awesompleteInstance.destroy();
     }, []);
 
-    useEventListener(inputRef, 'awesomplete-selectcomplete', handleSelect);
-
     useEffect(() => {
         if (awesomplete) {
-            awesomplete.list = contacts
+            const contactList = contacts
                 .filter((contact) => !currentValue.find((recipient) => recipient.Address === contact.Email))
-                .map(contactToInput);
+                .map((contact) => ({
+                    label: contactToInput(contact),
+                    value: `Contact:${contact.ID}`
+                }));
+
+            const groupList = contactGroups
+                .filter((group) => !currentValue.find((recipient) => recipient.Group === group.Path))
+                .map((group) => ({
+                    label: group.Name,
+                    value: `Group:${group.ID}`
+                }));
+
+            awesomplete.list = [...contactList, ...groupList];
+
+            (awesomplete as any).item = (text: string, input: string, itemId: string) =>
+                (Awesomplete.ITEM as any)(text.replace('<', '&lt;'), input, itemId);
         }
-    }, [awesomplete, contacts, currentValue]);
+    }, [awesomplete, contacts, contactGroups, currentValue]);
+
+    const handleSelect = (event: any) => {
+        const value = event.text.value;
+        const contactID = /Contact:(.*)/.exec(value)?.[1];
+        const contact = contacts.find((contact) => contact.ID === contactID);
+        const groupID = /Group:(.*)/.exec(value)?.[1];
+        const group = contactGroups.find((group) => group.ID === groupID);
+        if (contact || group) {
+            onSelect({ contact, group });
+        }
+        awesomplete?.close();
+    };
+
+    useEventListener(inputRef, 'awesomplete-selectcomplete', handleSelect);
 
     return (
         <div className="composer-addresses-autocomplete flex-item-fluid relative" ref={containerRef}>

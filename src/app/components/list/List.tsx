@@ -1,9 +1,11 @@
 import React, { useState, ChangeEvent } from 'react';
-import { useLabels } from 'react-components';
+import { useLabels, useContactEmails } from 'react-components';
 
 import Item from './Item';
 import { Element } from '../../models/element';
 import EmptyView from '../view/EmptyView';
+import { ContactEmail } from '../../models/contact';
+import { useContactGroups } from '../../hooks/useContactGroups';
 
 interface Props {
     labelID: string;
@@ -16,8 +18,12 @@ interface Props {
 }
 
 const List = ({ labelID, elementID, mailSettings = {}, elements = [], checkedIDs = [], onCheck, onClick }: Props) => {
+    const [contacts]: [ContactEmail[]] = useContactEmails();
+    const [contactGroups] = useContactGroups();
     const [labels] = useLabels();
     const [lastChecked, setLastChecked] = useState(); // Store ID of the last element ID checked
+
+    console.log('List', contacts, contactGroups);
 
     const handleCheck = (elementID: string) => (event: ChangeEvent) => {
         const target = event.target as HTMLInputElement;
@@ -49,6 +55,8 @@ const List = ({ labelID, elementID, mailSettings = {}, elements = [], checkedIDs
                         elementID={elementID}
                         element={element}
                         checked={checkedIDs.includes(element.ID || '')}
+                        contacts={contacts}
+                        contactGroups={contactGroups}
                         onCheck={handleCheck(element.ID || '')}
                         onClick={onClick}
                         mailSettings={mailSettings}

@@ -2,26 +2,35 @@ import React, { useState, useEffect, ChangeEvent, MutableRefObject, useRef, Mous
 import { Input } from 'react-components';
 import { noop } from 'proton-shared/lib/helpers/function';
 
-import { Recipient } from '../../../models/message';
-import AddressesItem from './AddressesItem';
-import { inputToRecipient, contactToRecipient } from '../../../helpers/addresses';
-import { ContactEmail } from '../../../models/contact';
+import AddressesRecipientItem from './AddressesRecipientItem';
+import {
+    inputToRecipient,
+    contactToRecipient,
+    recipientsWithoutGroup,
+    recipientsToRecipientOrGroup
+} from '../../../helpers/addresses';
+import { ContactEmail, ContactGroup, ContactOrGroup } from '../../../models/contact';
 import AddressesAutocomplete from './AddressesAutocomplete';
+import AddressesGroupItem from './AddressesGroupItem';
+import { RecipientGroup, Recipient } from '../../../models/address';
 
 interface Props {
     id: string;
-    addresses?: Recipient[];
+    recipients?: Recipient[];
     onChange: (value: Recipient[]) => void;
     addressesFocusRef?: MutableRefObject<() => void>;
     contacts: ContactEmail[];
+    contactGroups: ContactGroup[];
 }
 
-const AddressesInput = ({ id, addresses = [], onChange, addressesFocusRef, contacts }: Props) => {
+const AddressesInput = ({ id, recipients = [], onChange, addressesFocusRef, contacts, contactGroups }: Props) => {
     const [inputModel, setInputModel] = useState('');
     const inputRef = useRef<HTMLInputElement>();
 
+    const recipientsOrGroups = recipientsToRecipientOrGroup(recipients, contactGroups);
+
     const confirmInput = () => {
-        onChange([...addresses, inputToRecipient(inputModel)]);
+        onChange([...recipients, inputToRecipient(inputModel)]);
         setInputModel('');
     };
 
@@ -34,17 +43,6 @@ const AddressesInput = ({ id, addresses = [], onChange, addressesFocusRef, conta
     const handleInputChange = (event: ChangeEvent) => {
         const input = event.target as HTMLInputElement;
         setInputModel(input.value);
-    };
-
-    const handleInputKey = (event: KeyboardEvent) => {
-        // Enter or Tab
-        if ((event.keyCode === 13 || event.keyCode === 9) && inputModel.length !== 0) {
-            confirmInput();
-            event.preventDefault(); // Prevent tab to switch field
-        }
-        if (event.keyCode === 8 && inputModel.length === 0) {
-            onChange(addresses.slice(0, -1));
-        }
     };
 
     const handleBlur = () => {
@@ -62,16 +60,48 @@ const AddressesInput = ({ id, addresses = [], onChange, addressesFocusRef, conta
         inputRef.current?.focus();
     };
 
-    const handleExistingChange = (toChange: Recipient) => (value: Recipient) => {
-        onChange(addresses.map((recipient) => (recipient === toChange ? value : recipient)));
+    const handleRecipientChange = (toChange: Recipient) => (value: Recipient) => {
+        onChange(recipients.map((recipient) => (recipient === toChange ? value : recipient)));
     };
 
-    const handleExistingRemove = (toRemove: Recipient) => () => {
-        onChange(addresses.filter((recipient) => recipient !== toRemove));
+    const handleRecipientRemove = (toRemove: Recipient) => () => {
+        onChange(recipients.filter((recipient) => recipient !== toRemove));
     };
 
-    const handleAutocompleteSelect = (contact: ContactEmail) => {
-        onChange([...addresses, contactToRecipient(contact)]);
+    const handleGroupChange = (toChange?: RecipientGroup) => (value: RecipientGroup) => {
+        onChange([...recipientsWithoutGroup(recipients, toChange?.group?.Path), ...value.recipients]);
+    };
+
+    const handleGroupRemove = (toRemove?: RecipientGroup) => () => {
+        onChange(recipientsWithoutGroup(recipients, toRemove?.group?.Path));
+    };
+
+    const handleInputKey = (event: KeyboardEvent) => {
+        // Enter or Tab
+        if ((event.keyCode === 13 || event.keyCode === 9) && inputModel.length !== 0) {
+            confirmInput();
+            event.preventDefault(); // Prevent tab to switch field
+        }
+        if (event.keyCode === 8 && inputModel.length === 0) {
+            const last = recipientsOrGroups[recipientsOrGroups.length - 1];
+            if (last.recipient) {
+                handleRecipientRemove(last.recipient)();
+            } else {
+                handleGroupRemove(last.group)();
+            }
+        }
+    };
+
+    const handleAutocompleteSelect = ({ contact, group }: ContactOrGroup) => {
+        if (contact) {
+            onChange([...recipients, contactToRecipient(contact)]);
+        }
+        if (group) {
+            const groupContacts = contacts
+                .filter((contact) => contact.LabelIDs?.includes(group.ID || ''))
+                .map((contact) => contactToRecipient(contact, group.Path));
+            onChange([...recipients, ...groupContacts]);
+        }
         setInputModel('');
     };
 
@@ -79,21 +109,32 @@ const AddressesInput = ({ id, addresses = [], onChange, addressesFocusRef, conta
         <AddressesAutocomplete
             inputRef={inputRef}
             contacts={contacts}
+            contactGroups={contactGroups}
             onSelect={handleAutocompleteSelect}
-            currentValue={addresses}
+            currentValue={recipients}
         >
             <div
                 className="composer-addresses-container flex-item-fluid bordered-container pl1-25 pr1-25"
                 onClick={handleClick}
             >
-                {addresses.map((recipient, i) => (
-                    <AddressesItem
-                        key={i}
-                        recipient={recipient}
-                        onChange={handleExistingChange(recipient)}
-                        onRemove={handleExistingRemove(recipient)}
-                    />
-                ))}
+                {recipientsOrGroups.map((recipientsOrGroup, i) =>
+                    recipientsOrGroup.recipient ? (
+                        <AddressesRecipientItem
+                            key={i}
+                            recipient={recipientsOrGroup.recipient}
+                            onChange={handleRecipientChange(recipientsOrGroup.recipient)}
+                            onRemove={handleRecipientRemove(recipientsOrGroup.recipient)}
+                        />
+                    ) : (
+                        <AddressesGroupItem
+                            key={i}
+                            recipientGroup={recipientsOrGroup.group}
+                            contacts={contacts}
+                            onChange={handleGroupChange(recipientsOrGroup.group)}
+                            onRemove={handleGroupRemove(recipientsOrGroup.group)}
+                        />
+                    )
+                )}
                 <div className="flex-item-fluid">
                     <Input
                         id={id}

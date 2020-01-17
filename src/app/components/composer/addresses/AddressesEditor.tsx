@@ -1,23 +1,33 @@
 import React, { useState, MutableRefObject } from 'react';
 import { c } from 'ttag';
-import { Label, generateUID, Button, Tooltip, classnames, useModals, useContactEmails } from 'react-components';
+import { Label, generateUID, Button, Tooltip, classnames, useModals } from 'react-components';
 
-import { MessageExtended, RecipientType, Recipient } from '../../../models/message';
+import { MessageExtended } from '../../../models/message';
 import AddressesInput from './AddressesInput';
-import AddressesContactsModals from './AddressesContactsModal';
-import { ContactEmail } from '../../../models/contact';
+import AddressesContactsModal from './AddressesContactsModal';
+import { ContactEmail, ContactGroup } from '../../../models/contact';
+import { RecipientType, Recipient } from '../../../models/address';
 
 interface Props {
     message: MessageExtended;
+    contacts: ContactEmail[];
+    contactGroups: ContactGroup[];
     onChange: (message: MessageExtended) => void;
     expanded: boolean;
     toggleExpanded: () => void;
     addressesFocusRef: MutableRefObject<() => void>;
 }
 
-const AddressesEditor = ({ message, onChange, expanded, toggleExpanded, addressesFocusRef }: Props) => {
+const AddressesEditor = ({
+    message,
+    contacts,
+    contactGroups,
+    onChange,
+    expanded,
+    toggleExpanded,
+    addressesFocusRef
+}: Props) => {
     const [uid] = useState(generateUID('composer'));
-    const [contacts, loading]: [ContactEmail[], boolean] = useContactEmails();
     const { createModal } = useModals();
 
     const handleChange = (type: RecipientType) => (value: Recipient[]) => {
@@ -26,15 +36,11 @@ const AddressesEditor = ({ message, onChange, expanded, toggleExpanded, addresse
 
     const handleContactModal = (type: RecipientType) => async () => {
         const recipients = await new Promise((resolve) => {
-            createModal(<AddressesContactsModals inputValue={message.data?.[type]} onSubmit={resolve} />);
+            createModal(<AddressesContactsModal inputValue={message.data?.[type]} onSubmit={resolve} />);
         });
 
         onChange({ data: { [type]: recipients } });
     };
-
-    if (loading) {
-        return null;
-    }
 
     return (
         <div className="flex flex-row flex-nowrap flex-items-start pl0-5 mb0-5">
@@ -64,10 +70,11 @@ const AddressesEditor = ({ message, onChange, expanded, toggleExpanded, addresse
                 <div className="flex flex-row w100 composer-addresses-container-line">
                     <AddressesInput
                         id={`to-${uid}`}
-                        addresses={message.data?.ToList}
+                        recipients={message.data?.ToList}
                         onChange={handleChange('ToList')}
                         addressesFocusRef={addressesFocusRef}
                         contacts={contacts}
+                        contactGroups={contactGroups}
                     />
                     <Tooltip originalPlacement="left" title={c('Title').t`CC BCC`}>
                         <Button
@@ -82,17 +89,19 @@ const AddressesEditor = ({ message, onChange, expanded, toggleExpanded, addresse
                         <div className="flex flex-row w100 mt0-5 composer-addresses-container-line">
                             <AddressesInput
                                 id={`cc-${uid}`}
-                                addresses={message.data?.CCList}
+                                recipients={message.data?.CCList}
                                 onChange={handleChange('CCList')}
                                 contacts={contacts}
+                                contactGroups={contactGroups}
                             />
                         </div>
                         <div className="flex flex-row w100 mt0-5 composer-addresses-container-line">
                             <AddressesInput
                                 id={`bcc-${uid}`}
-                                addresses={message.data?.BCCList}
+                                recipients={message.data?.BCCList}
                                 onChange={handleChange('BCCList')}
                                 contacts={contacts}
+                                contactGroups={contactGroups}
                             />
                         </div>
                     </>

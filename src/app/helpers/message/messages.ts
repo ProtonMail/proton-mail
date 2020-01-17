@@ -3,7 +3,7 @@ import { hasBit, setBit } from 'proton-shared/lib/helpers/bitset';
 import { identity } from 'proton-shared/lib/helpers/function';
 
 import { MESSAGE_FLAGS, SIGNATURE_START } from '../../constants';
-import { Message, Recipient, MessageExtended } from '../../models/message';
+import { Message, MessageExtended } from '../../models/message';
 import { toText } from '../parserHtml';
 
 const {
@@ -64,14 +64,13 @@ export const isEO = (message: Message = {}) => !!message.Password;
 
 export const addReceived = (Flags = 0) => setBit(Flags, MESSAGE_FLAGS.FLAG_RECEIVED);
 
-export const getRecipientLabel = ({ Address, Name }: Recipient) => Name || Address || '';
-export const getSenderLabel = ({ Sender = {} }: Message = {}) => getRecipientLabel(Sender);
+export const getSender = ({ Sender = {} }: Message = {}) => Sender;
 export const getRecipients = ({ ToList = [], CCList = [], BCCList = [] }: Message = {}) => [
     ...ToList,
     ...CCList,
     ...BCCList
 ];
-export const getRecipientsLabels = (message: Message = {}) => getRecipients(message).map(getRecipientLabel);
+// export const getRecipientsLabels = (message: Message = {}) => getRecipients(message).map(getRecipientLabel);
 export const getRecipientsAddresses = (message: Message = {}) =>
     getRecipients(message)
         .map(({ Address }) => Address || '')
