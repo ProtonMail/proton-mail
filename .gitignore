@@ -33,3 +33,4 @@ env.json
 .env
 po/i18n.txt
 po/template.pot
+src/app/config.ts
