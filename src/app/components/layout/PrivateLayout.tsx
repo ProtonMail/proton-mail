@@ -1,12 +1,12 @@
 import React, { useRef, useState, useEffect, ReactNode } from 'react';
 import { c } from 'ttag';
 import { AppsSidebar, StorageSpaceStatus, MainAreaContext, Href } from 'react-components';
-import { normalize } from 'proton-shared/lib/helpers/string';
 
 import PrivateHeader from '../header/PrivateHeader';
 import PrivateSidebar from '../sidebar/PrivateSidebar';
 import { Location, History } from 'history';
 import { OnCompose } from '../../containers/ComposerContainer';
+import { setSearchParametersInUrl } from '../../helpers/mailboxUrl';
 
 interface Props {
     children: ReactNode;
@@ -20,8 +20,13 @@ const PrivateLayout = ({ children, location, history, labelID, onCompose }: Prop
     const mainAreaRef = useRef<HTMLDivElement>(null);
     const [expanded, setExpand] = useState(false);
 
-    const handleSearch = (keyword: string) => {
-        console.log(normalize(keyword));
+    const handleSearch = (keyword = '') => {
+        // keyword:test from:gibolin@protonmail.com to:gibolin@protonmail.com begin:20200122 end:20200128
+        const trimmed = keyword.trim();
+
+        if (trimmed) {
+            history.push(setSearchParametersInUrl(location, trimmed));
+        }
     };
 
     useEffect(() => {

@@ -1,5 +1,7 @@
 import { VIEW_LAYOUT, VIEW_MODE, MAILBOX_LABEL_IDS } from 'proton-shared/lib/constants';
 
+import { SearchParameters } from '../models/tools';
+
 interface MailSettings {
     ViewLayout?: number;
     ViewMode?: number;
@@ -8,7 +10,11 @@ interface MailSettings {
 export const isColumnMode = ({ ViewLayout = VIEW_LAYOUT.COLUMN }: MailSettings = {}) =>
     ViewLayout === VIEW_LAYOUT.COLUMN;
 
-export const isConversationMode = (labelID = '', { ViewMode = VIEW_MODE.GROUP }: MailSettings = {}) => {
+export const isConversationMode = (
+    labelID = '',
+    { ViewMode = VIEW_MODE.GROUP }: MailSettings = {},
+    searchParams: SearchParameters = {}
+) => {
     const alwaysMessageLabels = [
         MAILBOX_LABEL_IDS.DRAFTS,
         MAILBOX_LABEL_IDS.ALL_DRAFTS,
@@ -16,5 +22,9 @@ export const isConversationMode = (labelID = '', { ViewMode = VIEW_MODE.GROUP }:
         MAILBOX_LABEL_IDS.ALL_SENT
     ];
 
-    return !alwaysMessageLabels.includes(labelID as MAILBOX_LABEL_IDS) && ViewMode === VIEW_MODE.GROUP;
+    return (
+        !alwaysMessageLabels.includes(labelID as MAILBOX_LABEL_IDS) &&
+        ViewMode === VIEW_MODE.GROUP &&
+        !Object.keys(searchParams).length
+    );
 };

@@ -1,7 +1,8 @@
-import { Sort, Filter } from '../models/tools';
+import { Sort, Filter, SearchParameters } from '../models/tools';
 import { getSearchParams, changeSearchParams } from './url';
 import { Location } from 'history';
 import { getHumanLabelID } from './labels';
+import { isNumber } from 'proton-shared/lib/helpers/validators';
 
 export const setPathInUrl = (location: Location, labelID: string, elementID?: string): Location => {
     const urlFragment = elementID === undefined ? '' : `/${elementID}`;
@@ -35,6 +36,13 @@ const stringToSort = (string: string | undefined): Sort => {
     }
 };
 
+const stringToInt = (string: string | undefined): number | undefined => {
+    if (string === undefined) {
+        return undefined;
+    }
+    return isNumber(string) ? parseInt(string, 10) : undefined;
+};
+
 const sortToString = (sort: Sort): string | undefined =>
     sort.sort === 'Time' ? (sort.desc ? undefined : 'date') : sort.desc ? '-size' : 'size';
 
@@ -58,6 +66,20 @@ export const sortFromUrl = (location: Location) => stringToSort(getSearchParams(
 
 export const filterFromUrl = (location: Location) => stringToFilter(getSearchParams(location).filter);
 
+export const extractSearchParameters = (location: Location): SearchParameters => {
+    const { address, from, to, keyword, begin, end, attachments, wildcard } = getSearchParams(location);
+    return {
+        address,
+        from,
+        to,
+        keyword,
+        begin: stringToInt(begin),
+        end: stringToInt(end),
+        attachments: stringToInt(attachments),
+        wildcard: stringToInt(wildcard)
+    };
+};
+
 export const setPageInUrl = (location: Location, page: number) =>
     changeSearchParams(location, { page: page === 0 ? undefined : String(page + 1) });
 
@@ -66,3 +88,22 @@ export const setSortInUrl = (location: Location, sort: Sort) =>
 
 export const setFilterInUrl = (location: Location, filter: Filter) =>
     changeSearchParams(location, { filter: filterToString(filter) });
+
+export const setSearchParametersInUrl = (location: Location, search: string) => {
+    const keyword = search.trim();
+    const searchParameters = keyword.split(' ').reduce((acc, str: string) => {
+        const [key = '', value = ''] = str.split(':');
+
+        if (key && value) {
+            acc[key] = value;
+        }
+
+        return acc;
+    }, {} as { [key: string]: string });
+
+    if (!Object.keys(searchParameters).length && keyword) {
+        return changeSearchParams(location, { keyword });
+    }
+
+    return changeSearchParams(location, searchParameters);
+};

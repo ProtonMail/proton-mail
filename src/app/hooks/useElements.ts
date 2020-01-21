@@ -18,12 +18,28 @@ interface Options {
     page: Page;
     sort: Sort;
     filter: Filter;
+    address?: string;
+    from?: string;
+    to?: string;
+    keyword?: string;
+    begin?: number;
+    end?: number;
+    attachments?: number;
+    wildcard?: number;
 }
 
 interface CacheParams {
     labelID: string;
     sort: Sort;
     filter: Filter;
+    address?: string;
+    from?: string;
+    to?: string;
+    keyword?: string;
+    begin?: number;
+    end?: number;
+    attachments?: number;
+    wildcard?: number;
 }
 
 interface Cache {
@@ -38,6 +54,14 @@ const emptyCache = (page: Page, params: CacheParams): Cache => ({ params, page, 
 export const useElements = ({
     conversationMode,
     labelID,
+    address,
+    from,
+    to,
+    keyword,
+    begin,
+    end,
+    attachments,
+    wildcard,
     page,
     sort,
     filter
@@ -45,7 +69,21 @@ export const useElements = ({
     const api = useApi();
     const { subscribe } = useEventManager();
     const [loading, setLoading] = useState(false);
-    const [localCache, setLocalCache] = useState<Cache>(emptyCache(page, { labelID, sort, filter }));
+    const [localCache, setLocalCache] = useState<Cache>(
+        emptyCache(page, {
+            labelID,
+            sort,
+            filter,
+            address,
+            from,
+            to,
+            keyword,
+            begin,
+            end,
+            attachments,
+            wildcard
+        })
+    );
 
     // Compute the conversations list from the cache
     const elements = useMemo(() => {
@@ -67,7 +105,17 @@ export const useElements = ({
     const total = useMemo(() => localCache.page.total, [localCache.page.total]);
 
     const paramsChanged = () =>
-        labelID !== localCache.params.labelID || sort !== localCache.params.sort || filter !== localCache.params.filter;
+        labelID !== localCache.params.labelID ||
+        sort !== localCache.params.sort ||
+        filter !== localCache.params.filter ||
+        address !== localCache.params.address ||
+        from !== localCache.params.from ||
+        to !== localCache.params.to ||
+        keyword !== localCache.params.keyword ||
+        begin !== localCache.params.begin ||
+        end !== localCache.params.end ||
+        attachments !== localCache.params.attachments ||
+        wildcard !== localCache.params.wildcard;
 
     const pageCached = () => localCache.pages.includes(page.page);
 
@@ -96,20 +144,19 @@ export const useElements = ({
                 LabelID: labelID,
                 Sort: sort.sort,
                 Desc: sort.desc ? 1 : 0,
-                // Begin,
-                // End,
+                Begin: begin,
+                End: end,
                 // BeginID,
                 // EndID,
-                // Keyword,
-                // To,
-                // From,
+                Keyword: keyword,
+                To: to,
+                From: from,
                 // Subject,
-                // Attachments,
-                // Starred,
-                Unread: filter.Unread
-                // AddressID,
+                Attachments: attachments,
+                Unread: filter.Unread,
+                AddressID: address,
                 // ID,
-                // AutoWildcard
+                AutoWildcard: wildcard
             } as any)
         );
         return {
@@ -150,7 +197,7 @@ export const useElements = ({
     useEffect(() => {
         shouldResetCache() && resetCache();
         shouldSendRequest() && load();
-    }, [labelID, page, sort, filter]);
+    }, [labelID, page, sort, filter, address, from, to, keyword, begin, end, attachments, wildcard]);
 
     // Listen to event manager and update de cache
     useEffect(
@@ -161,8 +208,6 @@ export const useElements = ({
                     const Counts: ElementCountEvent[] = conversationMode ? ConversationCounts : MessageCounts;
 
                     const count = Counts.find((count) => count.LabelID === labelID);
-
-                    console.log('event', Elements, count);
 
                     const { toDelete, toUpdate, toCreate } = Elements.reduce(
                         (acc, event) => {

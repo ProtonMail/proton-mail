@@ -13,9 +13,19 @@ import {
 import { c } from 'ttag';
 
 import AdvancedSearchDropdown from './AdvancedSearchDropdown';
+import { extractSearchParameters } from '../../helpers/mailboxUrl';
 
 const PrivateHeader = ({ location, history, expanded, onToggleExpand, onSearch }) => {
     const [{ hasPaidMail }] = useUser();
+    const searchParameters = extractSearchParameters(location);
+    const searchValue = Object.entries(searchParameters)
+        .reduce((acc, [key, value]) => {
+            if (value) {
+                acc.push(`${key}:${value}`);
+            }
+            return acc;
+        }, [])
+        .join(' ');
     return (
         <header className="header flex flex-nowrap reset4print">
             <MainLogo url="/inbox" className="nomobile" />
@@ -23,6 +33,7 @@ const PrivateHeader = ({ location, history, expanded, onToggleExpand, onSearch }
             <Searchbox
                 placeholder={c('Placeholder').t`Search messages`}
                 onSearch={onSearch}
+                value={searchValue}
                 advanced={<AdvancedSearchDropdown location={location} history={history} />}
             />
             <TopNavbar>
