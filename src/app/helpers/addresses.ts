@@ -160,6 +160,7 @@ export const getAddressFromPlusAlias = (addresses: Address[], email = ''): Addre
 
 /**
  * Return list of addresses available in the FROM select
+ * Reference: Angular/src/app/composer/factories/composerFromModel.js
  */
 export const getFromAdresses = (addresses: Address[], originalTo = '') => {
     const result = addresses

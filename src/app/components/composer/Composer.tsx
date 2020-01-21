@@ -1,5 +1,5 @@
-import React, { useState, useEffect, CSSProperties, useRef } from 'react';
-import { classnames, useToggle, useWindowSize, useLoading, Loader, useNotifications, useApi } from 'react-components';
+import React, { useState, useEffect, CSSProperties, useRef, useCallback } from 'react';
+import { classnames, useToggle, useWindowSize, useNotifications, useApi } from 'react-components';
 import { c } from 'ttag';
 
 import { MessageExtended } from '../../models/message';
@@ -17,7 +17,7 @@ import {
     COMPOSER_HEIGHT,
     COMPOSER_SWITCH_MODE
 } from '../../containers/ComposerContainer';
-import { noop } from 'proton-shared/lib/helpers/function';
+import { noop, debounce } from 'proton-shared/lib/helpers/function';
 import { getRecipients } from '../../helpers/message/messages';
 import { upload, ATTACHMENT_ACTION } from '../../helpers/attachment/attachmentUploader';
 import { Attachment } from '../../models/attachment';
@@ -28,7 +28,7 @@ import { removeAttachment } from '../../api/attachments';
  * Almost a standard deep merge but simplified with specific needs
  * m2 props will override those from m1
  */
-const mergeMessages = (m1: MessageExtended, m2: MessageExtended) => ({
+const mergeMessages = (m1: MessageExtended, m2: MessageExtended): MessageExtended => ({
     ...m1,
     ...m2,
     data: { ...m1.data, ...m2.data }
@@ -83,11 +83,11 @@ const Composer = ({
     const { state: minimized, toggle: toggleMinimized } = useToggle(false);
     const { state: maximized, toggle: toggleMaximized } = useToggle(false);
     const [modelMessage, setModelMessage] = useState<MessageExtended>(inputMessage);
-    const [loading, withLoading] = useLoading(false);
-    const [syncedMessage, { initialize, createDraft, saveDraft, send, deleteDraft }] = useMessage(
-        inputMessage.data,
-        mailSettings
-    );
+    const [
+        syncedMessage,
+        { initialize, createDraft, saveDraft, send, deleteDraft },
+        { lock: syncLock, current: syncActivity }
+    ] = useMessage(inputMessage.data, mailSettings);
     const [width, height] = useWindowSize();
     const { createNotification } = useNotifications();
 
@@ -96,20 +96,21 @@ const Composer = ({
     const addressesFocusRef = useRef<() => void>(noop);
     const contentFocusRef = useRef<() => void>(noop);
 
-    const showLoader = loading || !modelMessage.data?.ID || !modelMessage.content;
-
     useEffect(() => {
-        if (!loading && !syncedMessage.data?.ID) {
-            withLoading(createDraft(inputMessage));
+        if (!syncLock && !syncedMessage.data?.ID) {
+            createDraft(inputMessage);
         }
 
-        if (!loading && syncedMessage.data?.ID && typeof syncedMessage.initialized === 'undefined') {
-            withLoading(initialize());
+        if (!syncLock && syncedMessage.data?.ID && typeof syncedMessage.initialized === 'undefined') {
+            initialize();
         }
 
-        setModelMessage(mergeMessages(modelMessage, syncedMessage));
+        if (modelMessage.content === undefined) {
+            setModelMessage({ ...modelMessage, content: syncedMessage.content });
+        }
+
         onChange(syncedMessage);
-    }, [loading, syncedMessage]);
+    }, [syncLock, syncedMessage]);
 
     useEffect(() => {
         if (!maximized && height - COMPOSER_VERTICAL_GUTTER - HEADER_HEIGHT < COMPOSER_HEIGHT - COMPOSER_SWITCH_MODE) {
@@ -122,10 +123,6 @@ const Composer = ({
 
     // Manage focus at opening
     useEffect(() => {
-        if (showLoader) {
-            return;
-        }
-
         setTimeout(() => {
             if (getRecipients(syncedMessage.data).length === 0) {
                 addressesFocusRef.current();
@@ -133,11 +130,19 @@ const Composer = ({
                 contentFocusRef.current();
             }
         });
-    }, [showLoader]);
+    }, [syncedMessage]);
 
+    const autoSave = useCallback(
+        debounce(async (message: MessageExtended) => {
+            await saveDraft(message);
+        }, 2000),
+        [saveDraft]
+    );
     const handleChange = (message: MessageExtended) => {
         console.log('change', message);
-        setModelMessage(mergeMessages(modelMessage, message));
+        const newModelMessage = mergeMessages(modelMessage, message);
+        setModelMessage(newModelMessage);
+        autoSave(newModelMessage);
     };
     const save = async (messageToSave = modelMessage) => {
         await saveDraft(messageToSave);
@@ -168,9 +173,9 @@ const Composer = ({
         onClose();
     };
     const handleDelete = async () => {
+        onClose();
         await deleteDraft();
         createNotification({ text: c('Info').t`Message discarded` });
-        onClose();
     };
     const handleClick = async () => {
         if (minimized) {
@@ -179,8 +184,8 @@ const Composer = ({
         onFocus();
     };
     const handleClose = async () => {
-        await save();
         onClose();
+        await save();
     };
 
     const style = computeStyle(inputStyle, minimized, maximized, width, height);
@@ -196,43 +201,39 @@ const Composer = ({
             onFocus={onFocus}
             onClick={handleClick}
         >
-            {showLoader ? (
-                <Loader />
-            ) : (
+            <ComposerTitleBar
+                message={modelMessage}
+                minimized={minimized}
+                maximized={maximized}
+                toggleMinimized={toggleMinimized}
+                toggleMaximized={toggleMaximized}
+                onClose={handleClose}
+            />
+            {!minimized && (
                 <>
-                    <ComposerTitleBar
+                    <ComposerMeta
                         message={modelMessage}
-                        minimized={minimized}
-                        maximized={maximized}
-                        toggleMinimized={toggleMinimized}
-                        toggleMaximized={toggleMaximized}
-                        onClose={handleClose}
+                        addresses={addresses}
+                        onChange={handleChange}
+                        addressesBlurRef={addressesBlurRef}
+                        addressesFocusRef={addressesFocusRef}
                     />
-                    {!minimized && (
-                        <>
-                            <ComposerMeta
-                                message={modelMessage}
-                                addresses={addresses}
-                                onChange={handleChange}
-                                addressesBlurRef={addressesBlurRef}
-                                addressesFocusRef={addressesFocusRef}
-                            />
-                            <ComposerContent
-                                message={modelMessage}
-                                onChange={handleChange}
-                                onFocus={addressesBlurRef.current}
-                                onRemoveAttachment={handleRemoveAttachment}
-                                contentFocusRef={contentFocusRef}
-                            />
-                            <ComposerActions
-                                message={modelMessage}
-                                onAddAttachments={handleAddAttachments}
-                                onSave={handleSave}
-                                onSend={handleSend}
-                                onDelete={handleDelete}
-                            />
-                        </>
-                    )}
+                    <ComposerContent
+                        message={modelMessage}
+                        onChange={handleChange}
+                        onFocus={addressesBlurRef.current}
+                        onRemoveAttachment={handleRemoveAttachment}
+                        contentFocusRef={contentFocusRef}
+                    />
+                    <ComposerActions
+                        message={modelMessage}
+                        lock={syncLock}
+                        activity={syncActivity}
+                        onAddAttachments={handleAddAttachments}
+                        onSave={handleSave}
+                        onSend={handleSend}
+                        onDelete={handleDelete}
+                    />
                 </>
             )}
         </div>

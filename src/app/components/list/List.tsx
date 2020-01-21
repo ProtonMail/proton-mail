@@ -18,12 +18,14 @@ interface Props {
 }
 
 const List = ({ labelID, elementID, mailSettings = {}, elements = [], checkedIDs = [], onCheck, onClick }: Props) => {
-    const [contacts]: [ContactEmail[]] = useContactEmails();
-    const [contactGroups] = useContactGroups();
+    const [contacts, loadingContacts]: [ContactEmail[], boolean] = useContactEmails();
+    const [contactGroups, loadingGroups] = useContactGroups();
     const [labels] = useLabels();
     const [lastChecked, setLastChecked] = useState(); // Store ID of the last element ID checked
 
-    console.log('List', contacts, contactGroups);
+    if (loadingContacts || loadingGroups) {
+        return null;
+    }
 
     const handleCheck = (elementID: string) => (event: ChangeEvent) => {
         const target = event.target as HTMLInputElement;

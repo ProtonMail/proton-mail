@@ -196,6 +196,12 @@
     }
 }
 
+// Keep minimal size when activity label is empty
+.composer-send-button {
+    min-height: 34px;
+    min-width: 39px;
+}
+
 .composer-attachments-expand {
     overflow: auto;
     border-top: 1px solid #dde6ec;

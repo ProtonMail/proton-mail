@@ -82,7 +82,8 @@ const AddressesInput = ({ id, recipients = [], onChange, addressesFocusRef, cont
             confirmInput();
             event.preventDefault(); // Prevent tab to switch field
         }
-        if (event.keyCode === 8 && inputModel.length === 0) {
+        // Backspace
+        if (event.keyCode === 8 && inputModel.length === 0 && recipientsOrGroups.length > 0) {
             const last = recipientsOrGroups[recipientsOrGroups.length - 1];
             if (last.recipient) {
                 handleRecipientRemove(last.recipient)();

@@ -1,4 +1,5 @@
 import { useContext, useEffect, useCallback, useState, useMemo } from 'react';
+import { c } from 'ttag';
 import { useApi, useEventManager } from 'react-components';
 import {
     getMessage,
@@ -40,6 +41,7 @@ export interface Computation {
 }
 
 interface MessageActions {
+    load: () => Promise<void>;
     initialize: () => Promise<void>;
     loadRemoteImages: () => Promise<void>;
     loadEmbeddedImages: () => Promise<void>;
@@ -47,6 +49,11 @@ interface MessageActions {
     saveDraft: (message: MessageExtended) => Promise<void>;
     send: (message: MessageExtended) => Promise<void>;
     deleteDraft: () => Promise<void>;
+}
+
+interface MessageActivity {
+    lock: boolean;
+    current: string;
 }
 
 /**
@@ -64,7 +71,22 @@ export const mergeMessages = (messageState: MessageExtended, messageModel: Messa
     return message;
 };
 
-export const useMessage = (inputMessage: Message = {}, mailSettings: any): [MessageExtended, MessageActions] => {
+/**
+ * Only takes technical stuff from the updated message
+ */
+export const mergeSavedMessage = (messageSaved: Message = {}, messageReturned: Message) => ({
+    ...messageSaved,
+    ID: messageReturned.ID,
+    ParentID: messageReturned.ParentID,
+    Time: messageReturned.Time,
+    ContextTime: messageReturned.ContextTime,
+    ConversationID: messageReturned.ConversationID
+});
+
+export const useMessage = (
+    inputMessage: Message = {},
+    mailSettings: any
+): [MessageExtended, MessageActions, MessageActivity] => {
     const api = useApi();
     const { call } = useEventManager();
     const cache = useContext(MessageContext);
@@ -76,6 +98,7 @@ export const useMessage = (inputMessage: Message = {}, mailSettings: any): [Mess
     const [message, setMessage] = useState<MessageExtended>(
         cache.has(messageID) ? cache.get(messageID) : { data: inputMessage }
     );
+    const [messageActivity, setMessageActivity] = useState<MessageActivity>({ lock: false, current: '' });
 
     const decrypt = useDecryptMessage();
     const encrypt = useEncryptMessage();
@@ -109,7 +132,7 @@ export const useMessage = (inputMessage: Message = {}, mailSettings: any): [Mess
         transformBlockquotes,
         transformStylesheet,
         transformRemote
-    ];
+    ] as Computation[];
 
     const loadData = useCallback(
         async ({ data: message = {} }: MessageExtended) => {
@@ -149,7 +172,7 @@ export const useMessage = (inputMessage: Message = {}, mailSettings: any): [Mess
                 } as any)
             );
             call();
-            return { data: Message };
+            return { data: mergeSavedMessage(message.data, Message) };
         },
         [api]
     );
@@ -158,7 +181,7 @@ export const useMessage = (inputMessage: Message = {}, mailSettings: any): [Mess
         async (message: MessageExtended = {}) => {
             const { Message } = await api(updateDraft(message.data?.ID, message.data));
             call();
-            return { data: Message };
+            return { data: mergeSavedMessage(message.data, Message) };
         },
         [api]
     );
@@ -172,12 +195,27 @@ export const useMessage = (inputMessage: Message = {}, mailSettings: any): [Mess
         [api]
     );
 
+    const activities = new Map<Computation, string>([
+        [encrypt, c('Action').t`Encrypting`],
+        [create, c('Action').t`Creating`],
+        [update, c('Action').t`Saving`],
+        [sendMessage, c('Action').t`Sending`],
+        [deleteRequest, c('Action').t`Deleting`]
+    ]);
+    transforms.forEach((transform) => activities.set(transform, c('Action').t`Processing`));
+
     /**
      * Run a computation on a message, wait until it finish
      * Return the message extanded with the result of the computation
      */
     const runSingle = useCallback(
         async (message: MessageExtended, compute: Computation) => {
+            let current = '';
+            if (activities.has(compute)) {
+                current = activities.get(compute) as string;
+            }
+            setMessageActivity({ lock: true, current });
+
             const result = (await compute(message, { cache: computeCache, mailSettings, api, attachmentsCache })) || {};
 
             if (result.document) {
@@ -189,75 +227,92 @@ export const useMessage = (inputMessage: Message = {}, mailSettings: any): [Mess
         [cache]
     );
 
+    type CacheUpdate = (newMessage: MessageExtended) => Promise<void> | void;
+
+    const simpleUpdateCache: CacheUpdate = (newMessage: MessageExtended) => {
+        cache.set(messageID, newMessage);
+    };
+
     /**
      * Run a list of computation sequentially
+     * updateCacheCallback is used to update the cache value after computations but before unlocking the message
+     * A callback is needed here because it's better to position precisely the moment where to update the cache
      */
     const run = useCallback(
-        async (message: MessageExtended, computes: Computation[]) => {
-            return computes.reduce(async (messagePromise: Promise<MessageExtended>, compute: Computation) => {
-                return runSingle(await messagePromise, compute);
-            }, Promise.resolve(message));
+        async (
+            message: MessageExtended,
+            computes: Computation[],
+            updateCacheCallback: CacheUpdate = simpleUpdateCache
+        ) => {
+            setMessageActivity({ lock: true, current: '' });
+            const result = await computes.reduce(
+                async (messagePromise: Promise<MessageExtended>, compute: Computation) => {
+                    return runSingle(await messagePromise, compute);
+                },
+                Promise.resolve(message)
+            );
+            await updateCacheCallback(result);
+            // Allow the cache update to be dispatched in React before resolving (simplify several race conditions)
+            await wait(0);
+            setMessageActivity({ lock: false, current: '' });
+            return result;
         },
         [runSingle, cache]
     );
 
+    const load = useCallback(async () => {
+        await run(message, [loadData]);
+    }, [messageID, message, run, cache]);
+
     const initialize = useCallback(async () => {
         cache.set(messageID, { ...message, initialized: false });
-        const newMessage = await run(message, [loadData, decrypt, markAsRead, ...transforms] as Computation[]);
-        cache.set(messageID, { ...newMessage, initialized: true });
+        await run(
+            message,
+            [loadData, decrypt, markAsRead, ...transforms] as Computation[],
+            (newMessage: MessageExtended) => cache.set(messageID, { ...newMessage, initialized: true })
+        );
     }, [messageID, message, run, cache]);
 
     const loadRemoteImages = useCallback(async () => {
-        const newMessage = await run({ ...message, showRemoteImages: true }, [transformRemote as Computation]);
-        cache.set(messageID, newMessage);
+        await run({ ...message, showRemoteImages: true }, [transformRemote as Computation]);
     }, [messageID, message, message, run, cache]);
 
     const loadEmbeddedImages = useCallback(async () => {
-        const newMessage = await run({ ...message, showEmbeddedImages: true }, [transformEmbedded]);
-        cache.set(messageID, newMessage);
+        await run({ ...message, showEmbeddedImages: true }, [transformEmbedded]);
     }, [messageID, message, run, cache]);
 
     const createDraft = useCallback(
         async (message: MessageExtended) => {
-            const newMessage = await run(message, [encrypt, create] as Computation[]);
-            cache.set(newMessage.data?.ID || '', newMessage);
-            setMessageID(newMessage.data?.ID || '');
+            await run(message, [encrypt, create] as Computation[], (newMessage: MessageExtended) => {
+                cache.set(newMessage.data?.ID || '', newMessage);
+                setMessageID(newMessage.data?.ID || '');
+            });
         },
         [message, run, cache]
     );
 
     const saveDraft = useCallback(
         async (messageModel: MessageExtended) => {
-            const messageToSave = mergeMessages(message, messageModel);
-            const newMessage = await run(messageToSave, [encrypt, update]);
-            cache.set(messageID, newMessage);
-            // Allow the cache update to be dispatched in React before resolving (simplify several race conditions)
-            await wait(0);
+            await run(mergeMessages(message, messageModel), [encrypt, update]);
         },
         [message, run, cache]
     );
 
     const send = useCallback(
         async (messageModel: MessageExtended) => {
-            const messageToSave = mergeMessages(message, messageModel);
-            const newMessage = await run(messageToSave, [encrypt, update, sendMessage]);
-            cache.set(messageID, newMessage);
-            // Allow the cache update to be dispatched in React before resolving (simplify several race conditions)
-            await wait(0);
+            await run(mergeMessages(message, messageModel), [encrypt, update, sendMessage]);
         },
         [message, run, cache]
     );
 
     const deleteDraft = useCallback(async () => {
-        await run(message, [deleteRequest]);
-        cache.delete(messageID);
-        // Allow the cache update to be dispatched in React before resolving (simplify several race conditions)
-        await wait(0);
+        await run(message, [deleteRequest], () => cache.delete(messageID));
     }, [message, run, cache]);
 
     return [
         message,
         {
+            load,
             initialize,
             loadRemoteImages,
             loadEmbeddedImages,
@@ -265,6 +320,7 @@ export const useMessage = (inputMessage: Message = {}, mailSettings: any): [Mess
             saveDraft,
             send,
             deleteDraft
-        }
+        },
+        messageActivity
     ];
 };

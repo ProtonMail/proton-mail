@@ -54,8 +54,6 @@ const Item = ({
         getRecipientOrGroupLabel(recipientOrGroup, contacts)
     );
 
-    console.log('item', recipients);
-
     const { ViewLayout = VIEW_LAYOUT.COLUMN } = mailSettings;
     const isColumnMode = ViewLayout === VIEW_LAYOUT.COLUMN;
     const ItemLayout = isColumnMode ? ItemColumnLayout : ItemRowLayout;

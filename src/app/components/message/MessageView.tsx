@@ -28,9 +28,14 @@ const MessageView = ({
     conversationIndex = 0,
     onCompose
 }: Props) => {
-    const { state: expanded, set: setExpanded } = useToggle(initialExpand);
+    const draft = isDraft(inputMessage);
+
+    const { state: expanded, set: setExpanded } = useToggle(initialExpand && !draft);
     const elementRef = useRef<HTMLElement>(null);
-    const [message, { initialize, loadRemoteImages, loadEmbeddedImages }] = useMessage(inputMessage, mailSettings);
+    const [message, { load, initialize, loadRemoteImages, loadEmbeddedImages }] = useMessage(
+        inputMessage,
+        mailSettings
+    );
 
     const loaded = !!message?.initialized;
 
@@ -38,6 +43,7 @@ const MessageView = ({
         if (typeof message?.initialized === 'undefined') {
             await initialize();
         }
+
         // Don't scroll if it's the first message of the conversation and only on the first automatic expand
         if (conversationIndex !== 0 && initialExpand) {
             elementRef.current && elementRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -45,14 +51,14 @@ const MessageView = ({
     };
 
     useEffect(() => {
-        if (!loaded && expanded) {
+        if (!draft && !loaded && expanded) {
             prepareMessage();
         }
 
-        if (loaded && expanded && isDraft(message.data)) {
-            onCompose({ existingDraft: message });
+        if (draft && message.data?.Subject === undefined) {
+            load();
         }
-    }, [loaded, expanded]);
+    }, [message, loaded, expanded]);
 
     const handleLoadRemoteImages = async () => {
         await loadRemoteImages();
@@ -63,7 +69,11 @@ const MessageView = ({
     };
 
     const handleExpand = (value: boolean) => () => {
-        setExpanded(value);
+        if (draft) {
+            onCompose({ existingDraft: message });
+        } else {
+            setExpanded(value);
+        }
     };
 
     return (

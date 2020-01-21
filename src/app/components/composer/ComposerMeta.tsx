@@ -1,9 +1,11 @@
 import React, { useState, ChangeEvent, MutableRefObject } from 'react';
+import { c } from 'ttag';
 import { Label, Select, Input, generateUID } from 'react-components';
 
+import ComposerAddresses from './addresses/Addresses';
 import { MessageExtended } from '../../models/message';
 import { Address } from '../../models/address';
-import ComposerAddresses from './addresses/Addresses';
+import { getFromAdresses } from '../../helpers/addresses';
 
 interface Props {
     message: MessageExtended;
@@ -16,9 +18,10 @@ interface Props {
 const ComposerMeta = ({ message, addresses, onChange, addressesBlurRef, addressesFocusRef }: Props) => {
     const [uid] = useState(generateUID('composer'));
 
-    // TODO: Implement logic on available addresses
-    // Reference: Angular/src/app/composer/factories/composerFromModel.js
-    const addressesOptions = addresses.map((address: Address) => ({ text: address.Email, value: address.ID }));
+    const addressesOptions = getFromAdresses(addresses, message.originalTo).map((address: Address) => ({
+        text: address.Email,
+        value: address.ID
+    }));
 
     const handleFromChange = (event: ChangeEvent) => {
         const select = event.target as HTMLSelectElement;
@@ -33,13 +36,11 @@ const ComposerMeta = ({ message, addresses, onChange, addressesBlurRef, addresse
         onChange({ data: { Subject: input.value } });
     };
 
-    // console.log('Meta', message);
-
     return (
         <div className="composer-meta w100">
             <div className="flex flex-row flex-nowrap flex-items-center pl0-5 mb0-5">
                 <Label htmlFor={`from-${uid}`} className="composer-meta-label">
-                    From
+                    {c('Info').t`From`}
                 </Label>
                 <Select
                     id={`from-${uid}`}
@@ -57,11 +58,12 @@ const ComposerMeta = ({ message, addresses, onChange, addressesBlurRef, addresse
             />
             <div className="flex flex-row flex-nowrap flex-items-center pl0-5 mb0-5">
                 <Label htmlFor={`subject-${uid}`} className="composer-meta-label">
-                    Subject
+                    {c('Info').t`Subject`}
                 </Label>
                 <Input
                     id={`subject-${uid}`}
                     value={message.data?.Subject}
+                    placeholder={c('Placeholder').t`Subject`}
                     onChange={handleSubjectChange}
                     onFocus={addressesBlurRef.current}
                 />

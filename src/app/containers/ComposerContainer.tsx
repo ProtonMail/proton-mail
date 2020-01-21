@@ -5,10 +5,10 @@ import { range } from 'proton-shared/lib/helpers/array';
 
 import { MessageExtended } from '../models/message';
 import Composer from '../components/composer/Composer';
+import { MESSAGE_ACTIONS } from '../constants';
+import { useDraft } from '../hooks/useDraft';
 
 import '../components/composer/composer.scss';
-import { MESSAGE_ACTIONS } from '../constants';
-import { createNewDraft } from '../helpers/message/messageDraft';
 
 export const COMPOSER_WIDTH = 600;
 export const COMPOSER_HEIGHT = 520;
@@ -80,6 +80,7 @@ const ComposerContainer = ({ children }: Props) => {
     const [focusedMessage, setFocusedMessage] = useState<MessageExtended | undefined>();
     const [width, height] = useWindowSize();
     const { createNotification } = useNotifications();
+    const createDraft = useDraft();
 
     if (loadingSettings || loadingAddresses) {
         return null;
@@ -114,7 +115,7 @@ const ComposerContainer = ({ children }: Props) => {
 
         if (composeNew) {
             const { action, referenceMessage } = composeNew;
-            const newMessage = createNewDraft(action, referenceMessage, mailSettings, addresses);
+            const newMessage = createDraft(action, referenceMessage);
             setMessages([...messages, newMessage]);
             setFocusedMessage(newMessage);
         }

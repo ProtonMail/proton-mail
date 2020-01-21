@@ -204,10 +204,12 @@ export const createNewDraft = (
             Flags,
             Sender,
             AddressID,
-            ParentID
+            ParentID,
+            Unread: 0
         },
         content,
         action,
-        originalTo
+        originalTo,
+        initialized: true
     };
 };

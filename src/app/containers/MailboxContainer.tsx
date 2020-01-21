@@ -27,6 +27,8 @@ import PlaceholderView from '../components/view/PlaceholderView';
 import MessageOnlyView from '../components/message/MessageOnlyView';
 import { OnCompose } from './ComposerContainer';
 import { PAGE_SIZE } from '../constants';
+import { isMessage } from '../helpers/elements';
+import { isDraft } from '../helpers/message/messages';
 
 import './main-area.scss';
 
@@ -108,7 +110,12 @@ const MailboxContainer = ({
         return [];
     }, [checkedIDs, elementID]);
 
-    const handleElement = (element: Element) => history.push(setPathInUrl(location, labelID, element.ID));
+    const handleElement = (element: Element) => {
+        history.push(setPathInUrl(location, labelID, element.ID));
+        if (isMessage(element) && isDraft(element)) {
+            onCompose({ existingDraft: { data: element } });
+        }
+    };
     const handleBack = () => history.push(setPathInUrl(location, labelID));
     const handlePage = (pageNumber: number) => history.push(setPageInUrl(location, pageNumber));
     const handleSort = (sort: Sort) => history.push(setSortInUrl(location, sort));

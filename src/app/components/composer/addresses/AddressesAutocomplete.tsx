@@ -53,6 +53,9 @@ const AddressesAutocomplete = ({ inputRef, contacts, contactGroups, onSelect, cu
 
             (awesomplete as any).item = (text: string, input: string, itemId: string) =>
                 (Awesomplete.ITEM as any)(text.replace('<', '&lt;'), input, itemId);
+
+            // Prevent Awesomplete to open immediately
+            awesomplete.close();
         }
     }, [awesomplete, contacts, contactGroups, currentValue]);
 
@@ -69,6 +72,12 @@ const AddressesAutocomplete = ({ inputRef, contacts, contactGroups, onSelect, cu
     };
 
     useEventListener(inputRef, 'awesomplete-selectcomplete', handleSelect);
+
+    useEventListener(inputRef, 'click', () => {
+        if (awesomplete) {
+            awesomplete.open();
+        }
+    });
 
     return (
         <div className="composer-addresses-autocomplete flex-item-fluid relative" ref={containerRef}>

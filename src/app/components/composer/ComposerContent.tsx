@@ -26,8 +26,10 @@ const ComposerContent = ({ message, onChange, onFocus, onRemoveAttachment, conte
         contentFocusRef.current = inputRef.current?.focus || noop;
     }, []);
 
-    const handleChange = (content: string) => {
-        onChange({ content });
+    const handleChange = (content: string, delta: any, source: string) => {
+        if (source === 'user') {
+            onChange({ content });
+        }
     };
 
     const attachments = getAttachments(message.data);
@@ -36,7 +38,8 @@ const ComposerContent = ({ message, onChange, onFocus, onRemoveAttachment, conte
         <section className="composer-content flex-item-fluid w100 mb0-5 flex flex-column flex-nowrap">
             <ReactQuill
                 className="composer-quill w100 flex-item-fluid"
-                value={message.content}
+                value={message.content || ''}
+                readOnly={!message.content}
                 onChange={handleChange}
                 onFocus={onFocus}
                 ref={inputRef}
