@@ -62,7 +62,7 @@ const MailboxContainer = ({
     });
 
     const searchParams = getSearchParams(location);
-    const conversationMode = isConversationMode(inputLabelID, mailSettings, searchParams);
+    const conversationMode = isConversationMode(inputLabelID, mailSettings, extractSearchParameters(location));
     const searchParameters = useMemo<SearchParameters>(() => extractSearchParameters(location), [
         searchParams.address,
         searchParams.from,
