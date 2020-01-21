@@ -197,7 +197,7 @@ export const useElements = ({
     useEffect(() => {
         shouldResetCache() && resetCache();
         shouldSendRequest() && load();
-    }, [labelID, page, sort, filter, address, from, to, keyword, begin, end, attachments, wildcard]);
+    }, [labelID, page.page, sort, filter, address, from, to, keyword, begin, end, attachments, wildcard]);
 
     // Listen to event manager and update de cache
     useEffect(
