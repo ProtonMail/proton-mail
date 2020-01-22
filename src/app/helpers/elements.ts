@@ -5,6 +5,9 @@ import { Element } from '../models/element';
 import { Sort } from '../models/tools';
 import { Message } from '../models/message';
 import { isConversationMode } from './mailSettings';
+import { LabelCount, Label } from '../models/label';
+import { MailSettings } from '../models/utils';
+import { MAILBOX_LABEL_IDS } from 'proton-shared/lib/constants';
 
 export interface TypeParams {
     labelID?: string;
@@ -71,4 +74,20 @@ export const sort = (elements: Element[], sort: Sort, labelID: string) => {
         return sort.desc ? valueB - valueA : valueA - valueB;
     };
     return [...elements].sort((e1, e2) => compare(e1, e2));
+};
+
+export const getCounterMap = (
+    labels: Label[],
+    conversationCounters: LabelCount[],
+    messageCounters: LabelCount[],
+    mailSettings: MailSettings
+) => {
+    const result: { [labelID: string]: LabelCount | undefined } = {};
+    const labelIDs = [...Object.values(MAILBOX_LABEL_IDS), ...labels.map((label) => label.ID || '')];
+    labelIDs.forEach((labelID) => {
+        const conversationMode = isConversationMode(labelID, mailSettings);
+        const counters = conversationMode ? conversationCounters : messageCounters;
+        result[labelID] = counters.find((counter) => counter.LabelID === labelID);
+    });
+    return result;
 };
