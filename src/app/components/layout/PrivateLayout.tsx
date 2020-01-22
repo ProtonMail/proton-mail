@@ -23,10 +23,7 @@ const PrivateLayout = ({ children, location, history, labelID, onCompose }: Prop
     const handleSearch = (keyword = '') => {
         // keyword:test from:gibolin@protonmail.com to:gibolin@protonmail.com begin:20200122 end:20200128
         const trimmed = keyword.trim();
-
-        if (trimmed) {
-            history.push(setSearchParametersInUrl(location, trimmed));
-        }
+        history.push(setSearchParametersInUrl(location, trimmed));
     };
 
     useEffect(() => {
