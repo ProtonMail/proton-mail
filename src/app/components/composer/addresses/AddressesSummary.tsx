@@ -20,7 +20,7 @@ const AddressesSummary = ({ message: { data = {} }, contacts, contactGroups, onF
             <Label htmlFor={null} className="composer-meta-label color-pm-blue">
                 {c('Title').t`To`}
             </Label>
-            <div className="flex flex-row w100">
+            <div className="flex flex-row flex-item-fluid w100">
                 <span className="flex-item-fluid bordered-container flex composer-addresses-fakefield">
                     <span className="ellipsis mw100">
                         {recipientTypes.map((type) => {

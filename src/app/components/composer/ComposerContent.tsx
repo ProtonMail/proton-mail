@@ -7,6 +7,8 @@ import { getAttachments } from '../../helpers/message/messages';
 import AttachmentsList from './attachments/AttachmensList';
 import { Attachment } from '../../models/attachment';
 
+import 'react-quill/dist/quill.snow.css';
+
 const Block = Quill.import('blots/block');
 Block.tagName = 'div';
 Quill.register(Block);

@@ -66,7 +66,7 @@ const AddressesEditor = ({
                 )}
             </div>
 
-            <div className="flex flex-column w100">
+            <div className="flex flex-column flex-item-fluid w100">
                 <div className="flex flex-row w100 composer-addresses-container-line">
                     <AddressesInput
                         id={`to-${uid}`}
