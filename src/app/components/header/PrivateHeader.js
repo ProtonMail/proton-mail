@@ -41,6 +41,7 @@ const PrivateHeader = ({ location, history, expanded, onToggleExpand, onSearch }
             <MainLogo url="/inbox" className="nomobile" />
             <Hamburger expanded={expanded} onToggle={onToggleExpand} />
             <Searchbox
+                delay={0}
                 placeholder={c('Placeholder').t`Search messages`}
                 onSearch={onSearch}
                 onChange={updateValue}
