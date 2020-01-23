@@ -101,8 +101,8 @@ export const setSearchParametersInUrl = (location: Location, search: string) => 
         return acc;
     }, {} as { [key: string]: string });
 
-    if (!Object.keys(searchParameters).length && keyword) {
-        return changeSearchParams(location, { keyword });
+    if (!Object.keys(searchParameters).length) {
+        return changeSearchParams(location, { keyword: keyword === 'keyword:' ? undefined : keyword });
     }
 
     return changeSearchParams(location, searchParameters);
