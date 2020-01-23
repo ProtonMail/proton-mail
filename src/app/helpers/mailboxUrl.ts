@@ -102,7 +102,7 @@ export const setSearchParametersInUrl = (location: Location, search: string) => 
     }, {} as { [key: string]: string });
 
     if (!Object.keys(searchParameters).length) {
-        return changeSearchParams(location, { keyword: keyword === 'keyword:' ? undefined : keyword });
+        return changeSearchParams(location, { keyword: !keyword || keyword === 'keyword:' ? undefined : keyword });
     }
 
     return changeSearchParams(location, searchParameters);

@@ -165,7 +165,22 @@ export const useElements = ({
         };
     };
 
-    const resetCache = () => setLocalCache(emptyCache(page, { labelID, sort, filter }));
+    const resetCache = () =>
+        setLocalCache(
+            emptyCache(page, {
+                labelID,
+                sort,
+                filter,
+                address,
+                from,
+                to,
+                keyword,
+                begin,
+                end,
+                attachments,
+                wildcard
+            })
+        );
 
     const load = async () => {
         setLoading(true);
