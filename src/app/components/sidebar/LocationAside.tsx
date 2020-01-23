@@ -23,7 +23,7 @@ const LocationAside = ({ labelID, counterMap, currentLabelID, refreshLabelID }: 
                     name="reload"
                 />
             )}
-            {unread && <span className="navigation__counterItem flex-item-noshrink rounded">{unread}</span>}
+            {unread ? <span className="navigation__counterItem flex-item-noshrink rounded">{unread}</span> : null}
         </>
     );
 };

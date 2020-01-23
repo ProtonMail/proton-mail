@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { c } from 'ttag';
 import {
     NavMenu,
     MainLogo,
@@ -12,22 +13,20 @@ import {
 } from 'react-components';
 import { SHOW_MOVED, LABEL_EXCLUSIVE, MAILBOX_LABEL_IDS } from 'proton-shared/lib/constants';
 import { redirectTo } from 'proton-shared/lib/helpers/browser';
-import { c } from 'ttag';
 
 import LocationAside from './LocationAside';
 import { LABEL_IDS_TO_HUMAN } from '../../constants';
 import { getCounterMap } from '../../helpers/elements';
 import { Label } from '../../models/label';
-import { Location, History } from 'history';
+import { Location } from 'history';
 
 interface Props {
     labelID: string;
     expanded?: boolean;
     location: Location;
-    history: History;
 }
 
-const PrivateSidebar = ({ labelID: currentLabelID, expanded = false, location, history }: Props) => {
+const PrivateSidebar = ({ labelID: currentLabelID, expanded = false, location }: Props) => {
     const [refresh, setRefresh] = useState<string>();
     const [conversationCounts, loadingConversationCounts] = useConversationCounts();
     const [messageCounts, loadingMessageCounts] = useMessageCounts();
@@ -49,9 +48,14 @@ const PrivateSidebar = ({ labelID: currentLabelID, expanded = false, location, h
     }
 
     const getItemParams = (labelID: MAILBOX_LABEL_IDS | string) => {
+        const humanID = LABEL_IDS_TO_HUMAN[labelID as MAILBOX_LABEL_IDS]
+            ? LABEL_IDS_TO_HUMAN[labelID as MAILBOX_LABEL_IDS]
+            : labelID;
+        const link = `/${humanID}`;
         return {
-            className: 'alignleft',
-            type: 'button',
+            type: 'link',
+            link,
+            ariaCurrent: labelID === currentLabelID ? 'page' : undefined,
             aside: (
                 <LocationAside
                     labelID={labelID}
@@ -61,17 +65,10 @@ const PrivateSidebar = ({ labelID: currentLabelID, expanded = false, location, h
                 />
             ),
             onClick: async () => {
-                const humanID = LABEL_IDS_TO_HUMAN[labelID as MAILBOX_LABEL_IDS]
-                    ? LABEL_IDS_TO_HUMAN[labelID as MAILBOX_LABEL_IDS]
-                    : labelID;
-                const destPath = `/${humanID}`;
-                const currentPath = location.pathname;
-                if (destPath === currentPath) {
+                if (link === location.pathname) {
                     setRefresh(labelID);
                     await call();
                     setRefresh(undefined);
-                } else {
-                    history.push(destPath);
                 }
             }
         };
