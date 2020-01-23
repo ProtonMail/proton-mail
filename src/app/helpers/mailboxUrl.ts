@@ -91,13 +91,14 @@ export const setFilterInUrl = (location: Location, filter: Filter) =>
 
 export const setSearchParametersInUrl = (location: Location, search: string) => {
     const keyword = search.trim();
-    const searchParameters = keyword.split(' ').reduce((acc, str: string) => {
-        const [key = '', value = ''] = str.split(':');
+    const list = keyword.split(/(?: |^)(keyword|from|to|address|begin|end|attachments|wildcard):/g);
 
-        if (key && value) {
-            acc[key] = value;
-        }
+    !list[0] && list.shift();
 
+    const searchParameters = list.reduce((acc, str: string, index: number, arr) => {
+        const modulo = index % 2; // [key, value, key, value...]
+        const prevKey = arr[index - 1];
+        modulo === 1 && str && (acc[prevKey] = str);
         return acc;
     }, {} as { [key: string]: string });
 
