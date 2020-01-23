@@ -1,12 +1,14 @@
 import React, { useRef, useState, useEffect, ReactNode } from 'react';
 import { c } from 'ttag';
 import { AppsSidebar, StorageSpaceStatus, MainAreaContext, Href } from 'react-components';
+import { MAILBOX_LABEL_IDS } from 'proton-shared/lib/constants';
 
 import PrivateHeader from '../header/PrivateHeader';
 import PrivateSidebar from '../sidebar/PrivateSidebar';
 import { Location, History } from 'history';
 import { OnCompose } from '../../containers/ComposerContainer';
 import { setSearchParametersInUrl } from '../../helpers/mailboxUrl';
+import { getHumanLabelID } from '../../helpers/labels';
 
 interface Props {
     children: ReactNode;
@@ -20,10 +22,14 @@ const PrivateLayout = ({ children, location, history, labelID, onCompose }: Prop
     const mainAreaRef = useRef<HTMLDivElement>(null);
     const [expanded, setExpand] = useState(false);
 
-    const handleSearch = (keyword = '') => {
+    const handleSearch = (keyword = '', labelID = MAILBOX_LABEL_IDS.ALL_MAIL) => {
         // keyword:test from:gibolin@protonmail.com to:gibolin@protonmail.com begin:20200122 end:20200128
         const trimmed = keyword.trim();
-        history.push(setSearchParametersInUrl(location, trimmed));
+        const newLocation = {
+            ...location,
+            pathname: `/${getHumanLabelID(labelID)}`
+        };
+        history.push(setSearchParametersInUrl(newLocation, trimmed));
     };
 
     useEffect(() => {
