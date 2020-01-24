@@ -1,4 +1,5 @@
 import { formatRelative, format } from 'date-fns';
+import { toMap } from 'proton-shared/lib/helpers/object';
 
 import { ELEMENT_TYPES } from '../constants';
 import { Element } from '../models/element';
@@ -82,12 +83,14 @@ export const getCounterMap = (
     messageCounters: LabelCount[],
     mailSettings: MailSettings
 ) => {
-    const result: { [labelID: string]: LabelCount | undefined } = {};
     const labelIDs = [...Object.values(MAILBOX_LABEL_IDS), ...labels.map((label) => label.ID || '')];
-    labelIDs.forEach((labelID) => {
+    const conversationCountersMap = toMap(conversationCounters, 'LabelID') as { [labelID: string]: LabelCount };
+    const messageCountersMap = toMap(messageCounters, 'LabelID') as { [labelID: string]: LabelCount };
+
+    return labelIDs.reduce((acc, labelID) => {
         const conversationMode = isConversationMode(labelID, mailSettings);
-        const counters = conversationMode ? conversationCounters : messageCounters;
-        result[labelID] = counters.find((counter) => counter.LabelID === labelID);
-    });
-    return result;
+        const countersMap = conversationMode ? conversationCountersMap : messageCountersMap;
+        acc[labelID] = countersMap[labelID];
+        return acc;
+    }, {} as { [labelID: string]: LabelCount | undefined });
 };
