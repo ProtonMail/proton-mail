@@ -1,13 +1,17 @@
-import React, { FC, ReactElement } from 'react';
 import { renderHook, act } from '@testing-library/react-hooks';
-import { useInstance, useApi } from 'react-components';
-
-import { useMessage } from './useMessage';
-import MessageProvider from '../containers/MessageProvider';
-import createCache from 'proton-shared/lib/helpers/cache';
+import { useApi } from 'react-components';
 import { wait } from 'proton-shared/lib/helpers/promise';
 import { noop } from 'proton-shared/lib/helpers/function';
 
+import { useMessage } from './useMessage';
+import * as UseMessageCache from './useMessageCache';
+import { Cache } from '../models/utils';
+import { MessageExtended } from '../models/message';
+
+// Needed to make TS accepts the mock exports
+const cacheMock: Cache<string, MessageExtended> = (UseMessageCache as any).cacheMock;
+
+jest.mock('./useMessageCache');
 jest.mock('./useDecryptMessage', () => ({ useDecryptMessage: jest.fn() }));
 jest.mock('./useAttachments', () => ({ useAttachmentsCache: jest.fn() }));
 jest.mock('./useEncryptMessage', () => ({ useEncryptMessage: jest.fn(() => (m: any) => m) }));
@@ -21,12 +25,8 @@ describe('useMessage', () => {
     const api = jest.fn();
     (useApi as jest.Mock).mockReturnValue(api);
 
-    const setup = (cache = createCache()) => {
-        (useInstance as jest.Mock).mockReturnValue(cache);
-        const wrapper = (({ children }: { children: ReactElement }) => (
-            <MessageProvider>{children}</MessageProvider>
-        )) as FC;
-        const renderHookResult = renderHook((props: any = {}) => useMessage({ ID, ...props }, {}), { wrapper });
+    const setup = () => {
+        const renderHookResult = renderHook((props: any = {}) => useMessage({ ID, ...props }, {}));
         return renderHookResult.result;
     };
 
@@ -40,7 +40,7 @@ describe('useMessage', () => {
     });
 
     afterEach(() => {
-        [useInstance as jest.Mock, api, useApi as jest.Mock].forEach((mock) => mock.mockClear());
+        jest.clearAllMocks();
     });
 
     describe('message state', () => {
@@ -50,10 +50,9 @@ describe('useMessage', () => {
         });
 
         it('should returns message from the cache', () => {
-            const cache = createCache();
             const message = {};
-            cache.set(ID, message);
-            const result = setup(cache);
+            cacheMock.set(ID, message);
+            const result = setup();
             expect(result.current[0]).toBe(message);
         });
     });
