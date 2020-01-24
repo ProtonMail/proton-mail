@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Icon } from 'react-components';
+import { identity } from 'proton-shared/lib/helpers/function';
 
 import ToolbarSeparator from './ToolbarSeparator';
 import ReadUnreadButtons from './ReadUnreadButtons';
@@ -14,9 +15,9 @@ import MoveDropdown from '../dropdown/MoveDropdown';
 import LabelDropdown from '../dropdown/LabelDropdown';
 import BackButton from './BackButton';
 import PagingControls from './PagingControls';
-import { getCurrentType } from '../../helpers/elements';
 import { isColumnMode } from '../../helpers/mailSettings';
 import { Page, Sort, Filter } from '../../models/tools';
+import { Element } from '../../models/element';
 
 import './Toolbar.scss';
 
@@ -26,6 +27,7 @@ interface Props {
     onCheckAll: () => void;
     labelID: string;
     elementID?: string;
+    elements: Element[];
     selectedIDs: string[];
     mailSettings: any;
     page: Page;
@@ -40,6 +42,7 @@ interface Props {
 const Toolbar = ({
     labelID = '',
     elementID,
+    elements,
     checkAll,
     onCheckAll,
     mailSettings = {},
@@ -53,9 +56,15 @@ const Toolbar = ({
     page,
     onPage
 }: Props) => {
-    const type = getCurrentType({ mailSettings, labelID });
-
     const columnMode = isColumnMode(mailSettings);
+
+    const selectedElements = useMemo(
+        () =>
+            selectedIDs
+                .map((elementID) => elements.find((element) => element.ID === elementID) as Element)
+                .filter(identity),
+        [elements, selectedIDs]
+    );
 
     return (
         <nav className="toolbar flex noprint flex-spacebetween">
@@ -72,10 +81,10 @@ const Toolbar = ({
                 <DeleteButton labelID={labelID} mailSettings={mailSettings} selectedIDs={selectedIDs} />
                 <ToolbarSeparator />
                 <ToolbarDropdown autoClose={false} content={<Icon className="toolbar-icon" name="folder" />}>
-                    {({ onClose }) => <MoveDropdown selectedIDs={selectedIDs} type={type} onClose={onClose} />}
+                    {({ onClose }) => <MoveDropdown elements={selectedElements} onClose={onClose} />}
                 </ToolbarDropdown>
                 <ToolbarDropdown autoClose={false} content={<Icon className="toolbar-icon" name="label" />}>
-                    {({ onClose }) => <LabelDropdown selectedIDs={selectedIDs} type={type} onClose={onClose} />}
+                    {({ onClose }) => <LabelDropdown elements={selectedElements} onClose={onClose} />}
                 </ToolbarDropdown>
             </div>
             <div className="flex">

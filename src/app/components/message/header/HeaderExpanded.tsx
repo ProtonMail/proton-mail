@@ -1,4 +1,4 @@
-import React, { MouseEvent } from 'react';
+import React, { MouseEvent, useMemo } from 'react';
 import { c } from 'ttag';
 import { Icon, Group, ButtonGroup, useToggle, useContactEmails } from 'react-components';
 import humanSize from 'proton-shared/lib/helpers/humanSize';
@@ -68,6 +68,8 @@ const HeaderExpanded = ({
         });
     };
 
+    const elements = useMemo(() => [message.data || {}], [message]);
+
     return (
         <div className={`message-header message-header-expanded ${inOutClass}`}>
             <div
@@ -120,22 +122,10 @@ const HeaderExpanded = ({
                 <div>
                     <Group className="mr1">
                         <HeaderDropdown autoClose={false} content={<Icon name="folder" />}>
-                            {({ onClose }) => (
-                                <MoveDropdown
-                                    selectedIDs={[(message.data || {}).ID || '']}
-                                    type={ELEMENT_TYPES.MESSAGE}
-                                    onClose={onClose}
-                                />
-                            )}
+                            {({ onClose }) => <MoveDropdown elements={elements} onClose={onClose} />}
                         </HeaderDropdown>
                         <HeaderDropdown autoClose={false} content={<Icon name="label" />}>
-                            {({ onClose }) => (
-                                <LabelDropdown
-                                    selectedIDs={[(message.data || {}).ID || '']}
-                                    type={ELEMENT_TYPES.MESSAGE}
-                                    onClose={onClose}
-                                />
-                            )}
+                            {({ onClose }) => <LabelDropdown elements={elements} onClose={onClose} />}
                         </HeaderDropdown>
                     </Group>
 
