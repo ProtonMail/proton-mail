@@ -1,17 +1,24 @@
-import { useCache, useEventManager } from 'react-components';
+import React, { useEffect, createContext, ReactNode } from 'react';
+import { useInstance, useEventManager } from 'react-components';
 import createCache from 'proton-shared/lib/helpers/cache';
 import createLRU from 'proton-shared/lib/helpers/lru';
-
-import { Event } from '../models/eventManager';
 import { EVENT_ACTIONS } from 'proton-shared/lib/constants';
 import { omit } from 'proton-shared/lib/helpers/object';
-import { ConversationResult } from './useConversation';
-import { Cache } from '../models/utils';
 
-const CACHE_KEY = 'ConversationsCache';
+import { Event } from '../models/eventManager';
+import { Cache } from '../models/utils';
+import { ConversationResult } from '../hooks/useConversation';
 
 export type ConversationCache = Cache<string, ConversationResult>;
 
+/**
+ * Context to use to get a reference on the conversation cache
+ */
+export const ConversationContext = createContext<ConversationCache>(null as any);
+
+/**
+ * Event management logic for conversations
+ */
 const conversationListener = (cache: ConversationCache) => ({ Conversations }: Event) => {
     if (!Array.isArray(Conversations)) {
         return;
@@ -42,15 +49,23 @@ const conversationListener = (cache: ConversationCache) => ({ Conversations }: E
     }
 };
 
-export const useConversationCache = (): ConversationCache => {
-    const globalCache = useCache();
+interface Props {
+    children?: ReactNode;
+}
+
+/**
+ * Provider for the message cache and listen to event manager for updates
+ */
+const ConversationProvider = ({ children }: Props) => {
     const { subscribe } = useEventManager();
 
-    if (!globalCache.has(CACHE_KEY)) {
-        const cache = createCache(createLRU({ max: 50 } as any));
-        subscribe(conversationListener(cache));
-        globalCache.set(CACHE_KEY, cache);
-    }
+    const cache: ConversationCache = useInstance(() => {
+        return createCache(createLRU({ max: 50 } as any));
+    });
 
-    return globalCache.get(CACHE_KEY);
+    useEffect(() => subscribe(conversationListener(cache)), []);
+
+    return <ConversationContext.Provider value={cache}>{children}</ConversationContext.Provider>;
 };
+
+export default ConversationProvider;

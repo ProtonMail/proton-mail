@@ -4,14 +4,13 @@ import { wait } from 'proton-shared/lib/helpers/promise';
 import { noop } from 'proton-shared/lib/helpers/function';
 
 import { useMessage } from './useMessage';
-import * as UseMessageCache from './useMessageCache';
-import { Cache } from '../models/utils';
-import { MessageExtended } from '../models/message';
+import * as MessageProviderMock from '../containers/MessageProvider';
 
 // Needed to make TS accepts the mock exports
-const cacheMock: Cache<string, MessageExtended> = (UseMessageCache as any).cacheMock;
+const cacheMock: MessageProviderMock.MessageCache = (MessageProviderMock as any).cacheMock;
+const MessageProvider = MessageProviderMock.default;
 
-jest.mock('./useMessageCache');
+jest.mock('../containers/MessageProvider');
 jest.mock('./useDecryptMessage', () => ({ useDecryptMessage: jest.fn() }));
 jest.mock('./useAttachments', () => ({ useAttachmentsCache: jest.fn() }));
 jest.mock('./useEncryptMessage', () => ({ useEncryptMessage: jest.fn(() => (m: any) => m) }));
@@ -25,10 +24,10 @@ describe('useMessage', () => {
     const api = jest.fn();
     (useApi as jest.Mock).mockReturnValue(api);
 
-    const setup = () => {
-        const renderHookResult = renderHook((props: any = {}) => useMessage({ ID, ...props }, {}));
-        return renderHookResult.result;
-    };
+    const setup = () =>
+        renderHook((props: any = {}) => useMessage({ ID, ...props }, {}), {
+            wrapper: MessageProvider
+        });
 
     beforeAll(() => {
         consoleError = console.error;
@@ -41,19 +40,20 @@ describe('useMessage', () => {
 
     afterEach(() => {
         jest.clearAllMocks();
+        cacheMock.reset();
     });
 
     describe('message state', () => {
         it('should initialize message in cache if not existing', () => {
-            const result = setup();
-            expect(result.current[0]).toEqual({ data: { ID } });
+            const hook = setup();
+            expect(hook.result.current[0]).toEqual({ data: { ID } });
         });
 
         it('should returns message from the cache', () => {
             const message = {};
             cacheMock.set(ID, message);
-            const result = setup();
-            expect(result.current[0]).toBe(message);
+            const hook = setup();
+            expect(hook.result.current[0]).toBe(message);
         });
     });
 
@@ -65,29 +65,29 @@ describe('useMessage', () => {
                     resolve = r;
                 })
             );
-            const result = setup();
+            const hook = setup();
             const promise = act(async () => {
-                await result.current[1].createDraft({});
+                await hook.result.current[1].createDraft({});
             });
-            expect(result.current[2].lock).toBe(true);
+            expect(hook.result.current[2].lock).toBe(true);
             await wait(0);
-            expect(result.current[2].lock).toBe(true);
+            expect(hook.result.current[2].lock).toBe(true);
             resolve({ Message: {} });
-            expect(result.current[2].lock).toBe(true);
+            expect(hook.result.current[2].lock).toBe(true);
             await wait(0);
-            expect(result.current[2].lock).toBe(true);
+            expect(hook.result.current[2].lock).toBe(true);
             await promise;
-            expect(result.current[2].lock).toBe(false);
+            expect(hook.result.current[2].lock).toBe(false);
         });
 
         it('should create a draft with an api call', async () => {
             const Message = {};
             api.mockResolvedValue({ Message });
-            const result = setup();
+            const hook = setup();
             await act(async () => {
-                await result.current[1].createDraft({});
+                await hook.result.current[1].createDraft({});
             });
-            expect(result.current[0].data).toEqual({ ID });
+            expect(hook.result.current[0].data).toEqual({ ID });
             expect(api).toHaveBeenCalled();
         });
     });

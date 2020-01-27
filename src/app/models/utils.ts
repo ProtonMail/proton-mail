@@ -10,4 +10,5 @@ export interface Cache<Key, Value> {
     set: (key: Key, value: Value) => void;
     delete: (key: Key) => void;
     subscribe: (handler: (key: Key) => void) => () => void;
+    reset: () => void;
 }

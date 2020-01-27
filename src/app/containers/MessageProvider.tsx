@@ -1,24 +1,29 @@
-import { useCache, useEventManager } from 'react-components';
+import React, { useEffect, createContext, ReactNode } from 'react';
+import { useInstance, useEventManager } from 'react-components';
 import createCache from 'proton-shared/lib/helpers/cache';
 import createLRU from 'proton-shared/lib/helpers/lru';
+import { EVENT_ACTIONS } from 'proton-shared/lib/constants';
+import { diff } from 'proton-shared/lib/helpers/array';
+import { omit } from 'proton-shared/lib/helpers/object';
 
 import { Event } from '../models/eventManager';
-import { EVENT_ACTIONS } from 'proton-shared/lib/constants';
-import { omit } from 'proton-shared/lib/helpers/object';
 import { Cache } from '../models/utils';
 import { MessageExtended } from '../models/message';
-import { diff } from 'proton-shared/lib/helpers/array';
-
-const CACHE_KEY = 'MessagesCache';
 
 export type MessageCache = Cache<string, MessageExtended>;
 
+/**
+ * Context to use to get a reference on the message cache
+ */
+export const MessageContext = createContext<MessageCache>(null as any);
+
+/**
+ * Event management logic for messages
+ */
 const messageListener = (cache: MessageCache) => ({ Messages }: Event) => {
     if (!Array.isArray(Messages)) {
         return;
     }
-
-    console.log('Messages event', Messages);
 
     for (const { ID, Action, Message } of Messages) {
         // Ignore updates for non-fetched messages.
@@ -52,15 +57,23 @@ const messageListener = (cache: MessageCache) => ({ Messages }: Event) => {
     }
 };
 
-export const useMessageCache = (): MessageCache => {
-    const globalCache = useCache();
+interface Props {
+    children?: ReactNode;
+}
+
+/**
+ * Provider for the message cache and listen to event manager for updates
+ */
+const MessageProvider = ({ children }: Props) => {
     const { subscribe } = useEventManager();
 
-    if (!globalCache.has(CACHE_KEY)) {
-        const cache = createCache(createLRU({ max: 50 } as any));
-        subscribe(messageListener(cache));
-        globalCache.set(CACHE_KEY, cache);
-    }
+    const cache: MessageCache = useInstance(() => {
+        return createCache(createLRU({ max: 50 } as any));
+    });
 
-    return globalCache.get(CACHE_KEY);
+    useEffect(() => subscribe(messageListener(cache)), []);
+
+    return <MessageContext.Provider value={cache}>{children}</MessageContext.Provider>;
 };
+
+export default MessageProvider;

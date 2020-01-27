@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useEffect, useCallback, useState, useMemo, useContext } from 'react';
 import { c } from 'ttag';
 import { useApi, useEventManager } from 'react-components';
 import {
@@ -25,7 +25,7 @@ import { useSendMessage } from './useSendMessage';
 import { MailSettings, Api } from '../models/utils';
 import { useEncryptMessage } from './useEncryptMessage';
 import { MESSAGE_ACTIONS } from '../constants';
-import { useMessageCache } from './useMessageCache';
+import { MessageContext } from '../containers/MessageProvider';
 
 export interface ComputationOption {
     cache: any;
@@ -89,7 +89,7 @@ export const useMessage = (
 ): [MessageExtended, MessageActions, MessageActivity] => {
     const api = useApi();
     const { call } = useEventManager();
-    const cache = useMessageCache();
+    const cache = useContext(MessageContext);
     const computeCache = useMemo(() => new Map(), []);
     const attachmentsCache = useAttachmentsCache();
 
