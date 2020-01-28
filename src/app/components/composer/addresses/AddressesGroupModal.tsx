@@ -27,7 +27,7 @@ const AddressesGroupModal = ({ onSubmit, onClose, recipientGroup, contacts, ...r
         if (checked) {
             newValue = [
                 ...recipients,
-                { Name: contact.Name, Address: contact.Email, Group: recipientGroup?.group?.ID }
+                { Name: contact.Name, Address: contact.Email, Group: recipientGroup?.group?.Path }
             ];
         } else {
             newValue = recipients.filter((recipient) => recipient.Address !== contact.Email);

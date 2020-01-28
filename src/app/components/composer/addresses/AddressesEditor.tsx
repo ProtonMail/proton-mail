@@ -36,7 +36,9 @@ const AddressesEditor = ({
 
     const handleContactModal = (type: RecipientType) => async () => {
         const recipients = await new Promise((resolve) => {
-            createModal(<AddressesContactsModal inputValue={message.data?.[type]} onSubmit={resolve} />);
+            createModal(
+                <AddressesContactsModal inputValue={message.data?.[type]} allContacts={contacts} onSubmit={resolve} />
+            );
         });
 
         onChange({ data: { [type]: recipients } });

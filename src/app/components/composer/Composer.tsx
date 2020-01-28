@@ -82,6 +82,7 @@ const Composer = ({
     const api = useApi();
     const { state: minimized, toggle: toggleMinimized } = useToggle(false);
     const { state: maximized, toggle: toggleMaximized } = useToggle(false);
+    const [opening, setOpening] = useState(true); // Needed to force focus only at first time
     const [modelMessage, setModelMessage] = useState<MessageExtended>(inputMessage);
     const [
         syncedMessage,
@@ -123,6 +124,9 @@ const Composer = ({
 
     // Manage focus at opening
     useEffect(() => {
+        if (!opening) {
+            return;
+        }
         setTimeout(() => {
             if (getRecipients(syncedMessage.data).length === 0) {
                 addressesFocusRef.current();
@@ -130,6 +134,7 @@ const Composer = ({
                 contentFocusRef.current();
             }
         });
+        setOpening(false);
     }, [syncedMessage]);
 
     const autoSave = useCallback(
