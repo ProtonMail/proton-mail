@@ -1,18 +1,112 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { Icon, SimpleDropdown, PrimaryButton, Label, Select, useLabels } from 'react-components';
+import {
+    generateUID,
+    usePopperAnchor,
+    DropdownButton,
+    Dropdown,
+    Icon,
+    Href,
+    DateInput,
+    Radio,
+    Toggle,
+    EmailInput,
+    Button,
+    PrimaryButton,
+    Label,
+    Select,
+    useLabels,
+    useAddresses,
+    Loader
+} from 'react-components';
 import { MAILBOX_LABEL_IDS, LABEL_EXCLUSIVE } from 'proton-shared/lib/constants';
 import { c } from 'ttag';
+import { getUnixTime, fromUnixTime } from 'date-fns';
 
-const ALL = 'all';
-const { INBOX, TRASH, SPAM, ARCHIVE } = MAILBOX_LABEL_IDS;
+import { changeSearchParams } from '../../helpers/url';
+import { getHumanLabelID } from '../../helpers/labels';
 
-const AdvancedSearchDropdown = ({ location, history }) => {
-    const formRef = useRef();
-    const [model, updateModel] = useState({});
-    const [labels = []] = useLabels();
-    const locationOptions = [
-        { value: ALL, text: c('Option').t`All` },
+import './AdvancedSearchDropdown.scss';
+import { getSearchParameters } from '../../helpers/mailboxUrl';
+
+const UNDEFINED = undefined;
+const AUTO_WILDCARD = 1;
+const NO_ATTACHMENTS = 0;
+const WITH_ATTACHMENTS = 1;
+const { INBOX, TRASH, SPAM, ARCHIVE, ALL_MAIL } = MAILBOX_LABEL_IDS;
+const DEFAULT_MODEL = {
+    labelID: ALL_MAIL,
+    address: UNDEFINED,
+    attachments: UNDEFINED,
+    wildcard: UNDEFINED
+};
+
+const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) => {
+    const [uid] = useState(generateUID('advanced-search-dropdown'));
+    const { anchorRef, isOpen, toggle, close } = usePopperAnchor();
+    const [labels, loadingLabels] = useLabels();
+    const [addresses, loadingAddresses] = useAddresses();
+    const [model, updateModel] = useState(() => {
+        if (!fullInput) {
+            return DEFAULT_MODEL;
+        }
+
+        const { address, attachments, wildcard, from, to, start, end } = getSearchParameters(location, fullInput);
+
+        return {
+            ...DEFAULT_MODEL,
+            address,
+            attachments,
+            wildcard,
+            from,
+            to,
+            start: start ? fromUnixTime(start) : undefined,
+            end: end ? fromUnixTime(end) : undefined
+        };
+    });
+
+    const handleSubmit = (event) => {
+        event.preventDefault(); // necessary to not run a basic submission
+        event.stopPropagation(); // necessary to not submit normal search from header
+
+        const { labelID, address, start, end, wildcard, from, to, attachments } = model;
+        const { keyword } = getSearchParameters(location, fullInput);
+
+        history.push(
+            changeSearchParams(
+                {
+                    ...location,
+                    pathname: `/${getHumanLabelID(labelID)}`
+                },
+                {
+                    keyword,
+                    address,
+                    from,
+                    to,
+                    start: start ? getUnixTime(start) : undefined,
+                    end: end ? getUnixTime(end) : undefined,
+                    attachments,
+                    wildcard
+                }
+            )
+        );
+
+        updateModel(DEFAULT_MODEL);
+        close();
+    };
+
+    const handleReset = (event) => {
+        event.preventDefault();
+        updateModel(DEFAULT_MODEL);
+        close();
+    };
+
+    if (loadingLabels || loadingAddresses) {
+        return <Loader />;
+    }
+
+    const labelIDOptions = [
+        { value: ALL_MAIL, text: c('Option').t`All` },
         { value: INBOX, text: c('Mailbox').t`Inbox` },
         { value: ARCHIVE, text: c('Mailbox').t`Archive` },
         { value: SPAM, text: c('Mailbox').t`Spam` },
@@ -28,60 +122,142 @@ const AdvancedSearchDropdown = ({ location, history }) => {
                 .filter(({ Exclusive }) => Exclusive === LABEL_EXCLUSIVE.LABEL)
                 .map(({ ID: value, Name: text }) => ({ value, text }))
         );
-    const handleSubmit = () => {
-        const state = {}; // TODO
-        history.push({ ...location }, state);
-        formRef.current.reset();
-    };
+
+    const addressOptions = [{ value: UNDEFINED, text: c('Option').t`All` }].concat(
+        addresses.map(({ ID: value, Email: text }) => ({ value, text }))
+    );
+
     return (
-        <SimpleDropdown
-            originalPlacement="bottom-right"
-            hasCaret={false}
-            content={<Icon name="caret" className="fill-white searchbox-advanced-search-icon" />}
-            className="searchbox-advanced-search-button"
-        >
-            <form ref={formRef} name="advanced-search" className="p1" onSubmit={handleSubmit}>
-                <div className="mb1">
-                    <Label htmlFor="location">{c('Label').t`Location`}</Label>
-                    <Select
-                        id="location"
-                        options={locationOptions}
-                        onChange={({ target }) => updateModel({ ...model, location: target.value })}
-                    />
-                </div>
-                <div className="mb1 flex flex-nowrap">
-                    <div className="mr1">
-                        <Label>{c('Label').t`Sender`}</Label>
+        <>
+            <DropdownButton
+                className="searchbox-advanced-search-button"
+                buttonRef={anchorRef}
+                isOpen={isOpen}
+                onClick={toggle}
+                hasCaret={false}
+            >
+                <Icon name="caret" className="fill-white searchbox-advanced-search-icon" />
+            </DropdownButton>
+            <Dropdown
+                id={uid}
+                originalPlacement="bottom-right"
+                size="wide"
+                autoClose={false}
+                isOpen={isOpen}
+                anchorRef={anchorRef}
+                onClose={close}
+            >
+                <form name="advanced-search" className="p1" onSubmit={handleSubmit} onReset={handleReset}>
+                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                        <Label className="advancedSearch-label" htmlFor="exact-match">{c('Label')
+                            .t`Exact match`}</Label>
+                        <div className="flex-item-fluid flex flex-items-center flex-spacebetween">
+                            <Toggle
+                                id="exact-match"
+                                checked={!!model.wildcard}
+                                onChange={({ target }) =>
+                                    updateModel({ ...model, wildcard: target.checked ? AUTO_WILDCARD : UNDEFINED })
+                                }
+                            />
+                            <Href url="https://protonmail.com/support/knowledge-base/search/">{c('Link')
+                                .t`Learn more`}</Href>
+                        </div>
                     </div>
-                    <div>
-                        <Label>{c('Label').t`Recipient`}</Label>
+                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                        <Label className="advancedSearch-label" htmlFor="labelID">{c('Label').t`Location`}</Label>
+                        <Select
+                            id="labelID"
+                            value={model.labelID}
+                            options={labelIDOptions}
+                            onChange={({ target }) => updateModel({ ...model, labelID: target.value })}
+                        />
                     </div>
-                </div>
-                <div className="mb1 flex flex-nowrap">
-                    <div className="mr1">
-                        <Label>{c('Label').t`Start date`}</Label>
+                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                        <Label className="advancedSearch-label" htmlFor="address">{c('Label').t`Address`}</Label>
+                        <Select
+                            id="address"
+                            value={model.address}
+                            options={addressOptions}
+                            onChange={({ target }) => updateModel({ ...model, address: target.value })}
+                        />
                     </div>
-                    <div>
-                        <Label>{c('Label').t`End date`}</Label>
+                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                        <Label title={c('Label').t`Sender`} className="advancedSearch-label" htmlFor="from">{c('Label')
+                            .t`From`}</Label>
+                        <div className="flex-item-fluid">
+                            <EmailInput
+                                id="from"
+                                value={model.from}
+                                onChange={(from) => updateModel({ ...model, from })}
+                                placeholder={c('Placeholder').t`Name or email address`}
+                            />
+                        </div>
                     </div>
-                </div>
-                <div className="mb1 flex flex-nowrap">
-                    <div className="mr1">
-                        <Label>{c('Label').t`Address`}</Label>
+                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                        <Label title={c('Label').t`Recipient`} className="advancedSearch-label" htmlFor="to">{c('Label')
+                            .t`To`}</Label>
+                        <div className="flex-item-fluid">
+                            <EmailInput
+                                id="to"
+                                value={model.to}
+                                onChange={(to) => updateModel({ ...model, to })}
+                                placeholder={c('Placeholder').t`Name or email address`}
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <Label>{c('Label').t`Attachments`}</Label>
+                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                        <Label className="advancedSearch-label" htmlFor="start-date">{c('Label').t`Between`}</Label>
+                        <div className="flex-item-fluid">
+                            <DateInput
+                                placeholder={c('Placeholder').t`Start date`}
+                                id="start-date"
+                                value={model.start}
+                                onChange={(start) => updateModel({ ...model, start })}
+                            />
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <PrimaryButton className="w100" type="submit">{c('Action').t`Search`}</PrimaryButton>
-                </div>
-            </form>
-        </SimpleDropdown>
+                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                        <Label className="advancedSearch-label" htmlFor="end-date">{c('Label').t`And`}</Label>
+                        <div className="flex-item-fluid">
+                            <DateInput
+                                placeholder={c('Placeholder').t`End date`}
+                                id="end-date"
+                                value={model.end}
+                                onChange={(end) => updateModel({ ...model, end })}
+                            />
+                        </div>
+                    </div>
+                    <div className="mb2 flex flex-nowrap onmobile-flex-column">
+                        <Label className="advancedSearch-label">{c('Label').t`Attachments`}</Label>
+                        <div className="flex-item-fluid">
+                            <Radio
+                                onChange={() => updateModel({ ...model, attachments: UNDEFINED })}
+                                checked={model.attachments === UNDEFINED}
+                                className="mr1"
+                            >{c('Attachment radio advanced search').t`All`}</Radio>
+                            <Radio
+                                onChange={() => updateModel({ ...model, attachments: WITH_ATTACHMENTS })}
+                                checked={model.attachments === WITH_ATTACHMENTS}
+                                className="mr1"
+                            >{c('Attachment radio advanced search').t`Yes`}</Radio>
+                            <Radio
+                                onChange={() => updateModel({ ...model, attachments: NO_ATTACHMENTS })}
+                                checked={model.attachments === NO_ATTACHMENTS}
+                            >{c('Attachment radio advanced search').t`No`}</Radio>
+                        </div>
+                    </div>
+                    <div className="flex flex-spacebetween">
+                        <Button disabled={!Object.keys(model).length} type="reset">{c('Action').t`Clear`}</Button>
+                        <PrimaryButton type="submit">{c('Action').t`Search`}</PrimaryButton>
+                    </div>
+                </form>
+            </Dropdown>
+        </>
     );
 };
 
 AdvancedSearchDropdown.propTypes = {
+    keyword: PropTypes.string,
     history: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired
 };

@@ -46,7 +46,7 @@ const PrivateHeader = ({ location, history, expanded, onToggleExpand, onSearch }
                 onSearch={onSearch}
                 onChange={updateValue}
                 value={value}
-                advanced={<AdvancedSearchDropdown location={location} history={history} />}
+                advanced={<AdvancedSearchDropdown keyword={value} location={location} history={history} />}
             />
             <TopNavbar>
                 {hasPaidMail ? null : <UpgradeButton external={true} />}

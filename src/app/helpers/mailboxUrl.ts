@@ -89,7 +89,7 @@ export const setSortInUrl = (location: Location, sort: Sort) =>
 export const setFilterInUrl = (location: Location, filter: Filter) =>
     changeSearchParams(location, { filter: filterToString(filter) });
 
-export const setSearchParametersInUrl = (location: Location, search: string) => {
+export const getSearchParameters = (location: Location, search: string) => {
     const keyword = search.trim();
     const list = keyword.split(/(?: |^)(keyword|from|to|address|begin|end|attachments|wildcard):/g);
 
@@ -102,9 +102,14 @@ export const setSearchParametersInUrl = (location: Location, search: string) => 
         return acc;
     }, {} as { [key: string]: string });
 
-    if (!Object.keys(searchParameters).length) {
-        return changeSearchParams(location, { keyword: !keyword || keyword === 'keyword:' ? undefined : keyword });
+    if (Object.keys(searchParameters).length) {
+        return searchParameters;
     }
 
+    return { keyword: !keyword || keyword === 'keyword:' ? undefined : keyword };
+};
+
+export const setSearchParametersInUrl = (location: Location, search: string) => {
+    const searchParameters = getSearchParameters(location, search);
     return changeSearchParams(location, searchParameters);
 };
