@@ -1,0 +1,35 @@
+.pm_labels {
+    display: inline-flex;
+    flex-direction: row;
+}
+
+.pm_label {
+    display: flex;
+    align-items: center;
+    margin-left: 0.25em;
+    border-radius: 1em;
+    line-height: 12px;
+    font-size: 12px;
+    max-width: 15em;
+}
+
+.pm_label a {
+    padding: 2px 8px;
+    border-radius: 8px;
+}
+
+.pm_label a,
+.pm_label a:active,
+.pm_label a:hover,
+.pm_label a:focus {
+    color: white;
+    text-decoration: none;
+}
+
+.pm_label a:not(:last-child) {
+    padding-right: 4px;
+}
+
+.pm_label button {
+    padding: 2px 6px 2px 2px;
+}
