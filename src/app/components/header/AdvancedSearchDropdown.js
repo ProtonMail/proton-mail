@@ -10,41 +10,54 @@ import {
     DateInput,
     Radio,
     Toggle,
-    EmailInput,
     Button,
     PrimaryButton,
     Label,
     Select,
     useLabels,
     useAddresses,
+    useContactEmails,
     Loader
 } from 'react-components';
 import { MAILBOX_LABEL_IDS, LABEL_EXCLUSIVE } from 'proton-shared/lib/constants';
 import { c } from 'ttag';
 import { getUnixTime, fromUnixTime } from 'date-fns';
+import { isEmail } from 'proton-shared/lib/helpers/validators';
 
 import { changeSearchParams } from '../../helpers/url';
 import { getHumanLabelID } from '../../helpers/labels';
 
 import './AdvancedSearchDropdown.scss';
 import { getSearchParameters } from '../../helpers/mailboxUrl';
+import AddressesInput from '../composer/addresses/AddressesInput';
 
 const UNDEFINED = undefined;
-const AUTO_WILDCARD = 1;
+const AUTO_WILDCARD = undefined;
+const NO_WILDCARD = 0;
 const NO_ATTACHMENTS = 0;
 const WITH_ATTACHMENTS = 1;
 const { INBOX, TRASH, SPAM, ARCHIVE, ALL_MAIL } = MAILBOX_LABEL_IDS;
 const DEFAULT_MODEL = {
+    from: [],
+    to: [],
     labelID: ALL_MAIL,
     address: UNDEFINED,
     attachments: UNDEFINED,
-    wildcard: UNDEFINED
+    wildcard: AUTO_WILDCARD
 };
+
+const getRecipients = (value = '') =>
+    value
+        .split(',')
+        .filter(isEmail)
+        .map((Address) => ({ Address }));
+const formatRecipients = (recipients = []) => recipients.map(({ Address }) => Address).join(',');
 
 const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) => {
     const [uid] = useState(generateUID('advanced-search-dropdown'));
     const { anchorRef, isOpen, toggle, close } = usePopperAnchor();
     const [labels, loadingLabels] = useLabels();
+    const [contactEmails, loadingContactEmails] = useContactEmails();
     const [addresses, loadingAddresses] = useAddresses();
     const [model, updateModel] = useState(() => {
         if (!fullInput) {
@@ -58,10 +71,10 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) 
             address,
             attachments,
             wildcard,
-            from,
-            to,
-            start: start ? fromUnixTime(start) : undefined,
-            end: end ? fromUnixTime(end) : undefined
+            from: getRecipients(from),
+            to: getRecipients(to),
+            start: start ? fromUnixTime(start) : UNDEFINED,
+            end: end ? fromUnixTime(end) : UNDEFINED
         };
     });
 
@@ -81,8 +94,8 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) 
                 {
                     keyword,
                     address,
-                    from,
-                    to,
+                    from: from.length ? formatRecipients(from) : undefined,
+                    to: to.length ? formatRecipients(to) : undefined,
                     start: start ? getUnixTime(start) : undefined,
                     end: end ? getUnixTime(end) : undefined,
                     attachments,
@@ -101,7 +114,7 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) 
         close();
     };
 
-    if (loadingLabels || loadingAddresses) {
+    if (loadingLabels || loadingAddresses || loadingContactEmails) {
         return <Loader />;
     }
 
@@ -156,7 +169,7 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) 
                                 id="exact-match"
                                 checked={!!model.wildcard}
                                 onChange={({ target }) =>
-                                    updateModel({ ...model, wildcard: target.checked ? AUTO_WILDCARD : UNDEFINED })
+                                    updateModel({ ...model, wildcard: target.checked ? AUTO_WILDCARD : NO_WILDCARD })
                                 }
                             />
                             <Href url="https://protonmail.com/support/knowledge-base/search/">{c('Link')
@@ -185,9 +198,11 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) 
                         <Label title={c('Label').t`Sender`} className="advancedSearch-label" htmlFor="from">{c('Label')
                             .t`From`}</Label>
                         <div className="flex-item-fluid">
-                            <EmailInput
+                            <AddressesInput
+                                contacts={contactEmails}
+                                contactGroups={[]}
                                 id="from"
-                                value={model.from}
+                                recipients={model.from}
                                 onChange={(from) => updateModel({ ...model, from })}
                                 placeholder={c('Placeholder').t`Name or email address`}
                             />
@@ -197,9 +212,11 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) 
                         <Label title={c('Label').t`Recipient`} className="advancedSearch-label" htmlFor="to">{c('Label')
                             .t`To`}</Label>
                         <div className="flex-item-fluid">
-                            <EmailInput
+                            <AddressesInput
+                                contacts={contactEmails}
+                                contactGroups={[]}
                                 id="to"
-                                value={model.to}
+                                recipients={model.to}
                                 onChange={(to) => updateModel({ ...model, to })}
                                 placeholder={c('Placeholder').t`Name or email address`}
                             />
