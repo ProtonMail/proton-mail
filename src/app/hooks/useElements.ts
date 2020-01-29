@@ -8,7 +8,7 @@ import { toMap } from 'proton-shared/lib/helpers/object';
 import { Conversation } from '../models/conversation';
 import { sort as sortElements, hasLabel } from '../helpers/elements';
 import { Element } from '../models/element';
-import { Page, Filter, Sort } from '../models/tools';
+import { Page, Filter, Sort, SearchParameters } from '../models/tools';
 import { expectedPageLength } from '../helpers/paging';
 import { ElementEvent, Event, ElementCountEvent, ConversationEvent, MessageEvent } from '../models/event';
 
@@ -18,14 +18,7 @@ interface Options {
     page: Page;
     sort: Sort;
     filter: Filter;
-    address?: string;
-    from?: string;
-    to?: string;
-    keyword?: string;
-    begin?: number;
-    end?: number;
-    attachments?: number;
-    wildcard?: number;
+    search: SearchParameters;
 }
 
 interface CacheParams {
@@ -54,14 +47,7 @@ const emptyCache = (page: Page, params: CacheParams): Cache => ({ params, page, 
 export const useElements = ({
     conversationMode,
     labelID,
-    address,
-    from,
-    to,
-    keyword,
-    begin,
-    end,
-    attachments,
-    wildcard,
+    search,
     page,
     sort,
     filter
@@ -74,14 +60,7 @@ export const useElements = ({
             labelID,
             sort,
             filter,
-            address,
-            from,
-            to,
-            keyword,
-            begin,
-            end,
-            attachments,
-            wildcard
+            ...search
         })
     );
 
@@ -108,14 +87,14 @@ export const useElements = ({
         labelID !== localCache.params.labelID ||
         sort !== localCache.params.sort ||
         filter !== localCache.params.filter ||
-        address !== localCache.params.address ||
-        from !== localCache.params.from ||
-        to !== localCache.params.to ||
-        keyword !== localCache.params.keyword ||
-        begin !== localCache.params.begin ||
-        end !== localCache.params.end ||
-        attachments !== localCache.params.attachments ||
-        wildcard !== localCache.params.wildcard;
+        search.address !== localCache.params.address ||
+        search.from !== localCache.params.from ||
+        search.to !== localCache.params.to ||
+        search.keyword !== localCache.params.keyword ||
+        search.begin !== localCache.params.begin ||
+        search.end !== localCache.params.end ||
+        search.attachments !== localCache.params.attachments ||
+        search.wildcard !== localCache.params.wildcard;
 
     const pageCached = () => localCache.pages.includes(page.page);
 
@@ -144,19 +123,19 @@ export const useElements = ({
                 LabelID: labelID,
                 Sort: sort.sort,
                 Desc: sort.desc ? 1 : 0,
-                Begin: begin,
-                End: end,
+                Begin: search.begin,
+                End: search.end,
                 // BeginID,
                 // EndID,
-                Keyword: keyword,
-                To: to,
-                From: from,
+                Keyword: search.keyword,
+                To: search.to,
+                From: search.from,
                 // Subject,
-                Attachments: attachments,
+                Attachments: search.attachments,
                 Unread: filter.Unread,
-                AddressID: address,
+                AddressID: search.address,
                 // ID,
-                AutoWildcard: wildcard
+                AutoWildcard: search.wildcard
             } as any)
         );
         return {
@@ -171,14 +150,7 @@ export const useElements = ({
                 labelID,
                 sort,
                 filter,
-                address,
-                from,
-                to,
-                keyword,
-                begin,
-                end,
-                attachments,
-                wildcard
+                ...search
             })
         );
 
@@ -212,7 +184,20 @@ export const useElements = ({
     useEffect(() => {
         shouldResetCache() && resetCache();
         shouldSendRequest() && load();
-    }, [labelID, page, sort, filter, address, from, to, keyword, begin, end, attachments, wildcard]);
+    }, [
+        labelID,
+        page,
+        sort,
+        filter,
+        search.address,
+        search.from,
+        search.to,
+        search.keyword,
+        search.begin,
+        search.end,
+        search.attachments,
+        search.wildcard
+    ]);
 
     // Listen to event manager and update de cache
     useEffect(

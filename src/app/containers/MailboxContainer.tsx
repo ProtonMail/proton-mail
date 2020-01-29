@@ -86,7 +86,7 @@ const MailboxContainer = ({
         page,
         sort,
         filter,
-        ...searchParameters
+        search: searchParameters
     });
 
     useEffect(() => setPage({ ...page, page: pageFromUrl(location) }), [searchParams.page]);
