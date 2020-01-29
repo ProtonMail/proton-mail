@@ -21,7 +21,7 @@ import {
 } from 'react-components';
 import { MAILBOX_LABEL_IDS, LABEL_EXCLUSIVE } from 'proton-shared/lib/constants';
 import { c } from 'ttag';
-import { getUnixTime, fromUnixTime } from 'date-fns';
+import { getUnixTime, fromUnixTime, isBefore, isAfter } from 'date-fns';
 import { isEmail } from 'proton-shared/lib/helpers/validators';
 
 import { changeSearchParams } from '../../helpers/url';
@@ -229,7 +229,9 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) 
                                 placeholder={c('Placeholder').t`Start date`}
                                 id="start-date"
                                 value={model.start}
-                                onChange={(start) => updateModel({ ...model, start })}
+                                onChange={(start) =>
+                                    (!model.end || isBefore(start, model.end)) && updateModel({ ...model, start })
+                                }
                             />
                         </div>
                     </div>
@@ -240,7 +242,9 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) 
                                 placeholder={c('Placeholder').t`End date`}
                                 id="end-date"
                                 value={model.end}
-                                onChange={(end) => updateModel({ ...model, end })}
+                                onChange={(end) =>
+                                    (!model.start || isAfter(end, model.start)) && updateModel({ ...model, end })
+                                }
                             />
                         </div>
                     </div>
