@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import {
+    classnames,
     generateUID,
     usePopperAnchor,
     DropdownButton,
@@ -149,7 +150,10 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) 
                 onClick={toggle}
                 hasCaret={false}
             >
-                <Icon name="caret" className="fill-white searchbox-advanced-search-icon" />
+                <Icon
+                    name="caret"
+                    className={classnames(['fill-white searchbox-advanced-search-icon', isOpen && 'rotateX-180'])}
+                />
             </DropdownButton>
             <Dropdown
                 id={uid}
