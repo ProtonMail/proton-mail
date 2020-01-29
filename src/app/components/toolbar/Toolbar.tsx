@@ -80,11 +80,23 @@ const Toolbar = ({
                 <MoveButtons labelID={labelID} mailSettings={mailSettings} selectedIDs={selectedIDs} />
                 <DeleteButton labelID={labelID} mailSettings={mailSettings} selectedIDs={selectedIDs} />
                 <ToolbarSeparator />
-                <ToolbarDropdown autoClose={false} content={<Icon className="toolbar-icon" name="folder" />}>
-                    {({ onClose }) => <MoveDropdown elements={selectedElements} onClose={onClose} />}
+                <ToolbarDropdown
+                    autoClose={false}
+                    disabled={!selectedIDs.length}
+                    content={<Icon className="toolbar-icon" name="folder" />}
+                >
+                    {({ onClose, onLock }) => (
+                        <MoveDropdown elements={selectedElements} onClose={onClose} onLock={onLock} />
+                    )}
                 </ToolbarDropdown>
-                <ToolbarDropdown autoClose={false} content={<Icon className="toolbar-icon" name="label" />}>
-                    {({ onClose }) => <LabelDropdown elements={selectedElements} onClose={onClose} />}
+                <ToolbarDropdown
+                    autoClose={false}
+                    disabled={!selectedIDs.length}
+                    content={<Icon className="toolbar-icon" name="label" />}
+                >
+                    {({ onClose, onLock }) => (
+                        <LabelDropdown elements={selectedElements} onClose={onClose} onLock={onLock} />
+                    )}
                 </ToolbarDropdown>
             </div>
             <div className="flex">

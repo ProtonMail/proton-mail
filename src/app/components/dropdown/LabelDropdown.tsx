@@ -52,9 +52,10 @@ const getInitialState = (labels: Label[] = [], elements: Element[] = []) => {
 interface Props {
     elements: Element[];
     onClose: () => void;
+    onLock: (lock: boolean) => void;
 }
 
-const LabelDropdown = ({ elements, onClose }: Props) => {
+const LabelDropdown = ({ elements, onClose, onLock }: Props) => {
     const [uid] = useState(generateUID('label-dropdown'));
     const { createNotification } = useNotifications();
     const [loading, withLoading] = useLoading();
@@ -106,6 +107,15 @@ const LabelDropdown = ({ elements, onClose }: Props) => {
         createNotification({ text: c('Success').t`Labels applied` });
     };
 
+    const applyCheck = (labelIDs: string[], selected: boolean) => {
+        const update = labelIDs.reduce((acc, ID) => {
+            acc[ID] = selected ? LabelState.On : LabelState.Off;
+            return acc;
+        }, {} as SelectionState);
+
+        updateSelectedLabelIDs({ ...selectedLabelIDs, ...update });
+    };
+
     const handleCheck = (labelID: string) => ({ target, nativeEvent }: ChangeEvent<HTMLInputElement>) => {
         const { shiftKey } = nativeEvent as any;
         const labelIDs = [labelID];
@@ -117,25 +127,24 @@ const LabelDropdown = ({ elements, onClose }: Props) => {
         }
 
         setLastChecked(labelID);
-        const update = labelIDs.reduce((acc, ID) => {
-            acc[ID] = target.checked ? LabelState.On : LabelState.Off;
-            return acc;
-        }, {} as SelectionState);
 
-        updateSelectedLabelIDs({ ...selectedLabelIDs, ...update });
+        applyCheck(labelIDs, target.checked);
     };
 
     const handleAddNewLabel = (label?: Label) => {
-        handleApply({ ...selectedLabelIDs, [label?.ID || '']: LabelState.On });
+        applyCheck([label?.ID || ''], true);
     };
 
     const handleCreate = () => {
+        onLock(true);
         const newLabel = {
             Name: search,
             Color: LABEL_COLORS[randomIntFromInterval(0, LABEL_COLORS.length - 1)],
             Exclusive: false
         };
-        createModal(<LabelModal type="label" label={newLabel} onAdd={handleAddNewLabel} />);
+        createModal(
+            <LabelModal type="label" label={newLabel} onAdd={handleAddNewLabel} onClose={() => onLock(false)} />
+        );
     };
 
     return (

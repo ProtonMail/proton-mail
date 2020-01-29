@@ -36,9 +36,10 @@ type LabelWithIcon = Label & { icon?: string };
 interface Props {
     elements: Element[];
     onClose: () => void;
+    onLock: (lock: boolean) => void;
 }
 
-const MoveDropdown = ({ elements, onClose }: Props) => {
+const MoveDropdown = ({ elements, onClose, onLock }: Props) => {
     const { createNotification } = useNotifications();
     const [loading, withLoading] = useLoading();
     const api = useApi();
@@ -82,12 +83,13 @@ const MoveDropdown = ({ elements, onClose }: Props) => {
     };
 
     const handleCreate = () => {
+        onLock(true);
         const newLabel = {
             Name: search,
             Color: LABEL_COLORS[randomIntFromInterval(0, LABEL_COLORS.length - 1)],
             Exclusive: true
         };
-        createModal(<LabelModal type="folder" label={newLabel} onAdd={handleMove} />);
+        createModal(<LabelModal type="folder" label={newLabel} onClose={() => onLock(false)} />);
     };
 
     return (

@@ -20,10 +20,10 @@ import { MessageExtended } from '../../../models/message';
 import { Label } from '../../../models/label';
 import HeaderDropdown from './HeaderDropdown';
 import { OnCompose } from '../../../containers/ComposerContainer';
-
-import './MessageHeader.scss';
 import { ContactEmail } from '../../../models/contact';
 import { useContactGroups } from '../../../hooks/useContactGroups';
+
+import './MessageHeader.scss';
 
 interface Props {
     labels?: Label[];
@@ -122,10 +122,14 @@ const HeaderExpanded = ({
                 <div>
                     <Group className="mr1">
                         <HeaderDropdown autoClose={false} content={<Icon name="folder" />}>
-                            {({ onClose }) => <MoveDropdown elements={elements} onClose={onClose} />}
+                            {({ onClose, onLock }) => (
+                                <MoveDropdown elements={elements} onClose={onClose} onLock={onLock} />
+                            )}
                         </HeaderDropdown>
                         <HeaderDropdown autoClose={false} content={<Icon name="label" />}>
-                            {({ onClose }) => <LabelDropdown elements={elements} onClose={onClose} />}
+                            {({ onClose, onLock }) => (
+                                <LabelDropdown elements={elements} onClose={onClose} onLock={onLock} />
+                            )}
                         </HeaderDropdown>
                     </Group>
 
