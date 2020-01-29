@@ -8,6 +8,7 @@ import { Icon, classnames } from 'react-components';
 import { Label } from '../../models/label';
 import { Element } from '../../models/element';
 import { getLabelIDs } from '../../helpers/elements';
+import { getLabelsWithoutFolders } from '../../helpers/labels';
 
 import './ItemLabel.scss';
 
@@ -21,29 +22,30 @@ interface Props {
 
 const ItemLabels = ({ element = {}, onUnlabel = noop, max = 99, labels = [], className = '' }: Props) => {
     const labelIDs = getLabelIDs(element) || [];
-    const labelsMap = toMap(labels) as { [labelID: string]: Label };
+    const labelsMap = toMap(getLabelsWithoutFolders(labels)) as { [labelID: string]: Label };
+    const labelsObjects: Label[] = labelIDs.map((ID) => labelsMap[ID]).filter(Boolean);
+    const labelsSorted: Label[] = orderBy(labelsObjects, 'Order');
+    const labelsToShow = labelsSorted.slice(0, max);
 
     return (
-        <div className={classnames(['pm_labels', className])}>
-            {orderBy(labelIDs.map((ID) => labelsMap[ID]).filter(Boolean) as Label[], 'Order')
-                .slice(0, max)
-                .map(({ ID = '', Name = '', Color = '' }) => {
-                    const style = {
+        <div className={classnames(['pm_labels stop-propagation', className])}>
+            {labelsToShow.map(({ ID = '', Name = '', Color = '' }) => (
+                <span
+                    className="pm_label"
+                    style={{
                         backgroundColor: Color,
                         borderColor: Color
-                    };
-                    const to = `/${ID}`;
-                    return (
-                        <span className="pm_label" style={style} key={ID}>
-                            <Link to={to}>{Name}</Link>
-                            {onUnlabel !== noop ? (
-                                <button type="button" onClick={() => onUnlabel(ID)}>
-                                    <Icon name="off" size={12} color="white" />
-                                </button>
-                            ) : null}
-                        </span>
-                    );
-                })}
+                    }}
+                    key={ID}
+                >
+                    <Link to={`/${ID}`}>{Name}</Link>
+                    {onUnlabel !== noop ? (
+                        <button type="button" onClick={() => onUnlabel(ID)}>
+                            <Icon name="off" size={12} color="white" />
+                        </button>
+                    ) : null}
+                </span>
+            ))}
         </div>
     );
 };
