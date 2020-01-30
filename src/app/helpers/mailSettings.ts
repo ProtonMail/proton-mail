@@ -27,6 +27,6 @@ export const isConversationMode = (
     return (
         !alwaysMessageLabels.includes(labelID as MAILBOX_LABEL_IDS) &&
         ViewMode === VIEW_MODE.GROUP &&
-        !Object.keys(searchParams).length
+        !Object.entries(searchParams).some(([, value]) => typeof value !== 'undefined')
     );
 };
