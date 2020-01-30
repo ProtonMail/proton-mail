@@ -7,8 +7,8 @@ import PrivateHeader from '../header/PrivateHeader';
 import PrivateSidebar from '../sidebar/PrivateSidebar';
 import { Location, History } from 'history';
 import { OnCompose } from '../../containers/ComposerContainer';
-import { setSearchParametersInUrl } from '../../helpers/mailboxUrl';
 import { getHumanLabelID } from '../../helpers/labels';
+import { setKeywordInUrl } from '../../helpers/mailboxUrl';
 
 interface Props {
     children: ReactNode;
@@ -23,13 +23,7 @@ const PrivateLayout = ({ children, location, history, labelID, onCompose }: Prop
     const [expanded, setExpand] = useState(false);
 
     const handleSearch = (keyword = '', labelID = MAILBOX_LABEL_IDS.ALL_MAIL) => {
-        // keyword:test from:gibolin@protonmail.com to:gibolin@protonmail.com begin:20200122 end:20200128
-        const trimmed = keyword.trim();
-        const newLocation = {
-            ...location,
-            pathname: `/${getHumanLabelID(labelID)}`
-        };
-        history.push(setSearchParametersInUrl(newLocation, trimmed));
+        history.push(setKeywordInUrl({ ...location, pathname: `/${getHumanLabelID(labelID)}` }, keyword));
     };
 
     useEffect(() => {

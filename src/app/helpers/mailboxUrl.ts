@@ -60,6 +60,11 @@ const stringToFilter = (string: string | undefined): Filter => {
 const filterToString = (filter: Filter): string | undefined =>
     filter.Unread === undefined ? undefined : filter.Unread === 0 ? 'read' : 'unread';
 
+export const keywordToString = (keyword: string): string | undefined => {
+    const trimmed = keyword.trim();
+    return trimmed ? trimmed : undefined;
+};
+
 export const pageFromUrl = (location: Location) => stringToPage(getSearchParams(location).page);
 
 export const sortFromUrl = (location: Location) => stringToSort(getSearchParams(location).sort);
@@ -89,37 +94,5 @@ export const setSortInUrl = (location: Location, sort: Sort) =>
 export const setFilterInUrl = (location: Location, filter: Filter) =>
     changeSearchParams(location, { filter: filterToString(filter) });
 
-export const getSearchParameters = (search = '') => {
-    const keyword = search.trim();
-    const list = (keyword.startsWith('keyword:') ? keyword : `keyword:${keyword}`).split(
-        /(?: |^)(keyword|from|to|address|begin|end|attachments|wildcard):/g
-    );
-
-    !list[0] && list.shift();
-
-    const searchParameters = list.reduce(
-        (acc, str: string, index: number, arr) => {
-            const modulo = index % 2; // [key, value, key, value...]
-            const prevKey = arr[index - 1];
-            modulo === 1 && str && (acc[prevKey] = str);
-            return acc;
-        },
-        {
-            keyword: undefined,
-            from: undefined,
-            to: undefined,
-            address: undefined,
-            begin: undefined,
-            end: undefined,
-            attachments: undefined,
-            wildcard: undefined
-        } as { [key: string]: string | undefined }
-    );
-
-    return searchParameters;
-};
-
-export const setSearchParametersInUrl = (location: Location, search: string) => {
-    const searchParameters = getSearchParameters(search);
-    return changeSearchParams(location, searchParameters);
-};
+export const setKeywordInUrl = (location: Location, keyword: string) =>
+    changeSearchParams(location, { keyword: keywordToString(keyword) });

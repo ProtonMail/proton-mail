@@ -29,13 +29,14 @@ import { hasBit } from 'proton-shared/lib/helpers/bitset';
 
 import { changeSearchParams } from '../../helpers/url';
 import { getHumanLabelID } from '../../helpers/labels';
+import AddressesInput from '../composer/addresses/AddressesInput';
 
 import './AdvancedSearchDropdown.scss';
-import { getSearchParameters } from '../../helpers/mailboxUrl';
-import AddressesInput from '../composer/addresses/AddressesInput';
+import { extractSearchParameters, keywordToString } from '../../helpers/mailboxUrl';
 
 const UNDEFINED = undefined;
 const AUTO_WILDCARD = undefined;
+const ALL_ADDRESSES = 'all';
 const NO_WILDCARD = 0;
 const NO_ATTACHMENTS = 0;
 const WITH_ATTACHMENTS = 1;
@@ -44,7 +45,7 @@ const DEFAULT_MODEL = {
     from: [],
     to: [],
     labelID: ALL_MAIL,
-    address: UNDEFINED,
+    address: ALL_ADDRESSES,
     attachments: UNDEFINED,
     wildcard: AUTO_WILDCARD
 };
@@ -70,7 +71,6 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', location, hi
         event.stopPropagation(); // necessary to not submit normal search from header
 
         const { labelID, address, start, end, wildcard, from, to, attachments } = model;
-        const { keyword } = getSearchParameters(fullInput);
 
         history.push(
             changeSearchParams(
@@ -79,12 +79,12 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', location, hi
                     pathname: `/${getHumanLabelID(labelID)}`
                 },
                 {
-                    keyword,
-                    address,
-                    from: from.length ? formatRecipients(from) : undefined,
-                    to: to.length ? formatRecipients(to) : undefined,
-                    start: start ? getUnixTime(start) : undefined,
-                    end: end ? getUnixTime(end) : undefined,
+                    keyword: keywordToString(fullInput),
+                    address: address === ALL_ADDRESSES ? UNDEFINED : address,
+                    from: from.length ? formatRecipients(from) : UNDEFINED,
+                    to: to.length ? formatRecipients(to) : UNDEFINED,
+                    start: start ? getUnixTime(start) : UNDEFINED,
+                    end: end ? getUnixTime(end) : UNDEFINED,
                     attachments,
                     wildcard
                 }
@@ -109,7 +109,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', location, hi
                     };
                 }
 
-                const { address, attachments, wildcard, from, to, start, end } = getSearchParameters(fullInput);
+                const { address, attachments, wildcard, from, to, start, end } = extractSearchParameters(location);
 
                 return {
                     ...DEFAULT_MODEL,
@@ -153,7 +153,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', location, hi
                 .map(({ ID: value, Name: text }) => ({ value, text }))
         );
 
-    const addressOptions = [{ value: UNDEFINED, text: c('Option').t`All` }].concat(
+    const addressOptions = [{ value: ALL_ADDRESSES, text: c('Option').t`All` }].concat(
         addresses.map(({ ID: value, Email: text }) => ({ value, text }))
     );
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import {
     MainLogo,
@@ -15,26 +15,10 @@ import { c } from 'ttag';
 import AdvancedSearchDropdown from './AdvancedSearchDropdown';
 import { extractSearchParameters } from '../../helpers/mailboxUrl';
 
-const getSearchValue = (location) => {
-    const searchParameters = extractSearchParameters(location);
-
-    return Object.entries(searchParameters)
-        .reduce((acc, [key, value]) => {
-            if (value) {
-                acc.push(`${key}:${value}`);
-            }
-            return acc;
-        }, [])
-        .join(' ');
-};
-
 const PrivateHeader = ({ labelID, location, history, expanded, onToggleExpand, onSearch }) => {
     const [{ hasPaidMail }] = useUser();
-    const [value, updateValue] = useState('');
-
-    useEffect(() => {
-        updateValue(getSearchValue(location));
-    }, [location]);
+    const { keyword = '' } = extractSearchParameters(location);
+    const [value, updateValue] = useState(keyword);
 
     return (
         <header className="header flex flex-nowrap reset4print">
