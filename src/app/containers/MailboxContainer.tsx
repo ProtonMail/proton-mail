@@ -62,7 +62,7 @@ const MailboxContainer = ({
     });
 
     const searchParams = getSearchParams(location);
-    const conversationMode = isConversationMode(inputLabelID, mailSettings, extractSearchParameters(location));
+    const conversationMode = isConversationMode(inputLabelID, mailSettings, location);
     const searchParameters = useMemo<SearchParameters>(() => extractSearchParameters(location), [
         searchParams.address,
         searchParams.from,
@@ -92,7 +92,7 @@ const MailboxContainer = ({
     useEffect(() => setPage({ ...page, page: pageFromUrl(location) }), [searchParams.page]);
     useEffect(() => setPage({ ...page, total }), [total]);
 
-    useMailboxPageTitle(labelID);
+    useMailboxPageTitle(labelID, location);
 
     const checkedIDs = useMemo(() => {
         return Object.entries(checkedElements).reduce((acc, [elementID, isChecked]) => {
@@ -152,6 +152,7 @@ const MailboxContainer = ({
     return (
         <>
             <Toolbar
+                location={location}
                 labelID={labelID}
                 elementID={elementID}
                 selectedIDs={selectedIDs}
@@ -181,6 +182,7 @@ const MailboxContainer = ({
                             </div>
                         ) : (
                             <List
+                                location={location}
                                 labelID={labelID}
                                 mailSettings={mailSettings}
                                 elementID={elementID}
@@ -211,6 +213,7 @@ const MailboxContainer = ({
                             )
                         ) : (
                             <PlaceholderView
+                                location={location}
                                 labelID={labelID}
                                 mailSettings={mailSettings}
                                 welcomeRef={welcomeRef}

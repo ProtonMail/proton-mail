@@ -16,13 +16,14 @@ interface Props {
     mailSettings: any;
     selectedIDs: string[];
     labelID: string;
+    location: Location;
 }
 
-const ReadUnreadButtons = ({ mailSettings, labelID, selectedIDs = [] }: Props) => {
+const ReadUnreadButtons = ({ mailSettings, labelID, selectedIDs = [], location }: Props) => {
     const api = useApi();
     const { call } = useEventManager();
     const { MessageButtons = MESSAGE_BUTTONS.READ_UNREAD } = mailSettings;
-    const type = getCurrentType({ mailSettings, labelID });
+    const type = getCurrentType({ mailSettings, labelID, location });
     const [loading, withLoading] = useLoading();
 
     const markAs = async (status = UNREAD) => {
