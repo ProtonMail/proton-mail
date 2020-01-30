@@ -56,6 +56,7 @@ const PrivateLayout = ({ children, location, history, labelID, onCompose }: Prop
             />
             <div className="content flex-item-fluid reset4print">
                 <PrivateHeader
+                    labelID={labelID}
                     location={location}
                     history={history}
                     expanded={expanded}

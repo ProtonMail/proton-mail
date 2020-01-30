@@ -89,27 +89,37 @@ export const setSortInUrl = (location: Location, sort: Sort) =>
 export const setFilterInUrl = (location: Location, filter: Filter) =>
     changeSearchParams(location, { filter: filterToString(filter) });
 
-export const getSearchParameters = (location: Location, search: string) => {
+export const getSearchParameters = (search = '') => {
     const keyword = search.trim();
-    const list = keyword.split(/(?: |^)(keyword|from|to|address|begin|end|attachments|wildcard):/g);
+    const list = (keyword.startsWith('keyword:') ? keyword : `keyword:${keyword}`).split(
+        /(?: |^)(keyword|from|to|address|begin|end|attachments|wildcard):/g
+    );
 
     !list[0] && list.shift();
 
-    const searchParameters = list.reduce((acc, str: string, index: number, arr) => {
-        const modulo = index % 2; // [key, value, key, value...]
-        const prevKey = arr[index - 1];
-        modulo === 1 && str && (acc[prevKey] = str);
-        return acc;
-    }, {} as { [key: string]: string });
+    const searchParameters = list.reduce(
+        (acc, str: string, index: number, arr) => {
+            const modulo = index % 2; // [key, value, key, value...]
+            const prevKey = arr[index - 1];
+            modulo === 1 && str && (acc[prevKey] = str);
+            return acc;
+        },
+        {
+            keyword: undefined,
+            from: undefined,
+            to: undefined,
+            address: undefined,
+            begin: undefined,
+            end: undefined,
+            attachments: undefined,
+            wildcard: undefined
+        } as { [key: string]: string | undefined }
+    );
 
-    if (Object.keys(searchParameters).length) {
-        return searchParameters;
-    }
-
-    return { keyword: !keyword || keyword === 'keyword:' ? undefined : keyword };
+    return searchParameters;
 };
 
 export const setSearchParametersInUrl = (location: Location, search: string) => {
-    const searchParameters = getSearchParameters(location, search);
+    const searchParameters = getSearchParameters(search);
     return changeSearchParams(location, searchParameters);
 };

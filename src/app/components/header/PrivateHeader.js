@@ -28,7 +28,7 @@ const getSearchValue = (location) => {
         .join(' ');
 };
 
-const PrivateHeader = ({ location, history, expanded, onToggleExpand, onSearch }) => {
+const PrivateHeader = ({ labelID, location, history, expanded, onToggleExpand, onSearch }) => {
     const [{ hasPaidMail }] = useUser();
     const [value, updateValue] = useState('');
 
@@ -46,7 +46,9 @@ const PrivateHeader = ({ location, history, expanded, onToggleExpand, onSearch }
                 onSearch={onSearch}
                 onChange={updateValue}
                 value={value}
-                advanced={<AdvancedSearchDropdown keyword={value} location={location} history={history} />}
+                advanced={
+                    <AdvancedSearchDropdown labelID={labelID} keyword={value} location={location} history={history} />
+                }
             />
             <TopNavbar>
                 {hasPaidMail ? null : <UpgradeButton external={true} />}
@@ -59,6 +61,7 @@ const PrivateHeader = ({ location, history, expanded, onToggleExpand, onSearch }
 };
 
 PrivateHeader.propTypes = {
+    labelID: PropTypes.string.isRequired,
     location: PropTypes.object.isRequired,
     history: PropTypes.object.isRequired,
     onSearch: PropTypes.func.isRequired,

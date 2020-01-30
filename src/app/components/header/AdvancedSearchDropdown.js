@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {
     classnames,
@@ -18,12 +18,14 @@ import {
     useLabels,
     useAddresses,
     useContactEmails,
+    useMailSettings,
     Loader
 } from 'react-components';
-import { MAILBOX_LABEL_IDS, LABEL_EXCLUSIVE } from 'proton-shared/lib/constants';
+import { MAILBOX_LABEL_IDS, LABEL_EXCLUSIVE, SHOW_MOVED } from 'proton-shared/lib/constants';
 import { c } from 'ttag';
 import { getUnixTime, fromUnixTime, isBefore, isAfter } from 'date-fns';
 import { isEmail } from 'proton-shared/lib/helpers/validators';
+import { hasBit } from 'proton-shared/lib/helpers/bitset';
 
 import { changeSearchParams } from '../../helpers/url';
 import { getHumanLabelID } from '../../helpers/labels';
@@ -37,7 +39,7 @@ const AUTO_WILDCARD = undefined;
 const NO_WILDCARD = 0;
 const NO_ATTACHMENTS = 0;
 const WITH_ATTACHMENTS = 1;
-const { INBOX, TRASH, SPAM, ARCHIVE, ALL_MAIL } = MAILBOX_LABEL_IDS;
+const { INBOX, TRASH, SPAM, ARCHIVE, ALL_MAIL, ALL_SENT, SENT, ALL_DRAFTS, DRAFTS } = MAILBOX_LABEL_IDS;
 const DEFAULT_MODEL = {
     from: [],
     to: [],
@@ -54,37 +56,21 @@ const getRecipients = (value = '') =>
         .map((Address) => ({ Address }));
 const formatRecipients = (recipients = []) => recipients.map(({ Address }) => Address).join(',');
 
-const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) => {
+const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', location, history }) => {
     const [uid] = useState(generateUID('advanced-search-dropdown'));
+    const [mailSettings, loadingMailSettings] = useMailSettings();
     const { anchorRef, isOpen, toggle, close } = usePopperAnchor();
     const [labels, loadingLabels] = useLabels();
     const [contactEmails, loadingContactEmails] = useContactEmails();
     const [addresses, loadingAddresses] = useAddresses();
-    const [model, updateModel] = useState(() => {
-        if (!fullInput) {
-            return DEFAULT_MODEL;
-        }
-
-        const { address, attachments, wildcard, from, to, start, end } = getSearchParameters(location, fullInput);
-
-        return {
-            ...DEFAULT_MODEL,
-            address,
-            attachments,
-            wildcard,
-            from: getRecipients(from),
-            to: getRecipients(to),
-            start: start ? fromUnixTime(start) : UNDEFINED,
-            end: end ? fromUnixTime(end) : UNDEFINED
-        };
-    });
+    const [model, updateModel] = useState(DEFAULT_MODEL);
 
     const handleSubmit = (event) => {
         event.preventDefault(); // necessary to not run a basic submission
         event.stopPropagation(); // necessary to not submit normal search from header
 
         const { labelID, address, start, end, wildcard, from, to, attachments } = model;
-        const { keyword } = getSearchParameters(location, fullInput);
+        const { keyword } = getSearchParameters(fullInput);
 
         history.push(
             changeSearchParams(
@@ -105,23 +91,53 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) 
             )
         );
 
-        updateModel(DEFAULT_MODEL);
         close();
     };
 
     const handleReset = (event) => {
         event.preventDefault();
-        updateModel(DEFAULT_MODEL);
         close();
     };
 
-    if (loadingLabels || loadingAddresses || loadingContactEmails) {
+    useEffect(() => {
+        if (isOpen) {
+            updateModel(() => {
+                if (!fullInput) {
+                    return {
+                        ...DEFAULT_MODEL,
+                        labelID
+                    };
+                }
+
+                const { address, attachments, wildcard, from, to, start, end } = getSearchParameters(fullInput);
+
+                return {
+                    ...DEFAULT_MODEL,
+                    labelID,
+                    address,
+                    attachments,
+                    wildcard,
+                    from: getRecipients(from),
+                    to: getRecipients(to),
+                    start: start ? fromUnixTime(start) : UNDEFINED,
+                    end: end ? fromUnixTime(end) : UNDEFINED
+                };
+            });
+        }
+    }, [isOpen]);
+
+    if (loadingLabels || loadingAddresses || loadingContactEmails || loadingMailSettings) {
         return <Loader />;
     }
 
     const labelIDOptions = [
-        { value: ALL_MAIL, text: c('Option').t`All` },
+        { value: ALL_MAIL, text: c('Mailbox').t`All` },
         { value: INBOX, text: c('Mailbox').t`Inbox` },
+        {
+            value: hasBit(mailSettings.ShowMoved, SHOW_MOVED.DRAFTS) ? ALL_DRAFTS : DRAFTS,
+            text: c('Mailbox').t`Drafts`
+        },
+        { value: hasBit(mailSettings.ShowMoved, SHOW_MOVED.SENT) ? ALL_SENT : SENT, text: c('Mailbox').t`Sent` },
         { value: ARCHIVE, text: c('Mailbox').t`Archive` },
         { value: SPAM, text: c('Mailbox').t`Spam` },
         { value: TRASH, text: c('Mailbox').t`Trash` }
@@ -171,7 +187,7 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) 
                         <div className="flex-item-fluid flex flex-items-center flex-spacebetween">
                             <Toggle
                                 id="exact-match"
-                                checked={!!model.wildcard}
+                                checked={model.wildcard === AUTO_WILDCARD}
                                 onChange={({ target }) =>
                                     updateModel({ ...model, wildcard: target.checked ? AUTO_WILDCARD : NO_WILDCARD })
                                 }
@@ -282,6 +298,7 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', location, history }) 
 };
 
 AdvancedSearchDropdown.propTypes = {
+    labelID: PropTypes.string.isRequired,
     keyword: PropTypes.string,
     history: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired
