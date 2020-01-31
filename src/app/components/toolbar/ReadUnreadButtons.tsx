@@ -1,4 +1,5 @@
 import React from 'react';
+import { Location } from 'history';
 import { MESSAGE_BUTTONS } from 'proton-shared/lib/constants';
 import { Icon, useApi, useEventManager, useLoading } from 'react-components';
 import { markMessageAsRead, markMessageAsUnread } from 'proton-shared/lib/api/messages';
