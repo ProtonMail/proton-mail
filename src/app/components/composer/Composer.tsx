@@ -107,7 +107,8 @@ const Composer = ({
         }
 
         if (modelMessage.content === undefined) {
-            setModelMessage({ ...modelMessage, content: syncedMessage.content });
+            console.log('loaded content', syncedMessage.content);
+            setModelMessage({ ...modelMessage, data: syncedMessage.data, content: syncedMessage.content });
         }
 
         onChange(syncedMessage);
@@ -150,17 +151,25 @@ const Composer = ({
         autoSave(newModelMessage);
     };
     const save = async (messageToSave = modelMessage) => {
+        console.log('save', messageToSave.content);
         await saveDraft(messageToSave);
         createNotification({ text: c('Info').t`Message saved` });
     };
     const handleAddAttachments = async (files: File[]) => {
-        const attachments = await upload(files, modelMessage, ATTACHMENT_ACTION.ATTACHMENT, api);
-        if (attachments) {
+        // TODO: Add embedded / attachment pseudo modal
+        const action = ATTACHMENT_ACTION.INLINE;
+
+        // console.log('handleAddAttachments', files, syncedMessage, action, api);
+
+        const uploads = await upload(files, syncedMessage, action, api);
+        const attachments = uploads.map(({ attachment }) => attachment);
+        if (uploads) {
             const Attachments = [...(modelMessage.data?.Attachments || []), ...attachments];
             const newModelMessage = mergeMessages(modelMessage, { data: { Attachments } });
             setModelMessage(newModelMessage);
             save(modelMessage);
         }
+        return attachments;
     };
     const handleRemoveAttachment = (attachment: Attachment) => async () => {
         await api(removeAttachment(attachment.ID || '', modelMessage.data?.ID || ''));
@@ -227,6 +236,7 @@ const Composer = ({
                         message={modelMessage}
                         onChange={handleChange}
                         onFocus={addressesBlurRef.current}
+                        onAddAttachments={handleAddAttachments}
                         onRemoveAttachment={handleRemoveAttachment}
                         contentFocusRef={contentFocusRef}
                     />

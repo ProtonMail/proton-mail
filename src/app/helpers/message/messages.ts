@@ -214,7 +214,8 @@ export const isSentAutoReply = ({ Flags, ParsedHeaders = {} }: Message) => {
 /**
  * We NEVER upconvert, if the user wants html: plaintext is actually fine as well
  */
-export const getHTML = (message: MessageExtended) => (isHTML(message.data) ? message.content : undefined);
+export const getHTML = (message: MessageExtended) =>
+    isHTML(message.data) ? message.saveDocument?.innerHTML : undefined;
 
 export const exportPlainText = (message: MessageExtended) => {
     /*

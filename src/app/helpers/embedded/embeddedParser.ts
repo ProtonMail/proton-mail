@@ -1,4 +1,4 @@
-import { MessageExtended } from '../../models/message';
+import { MessageExtended, Message } from '../../models/message';
 import { escapeSrc, unescapeSrc, wrap } from '../dom';
 import { Api } from '../../models/utils';
 import { ENCRYPTED_STATUS } from '../../constants';
@@ -47,6 +47,8 @@ export const prepareImages = (message: MessageExtended, show: boolean, isReplyFo
         const src = image.getAttribute('proton-src') || undefined;
         image.setAttribute('referrerPolicy', 'no-referrer');
         const attachment = getAttachment(message.data, src);
+
+        console.log('prepareImages', image, src, attachment);
 
         if (!image.classList.contains(EMBEDDED_CLASSNAME)) {
             image.classList.add(EMBEDDED_CLASSNAME);
@@ -160,6 +162,7 @@ const triggerSigVerification = (
 const actionDirection: { [key: string]: (nodes: Element[], cid: string, url: string) => void } = {
     blob(nodes: Element[], cid: string, url: string) {
         nodes.forEach((node) => {
+            console.log('blob', node, cid, url);
             // Always remove the `data-` src attribute set by the cid function, otherwise it can get displayed if the user does not auto load embedded images.
             node.removeAttribute('data-src');
             if (node.getAttribute('proton-src')) {
@@ -182,17 +185,19 @@ const actionDirection: { [key: string]: (nodes: Element[], cid: string, url: str
 /**
  * Parse the content to inject the generated blob src
  */
-export const mutateHTML = (message: MessageExtended, direction: string) => {
-    if (!message.document) {
+export const mutateHTML = (message: Message = {}, document?: Element, direction: 'blob' | 'cid' = 'blob') => {
+    if (!document) {
         return;
     }
 
-    const document = message.document;
-
     document.innerHTML = escapeSrc(document.innerHTML);
 
-    Object.keys(getMessageCIDs(message.data)).forEach((cid) => {
+    console.log('mutateHTML before', getMessageCIDs(message), document.innerHTML);
+
+    Object.keys(getMessageCIDs(message)).forEach((cid) => {
         const nodes = findEmbedded(cid, document);
+
+        console.log('mutateHTML', cid, nodes);
 
         if (nodes.length) {
             const { url = '' } = getBlob(cid);
@@ -201,7 +206,11 @@ export const mutateHTML = (message: MessageExtended, direction: string) => {
         }
     });
 
+    console.log('mutateHTML after', document.innerHTML);
+
     document.innerHTML = unescapeSrc(document.innerHTML);
+
+    console.log('mutateHTML after unescape', document.innerHTML);
 };
 
 export const decrypt = async (message: MessageExtended, api: Api, cache: AttachmentsDataCache) => {

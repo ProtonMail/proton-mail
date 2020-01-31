@@ -1,8 +1,9 @@
 import mimemessage from 'mimemessage';
 
-import { ucFirst } from '../string';
+import { ucFirst, toUnsignedString } from '../string';
 import { Attachment } from '../../models/attachment';
 import { transformEscape } from '../transforms/transformEscape';
+import { hash } from '../string';
 
 export const REGEXP_CID_START = /^cid:/g;
 
@@ -73,6 +74,8 @@ export const extractEmbedded = (attachments: Attachment[] = [], document: Elemen
         const cid = readCID(Headers);
         const nodes = findEmbedded(cid, document);
 
+        console.log('extractEmbedded', cid, nodes, document.innerHTML);
+
         return nodes.length;
     });
 };
@@ -105,6 +108,15 @@ export const getAttachementName = (Headers: { [key: string]: string } = {}) => {
     }
 
     return '';
+};
+
+/**
+ * Generate CID from input and email
+ */
+export const generateCid = (input: string, email: string) => {
+    const hashValue = toUnsignedString(hash(input), 4);
+    const domain = email.split('@')[1];
+    return `${hashValue}@${domain}`;
 };
 
 /**
