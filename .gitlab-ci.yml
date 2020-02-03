@@ -1,8 +1,8 @@
 include:
-  - project: 'proton/fe/proton-config'
+  - project: 'web/core/proton-config'
     ref: master
     file: '/_templates-ci/public.gitlab-ci.yml'
 
 variables:
-    APP_GIT: git@github.com:ProtonMail/proton-mail.git
+    APP_GIT: git@gitlab.protontech.ch:web/mail/proton-mail.git
     NODE_OPTIONS: --max-old-space-size=4096
