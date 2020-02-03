@@ -1,7 +1,7 @@
 {
     "version": "v1.0.0",
-    "commit": "11f262f64984b4938da6db81429cb3aabde45c50",
+    "commit": "199a08b1a79be9692ccc47b2df2b9ae0507fd410",
     "branch": "HEAD",
-    "buildDate": "2020-01-29T08:41:20Z",
-    "release": "pipelines/61165-0-g11f262f"
+    "buildDate": "2020-02-03T09:10:28Z",
+    "release": "pipelines/62457-0-g199a08b"
 }
