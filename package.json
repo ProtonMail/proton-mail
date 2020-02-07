@@ -81,7 +81,8 @@
         "react-router-dom": "^4.3.1",
         "ttag": "^1.7.14",
         "turndown": "^5.0.3",
-        "yetch": "^1.1.0"
+        "yetch": "^1.1.0",
+        "proton-version": "github:ProtonMail/proton-version#semver:^1.0.0"
     },
     "lint-staged": {
         "(*.ts|*.tsx|*.js)": [
