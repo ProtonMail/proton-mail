@@ -106,6 +106,7 @@ export const generateTopPackages = async (
                     return;
                 case DEFAULT:
                     packages[DEFAULT] = await generateHTMLPackage(message);
+                    console.log('sendTopPackages', { ...packages[DEFAULT] });
                     return;
                 default:
                     throw new Error(); // Should never happen.

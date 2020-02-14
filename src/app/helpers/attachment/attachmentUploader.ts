@@ -6,8 +6,12 @@ import { Api, Binary } from '../../models/utils';
 import { getAttachments } from '../message/messages';
 import { readFileAsBuffer } from '../file';
 import { uploadAttachment } from '../../api/attachments';
-import { isEmbeddable } from './attachments';
+import { isEmbeddable, getCid } from './attachments';
 import { Attachment } from '../../models/attachment';
+import { MIME_TYPES } from 'proton-shared/lib/constants';
+import { store } from '../embedded/embeddedStoreBlobs';
+import { generateCid } from '../embedded/embeddedUtils';
+import { generateUID } from '../string';
 
 // Reference: Angular/src/app/attachments/factories/attachmentModel.js
 
@@ -18,13 +22,32 @@ export enum ATTACHMENT_ACTION {
     INLINE = 'inline'
 }
 
+interface Packets {
+    Filename: string;
+    MIMEType: MIME_TYPES;
+    FileSize: number;
+    Inline: boolean;
+    signature?: Uint8Array;
+    Preview: Uint8Array;
+    keys: Uint8Array;
+    data: Uint8Array;
+}
+
+interface UploadResult {
+    attachment: Attachment;
+    // sessionKey: SessionKey;
+    packets: Packets;
+    // cid: string;
+    // REQUEST_ID: string;
+}
+
 const encrypt = async (
     data: Binary,
     { name, type, size }: File = {} as File,
     inline: boolean,
     publicKeys: PmcryptoKey[],
     privateKeys: PmcryptoKey[]
-) => {
+): Promise<Packets> => {
     const { message, signature } = await encryptMessage({
         filename: name,
         armor: false,
@@ -38,10 +61,10 @@ const encrypt = async (
 
     return {
         Filename: name,
-        MIMEType: type,
+        MIMEType: type as MIME_TYPES,
         FileSize: size,
         Inline: inline,
-        signature: signature ? signature.packets.write() : undefined,
+        signature: signature ? (signature.packets.write() as Uint8Array) : undefined,
         Preview: data,
         keys: asymmetric[0],
         data: encrypted[0]
@@ -66,37 +89,37 @@ const encryptFile = async (file: File, inline: boolean, pubKeys: PmcryptoKey[], 
 /**
  * Add a new attachment, upload it to the server
  */
-const uploadFile = async (file: File, message: MessageExtended, inline: boolean, api: Api, total = 1, cid = '') => {
+const uploadFile = async (
+    file: File,
+    message: MessageExtended,
+    inline: boolean,
+    api: Api,
+    total = 1,
+    cid = ''
+): Promise<UploadResult> => {
     const titleImage = c('Title').t`Image`;
 
-    const tempPacket = {
-        filename: file.name || `${titleImage} ${getAttachments(message.data).length + 1}`,
-        uploading: true,
-        Size: file.size,
-        ContentID: cid
-    };
+    // const tempPacket = {
+    //     filename: file.name || `${titleImage} ${getAttachments(message.data).length + 1}`,
+    //     uploading: true,
+    //     Size: file.size,
+    //     ContentID: cid
+    // };
 
-    // TODO
-    // force update the embedded counter
-    // if (file.inline) {
-    //     message.NumEmbedded++;
-    //     // CID doesn't exist when the user add an attachment
-    //     tempPacket.ContentID = cid || embedded.generateCid(file.upload.uuid, message.From.Email);
-    //     tempPacket.Inline = 1;
-    // }
-
-    // const privateKeys = keysModel.getPrivateKeys(message.AddressID);
-    // message.attachmentsToggle = true;
+    const filename = file.name || `${titleImage} ${getAttachments(message.data).length + 1}`;
+    const ContentID = inline ? cid || generateCid(generateUID(), message.data?.Sender?.Address || '') : '';
 
     const publicKeys = message.publicKeys && message.publicKeys.length > 0 ? [message.publicKeys[0]] : [];
+
+    // console.log('uploadFile', file, inline, publicKeys, message.privateKeys || []);
 
     const packets = await encryptFile(file, inline, publicKeys, message.privateKeys || []);
 
     const { Attachment } = await (api(
         uploadAttachment({
-            Filename: packets.Filename || tempPacket.filename,
+            Filename: packets.Filename || filename,
             MessageID: message.data?.ID || '',
-            ContentID: tempPacket.ContentID,
+            ContentID,
             MIMEType: packets.MIMEType,
             KeyPackets: new Blob([packets.keys] as any),
             DataPacket: new Blob([packets.data] as any),
@@ -116,8 +139,13 @@ const uploadFile = async (file: File, message: MessageExtended, inline: boolean,
     // const newCid = contentId.replace(/[<>]+/g, '');
 
     // return { attachment, sessionKey, packets, cid: newCid, REQUEST_ID };
-    return Attachment;
+    return { attachment: Attachment, packets };
 };
+
+// const getNewCid = (attachment: Attachment) => {
+//     const contentId = `${(attachment.Headers || {})['content-id'] || ''}`;
+//     return contentId.replace(/[<>]+/g, '');
+// };
 
 /**
  * Upload a list of attachments [...File]
@@ -155,6 +183,11 @@ export const upload = async (
 
     // TODO: Embedded
     // Create embedded and replace theses files from the upload list
+    uploads.forEach(({ attachment, packets }) => {
+        // addEmbedded(message, cid, packets.Preview, attachment.MIMEType);
+        console.log('store', getCid(attachment));
+        store(message.data, getCid(attachment))(packets.Preview, attachment.MIMEType);
+    });
     // const embeddedMap = addEmbedded(upload, message);
     // return _.map(upload, (config) => {
     //     return embeddedMap[config.attachment.ID] || config;

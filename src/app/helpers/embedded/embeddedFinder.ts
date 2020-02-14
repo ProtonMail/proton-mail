@@ -2,6 +2,7 @@ import { MessageExtended, Message } from '../../models/message';
 import { extractEmbedded, getAttachementName, REGEXP_CID_START } from '../embedded/embeddedUtils';
 import { addMessageCID, getMessageCIDs } from './embeddedStoreCids';
 import { Attachment } from '../../models/attachment';
+import { getAttachments } from '../message/messages';
 
 export const getAttachment = (message: Message = {}, src = '') => {
     const cid = src.replace(REGEXP_CID_START, '');
@@ -9,13 +10,13 @@ export const getAttachment = (message: Message = {}, src = '') => {
 };
 
 export const find = (message: MessageExtended) => {
-    const list = (message.data || {}).Attachments || [];
+    const attachements = getAttachments(message.data);
 
-    if (!list.length || !message.document) {
+    if (!attachements.length || !message.document) {
         return [];
     }
 
-    const embeddedAttachments = extractEmbedded(list, message.document);
+    const embeddedAttachments = extractEmbedded(attachements, message.document);
 
     embeddedAttachments.forEach((attachment) => {
         addMessageCID(message.data || {}, attachment);

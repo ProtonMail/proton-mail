@@ -13,6 +13,7 @@ import { wait } from 'proton-shared/lib/helpers/promise';
 import { transformEscape } from '../helpers/transforms/transformEscape';
 import { transformLinks } from '../helpers/transforms/transformLinks';
 import { transformEmbedded } from '../helpers/transforms/transformEmbedded';
+import { transformEmbeddedSave } from '../helpers/transforms/transformEmbeddedSave';
 import { transformWelcome } from '../helpers/transforms/transformWelcome';
 import { transformBlockquotes } from '../helpers/transforms/transformBlockquotes';
 import { transformStylesheet } from '../helpers/transforms/transformStylesheet';
@@ -206,7 +207,8 @@ export const useMessage = (
         [create, c('Action').t`Creating`],
         [update, c('Action').t`Saving`],
         [sendMessage, c('Action').t`Sending`],
-        [deleteRequest, c('Action').t`Deleting`]
+        [deleteRequest, c('Action').t`Deleting`],
+        [transformEmbeddedSave, c('Action').t`Processing`]
     ]);
     transforms.forEach((transform) => activities.set(transform, c('Action').t`Processing`));
 
@@ -299,14 +301,14 @@ export const useMessage = (
 
     const saveDraft = useCallback(
         async (messageModel: MessageExtended) => {
-            await run(mergeMessages(message, messageModel), [encrypt, update]);
+            await run(mergeMessages(message, messageModel), [transformEmbeddedSave, encrypt, update]);
         },
         [message, run, cache]
     );
 
     const send = useCallback(
         async (messageModel: MessageExtended) => {
-            await run(mergeMessages(message, messageModel), [encrypt, update, sendMessage]);
+            await run(mergeMessages(message, messageModel), [transformEmbeddedSave, encrypt, update, sendMessage]);
         },
         [message, run, cache]
     );

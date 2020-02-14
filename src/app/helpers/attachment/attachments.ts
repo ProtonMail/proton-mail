@@ -9,3 +9,5 @@ export const isEmbeddedLocal = ({
 };
 
 export const isEmbeddable = (fileType: string) => embeddableTypes.includes(fileType);
+
+export const getCid = ({ Headers }: Attachment = {}) => `${(Headers || {})['content-id'] || ''}`.replace(/[<>]+/g, '');

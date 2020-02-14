@@ -36,7 +36,8 @@ export interface Message {
 export interface MessageExtended {
     data?: Message;
     raw?: string;
-    document?: Element;
+    document?: Element; // Document processed based on the message body
+    saveDocument?: Element; // Document processed to be saved
     content?: string;
     verified?: number;
     publicKeys?: any[];
