@@ -36,14 +36,16 @@
     },
     "homepage": "https://github.com/ProtonMail/proton-mail#readme",
     "devDependencies": {
+        "@types/react": "^16.9.19",
+        "@types/turndown": "^5.0.0",
         "@testing-library/jest-dom": "^4.2.4",
         "@testing-library/react": "^9.3.2",
         "@testing-library/react-hooks": "^3.2.1",
         "@types/awesomplete": "^1.1.10",
+        "@types/dompurify": "^2.0.1",
         "@types/history": "^4.7.3",
         "@types/jest": "^24.0.23",
         "@types/jszip": "^3.1.6",
-        "@types/openpgp": "^4.4.8",
         "@types/react-router": "^5.1.3",
         "@types/react-router-dom": "^5.1.3",
         "@typescript-eslint/eslint-plugin": "^2.3.2",
@@ -64,7 +66,6 @@
         "publicPathFlag": "--publicPath=/settings/"
     },
     "dependencies": {
-        "@types/turndown": "^5.0.0",
         "abortcontroller-polyfill": "^1.3.0",
         "core-js": "^3.3.6",
         "date-fns": "^2.4.1",
@@ -75,6 +76,7 @@
         "proton-pack": "github:ProtonMail/proton-pack.git#semver:^3.0.0",
         "proton-shared": "github:ProtonMail/proton-shared#master",
         "proton-version": "github:ProtonMail/proton-version#semver:^1.0.0",
+        "quill-delta": "^4.2.1",
         "react": "^16.8.6",
         "react-components": "github:ProtonMail/react-components#master",
         "react-dom": "^16.8.6",
