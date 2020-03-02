@@ -56,7 +56,7 @@
         "lint-staged": "^8.1.7",
         "prettier": "^1.17.1",
         "proton-bundler": "github:ProtonMail/proton-bundler#semver:^2.0.0",
-        "proton-i18n": "github:ProtonMail/proton-i18n#semver:^1.4.0",
+        "proton-i18n": "github:ProtonMail/proton-i18n#semver:^2.0.0",
         "react-test-renderer": "^16.12.0",
         "typescript": "^3.6.3",
         "webpack": "^4.41.5",
