@@ -1,8 +1,48 @@
+stages:
+    - setup
+    - bundle
+    - deploy
+
 include:
   - project: 'web/core/proton-config'
     ref: master
-    file: '/_templates-ci/public.gitlab-ci.yml'
+    file: '/_templates-ci/config.gitlab-ci.yml'
 
-variables:
-    APP_GIT: git@gitlab.protontech.ch:web/mail/proton-mail.git
-    NODE_OPTIONS: --max-old-space-size=4096
+  - project: 'web/core/proton-config'
+    ref: master
+    file: '/_templates-ci/setup.gitlab-ci.yml'
+
+bundle:
+    stage: bundle
+    script:
+        - ./ci-scripts/v2/bundle main
+    artifacts:
+        expire_in: 1 days
+        paths:
+            - webapp-bundle.tar.gz
+            - node_modules
+            - appConfig.json
+            - package.json
+            - .env
+
+publish:
+    services:
+        - docker:stable-dind
+    cache: {}
+    stage: deploy
+    interruptible: true
+    needs:
+        - job: bundle
+          artifacts: true
+    script:
+        - apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
+        - curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
+        - add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
+        - apt-get update && apt-get install -y docker-ce-cli
+        - git clone git@gitlab.protontech.ch:proton/devops/test-infra.git --depth 1
+        - ls -la;
+        # - ./test-infra/kube-install-bins.sh
+        # - ./test-infra/docker-login-gcr.sh
+        # - EXTRA_REGISTRY_IMAGE=gcr.io/proton-dev-ops/webapp ./tasks/build-image.sh
+        # - export DIST_IMAGE="gcr.io/proton-dev-ops/webapp/dist:commit-${CI_COMMIT_SHORT_SHA}"
+        # - ./test-infra/kube-deploy.sh -a=mail-fe -i="${DIST_IMAGE}" -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
