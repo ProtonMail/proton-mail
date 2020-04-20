@@ -40,4 +40,4 @@ src/app/config.ts
 *.tar.gz
 /.npmrc
 /ci-scripts
-/config-app/
+/proton-config
