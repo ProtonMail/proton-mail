@@ -52,7 +52,7 @@ publish:
         - ./test-infra/kube-install-bins.sh
         - ./test-infra/docker-login-gcr.sh
         - docker push "${DIST_IMAGE}"
-        - ./test-infra/kube-deploy.sh -a=mail_fe -i="${DIST_IMAGE}" -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
+        # - ./test-infra/kube-deploy.sh -a=mail_fe -i="${DIST_IMAGE}" -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
 
 variables:
     DOCKER_DRIVER: overlay2
