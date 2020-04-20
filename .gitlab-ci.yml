@@ -39,4 +39,23 @@ publish:
         - curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
         - add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
         - apt-get update && apt-get install -y docker-ce-cli
-        - ./ci-scripts/v2/docker make
+        # - ./ci-scripts/v2/docker make
+        # The scripts below are here temporarily. I'll move them to fe-scripts after they are proven to work.
+        # 1. Build
+        - mkdir -p dist
+        - tar xzf webapp-bundle.tar.gz -C dist
+        - export DIST_IMAGE="gcr.io/proton-dev-ops/fe/mail:commit-${CI_COMMIT_SHORT_SHA}"
+        - docker build . -f ./docker/Dockerfile.dist -t "${DIST_IMAGE}"
+        # 2. Publish image & Deploy
+        - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.protontech.ch/proton/devops/test-infra.git" --depth 1
+        # - apk add gnupg curl jq
+        - ./test-infra/kube-install-bins.sh
+        - ./test-infra/docker-login-gcr.sh
+        - docker push "${DIST_IMAGE}"
+        - ./test-infra/kube-deploy.sh -a=mail_fe -i="${DIST_IMAGE}" -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
+
+variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: '' # disable TLS
+    SERVICE_PORT_2376_TCP_PORT: 2375 # https://gitlab.com/gitlab-org/gitlab-runner/issues/4635#note_204682505
