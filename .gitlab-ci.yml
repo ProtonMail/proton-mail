@@ -1,29 +1,7 @@
-stages:
-    - setup
-    - bundle
-    - deploy
-
 include:
   - project: 'web/core/proton-config'
     ref: master
-    file: '/_templates-ci/config.gitlab-ci.yml'
-
-  - project: 'web/core/proton-config'
-    ref: master
-    file: '/_templates-ci/setup.gitlab-ci.yml'
-
-bundle:
-    stage: bundle
-    script:
-        - ./ci-scripts/v2/bundle main
-    artifacts:
-        expire_in: 1 days
-        paths:
-            - webapp-bundle.tar.gz
-            - node_modules
-            - appConfig.json
-            - package.json
-            - .env
+    file: '/_templates-ci/public.gitlab-ci.yml'
 
 publish:
     image: docker:stable-git
