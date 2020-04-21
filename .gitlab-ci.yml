@@ -44,15 +44,18 @@ publish:
         # 1. Build
         - mkdir -p dist
         - tar xzf webapp-bundle.tar.gz -C dist
-        - export DIST_IMAGE="gcr.io/proton-dev-ops/fe/mail:commit-${CI_COMMIT_SHORT_SHA}"
-        - docker build . -f ./docker/Dockerfile.dist -t "${DIST_IMAGE}"
-        # 2. Publish image & Deploy
+        - export DIST_IMAGE_SHA="gcr.io/proton-dev-ops/fe/mail:commit-${CI_COMMIT_SHORT_SHA}"
+        - export DIST_IMAGE_REF="gcr.io/proton-dev-ops/fe/mail:branch-${CI_COMMIT_REF_SLUG}"
+        - (set -x && docker build . -f ./docker/Dockerfile.dist -t "${DIST_IMAGE_SHA}" -t "${DIST_IMAGE_REF}")
+        # 2. Publish images
         - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.protontech.ch/proton/devops/test-infra.git" --depth 1
-        # - apk add gnupg curl jq
-        - ./test-infra/kube-install-bins.sh
         - ./test-infra/docker-login-gcr.sh
-        - docker push "${DIST_IMAGE}"
-        # - ./test-infra/kube-deploy.sh -a=mail_fe -i="${DIST_IMAGE}" -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
+        - docker push "${DIST_IMAGE_SHA}"
+        - docker push "${DIST_IMAGE_REF}"
+        # 3. Deploy
+        # TODO: update test-infra to be able to get proton-mail deployed independently from proton-calendar
+        # - ./test-infra/kube-install-bins.sh
+        # - ./test-infra/kube-deploy.sh -a=?? -i="${DIST_IMAGE_SHA}" -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
 
 variables:
     DOCKER_DRIVER: overlay2
