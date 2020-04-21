@@ -26,6 +26,8 @@ bundle:
             - .env
 
 publish:
+    image: docker:stable-git
+    before_script: []
     services:
         - docker:stable-dind
     cache: {}
@@ -35,12 +37,7 @@ publish:
         - job: bundle
           artifacts: true
     script:
-        - apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
-        - curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
-        - add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
-        - apt-get update && apt-get install -y docker-ce-cli
-        # - ./ci-scripts/v2/docker make
-        # The scripts below are here temporarily. I'll move them to fe-scripts after they are proven to work.
+        # The script below is here temporarily. TODO: move them to fe-scripts (or test-infra?)
         # 1. Build
         - mkdir -p dist
         - tar xzf webapp-bundle.tar.gz -C dist
@@ -49,11 +46,13 @@ publish:
         - (set -x && docker build . -f ./docker/Dockerfile.dist -t "${DIST_IMAGE_SHA}" -t "${DIST_IMAGE_REF}")
         # 2. Publish images
         - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.protontech.ch/proton/devops/test-infra.git" --depth 1
+        - apk add gnupg
         - ./test-infra/docker-login-gcr.sh
         - docker push "${DIST_IMAGE_SHA}"
         - docker push "${DIST_IMAGE_REF}"
         # 3. Deploy
         # TODO: update test-infra to be able to get proton-mail deployed independently from proton-calendar
+        # - apk add curl jq
         # - ./test-infra/kube-install-bins.sh
         # - ./test-infra/kube-deploy.sh -a=?? -i="${DIST_IMAGE_SHA}" -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
 
