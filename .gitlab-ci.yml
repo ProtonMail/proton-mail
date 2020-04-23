@@ -4,7 +4,7 @@ include:
     file: '/_templates-ci/public.gitlab-ci.yml'
 
 publish:
-    image: docker:stable-git
+    image: gitlab.protontech.ch:4567/proton/devops/proton-atlas/shared:branch-master
     before_script: []
     services:
         - docker:stable-dind
@@ -16,7 +16,6 @@ publish:
         - job: bundle
           artifacts: true
     script:
-        # The script below is here temporarily. TODO: move them to fe-scripts (or test-infra?)
         # 1. Build
         - mkdir -p dist
         - tar xzf webapp-bundle.tar.gz -C dist
@@ -24,16 +23,11 @@ publish:
         - export DIST_IMAGE_REF="gcr.io/proton-dev-ops/fe/mail:branch-${CI_COMMIT_REF_SLUG}"
         - (set -x && docker build . -f ./docker/Dockerfile.dist -t "${DIST_IMAGE_SHA}" -t "${DIST_IMAGE_REF}")
         # 2. Publish images
-        - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.protontech.ch/proton/devops/test-infra.git" --depth 1
-        - apk add gnupg
-        - ./test-infra/docker-login-gcr.sh
+        - docker-login-gcr.sh
         - docker push "${DIST_IMAGE_SHA}"
         - docker push "${DIST_IMAGE_REF}"
         # 3. Deploy
-        # TODO: update test-infra to be able to get proton-mail deployed independently from proton-calendar
-        # - apk add curl jq
-        # - ./test-infra/kube-install-bins.sh
-        # - ./test-infra/kube-deploy.sh -a=?? -i="${DIST_IMAGE_SHA}" -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
+        - kube-deploy.sh -a=mail_fe -i="${DIST_IMAGE_SHA}" -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
 
 variables:
     DOCKER_DRIVER: overlay2
