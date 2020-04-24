@@ -3,9 +3,8 @@ include:
     ref: master
     file: '/_templates-ci/public.gitlab-ci.yml'
 
-publish:
-    # image: gitlab.protontech.ch:4567/proton/devops/proton-atlas/shared:branch-master
-    image: gitlab.protontech.ch:4567/proton/devops/proton-atlas/shared:branch-jp-great-cleanup
+publish-and-deploy-dev:
+    image: gitlab.protontech.ch:4567/proton/devops/proton-atlas/shared:branch-master
     before_script: []
     services:
         - docker:stable-dind
