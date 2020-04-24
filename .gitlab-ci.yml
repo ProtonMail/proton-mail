@@ -4,7 +4,8 @@ include:
     file: '/_templates-ci/public.gitlab-ci.yml'
 
 publish:
-    image: gitlab.protontech.ch:4567/proton/devops/proton-atlas/shared:branch-master
+    # image: gitlab.protontech.ch:4567/proton/devops/proton-atlas/shared:branch-master
+    image: gitlab.protontech.ch:4567/proton/devops/proton-atlas/shared:branch-jp-great-cleanup
     before_script: []
     services:
         - docker:stable-dind
@@ -17,17 +18,15 @@ publish:
           artifacts: true
     script:
         # 1. Build
-        - mkdir -p dist
-        - tar xzf webapp-bundle.tar.gz -C dist
         - export DIST_IMAGE_SHA="gcr.io/proton-dev-ops/fe/mail:commit-${CI_COMMIT_SHORT_SHA}"
         - export DIST_IMAGE_REF="gcr.io/proton-dev-ops/fe/mail:branch-${CI_COMMIT_REF_SLUG}"
         - (set -x && docker build . -f ./docker/Dockerfile.dist -t "${DIST_IMAGE_SHA}" -t "${DIST_IMAGE_REF}")
         # 2. Publish images
-        - docker-login-gcr.sh
+        - atlas login_gcr
         - docker push "${DIST_IMAGE_SHA}"
         - docker push "${DIST_IMAGE_REF}"
         # 3. Deploy
-        - kube-deploy.sh -a=mail_fe -i="${DIST_IMAGE_SHA}" -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
+        - atlas deploy -a=mail_fe -i="${DIST_IMAGE_SHA}" -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
 
 variables:
     DOCKER_DRIVER: overlay2
