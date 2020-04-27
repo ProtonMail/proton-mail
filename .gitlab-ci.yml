@@ -4,7 +4,8 @@ include:
     file: '/_templates-ci/public.gitlab-ci.yml'
 
 publish-and-deploy-dev:
-    image: gitlab.protontech.ch:4567/proton/devops/proton-atlas/shared:branch-master
+    # image: gitlab.protontech.ch:4567/proton/devops/proton-atlas/shared:branch-master
+    image: gitlab.protontech.ch:4567/proton/devops/proton-atlas/shared:branch-jp-multiple-commands
     before_script: []
     services:
         - docker:stable-dind
@@ -16,14 +17,7 @@ publish-and-deploy-dev:
         - job: bundle
           artifacts: true
     script:
-        # 1. Build
-        - export DIST_IMAGE_SHA="gcr.io/proton-dev-ops/fe/mail:commit-${CI_COMMIT_SHORT_SHA}"
-        - export DIST_IMAGE_REF="gcr.io/proton-dev-ops/fe/mail:branch-${CI_COMMIT_REF_SLUG}"
-        - (set -x && docker build . -f ./docker/Dockerfile.dist -t "${DIST_IMAGE_SHA}" -t "${DIST_IMAGE_REF}")
-        # 2. Publish images
-        - atlas push "${DIST_IMAGE_SHA}" "${DIST_IMAGE_REF}"
-        # 3. Deploy
-        - atlas deploy -a=mail_fe -i="${DIST_IMAGE_SHA}" -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
+        - atlas build push deploy --dockerfile=./docker/Dockerfile.dist --base-image=gcr.io/proton-dev-ops/fe/mail -a=mail_fe -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
 
 variables:
     DOCKER_DRIVER: overlay2
