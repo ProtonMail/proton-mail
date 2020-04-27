@@ -10,6 +10,7 @@ publish:
         - docker:stable-dind
     cache: {}
     stage: deploy
+    allow_failure: true
     interruptible: true
     needs:
         - job: bundle
