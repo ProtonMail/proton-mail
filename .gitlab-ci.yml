@@ -17,7 +17,7 @@ publish-and-deploy-dev:
         - job: bundle
           artifacts: true
     script:
-        - atlas build push deploy --dockerfile=./docker/Dockerfile.dist -a=mail_fe --update-gitlab-status
+        - atlas build push deploy
 
 variables:
     DOCKER_DRIVER: overlay2
