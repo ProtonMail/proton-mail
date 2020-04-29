@@ -17,7 +17,7 @@ publish-and-deploy-dev:
         - job: bundle
           artifacts: true
     script:
-        - atlas build push deploy --dockerfile=./docker/Dockerfile.dist --base-image=gcr.io/proton-dev-ops/fe/mail -a=mail_fe -b="${CI_COMMIT_REF_NAME}" --update-gitlab-status
+        - atlas build push deploy --dockerfile=./docker/Dockerfile.dist -a=mail_fe --update-gitlab-status
 
 variables:
     DOCKER_DRIVER: overlay2
