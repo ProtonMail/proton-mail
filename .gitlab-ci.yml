@@ -1,4 +1,4 @@
 include:
   - project: 'web/core/proton-config'
-    ref: jp/base-httpd-image
+    ref: master
     file: '_templates-ci/private-open.gitlab-ci.yaml'
