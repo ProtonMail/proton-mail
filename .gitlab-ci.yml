@@ -1,25 +1,4 @@
 include:
   - project: 'web/core/proton-config'
-    ref: master
-    file: '/_templates-ci/public.gitlab-ci.yml'
-
-publish-and-deploy-dev:
-    image: gitlab.protontech.ch:4567/proton/devops/proton-atlas/shared:branch-master
-    before_script: []
-    services:
-        - docker:stable-dind
-    cache: {}
-    stage: deploy
-    allow_failure: true
-    interruptible: true
-    needs:
-        - job: bundle
-          artifacts: true
-    script:
-        - atlas build push deploy
-
-variables:
-    DOCKER_DRIVER: overlay2
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: '' # disable TLS
-    SERVICE_PORT_2376_TCP_PORT: 2375 # https://gitlab.com/gitlab-org/gitlab-runner/issues/4635#note_204682505
+    ref: jp/base-httpd-image
+    file: '_templates-ci/private-open.gitlab-ci.yaml'
