@@ -63,7 +63,7 @@
         "webpack-dev-server": "^3.10.1"
     },
     "config": {
-        "publicPathFlag": "--publicPath=/settings/"
+        "publicPathFlag": "--publicPath=/"
     },
     "dependencies": {
         "abortcontroller-polyfill": "^1.3.0",
