@@ -1,8 +1,4 @@
 include:
   - project: 'web/core/proton-config'
-    ref: jp/bundle-with-prefix-path
+    ref: master
     file: '_templates-ci/private-open.gitlab-ci.yaml'
-
-# TODO: this is temporary until https://gitlab.protontech.ch/proton/devops/proton-atlas/-/merge_requests/75 is merged
-deploy-atlas-dev:
-    image: gitlab.protontech.ch:4567/proton/devops/proton-atlas/shared:branch-jp-calendar
