@@ -22,7 +22,8 @@
         "sync:lock": "npm run follow:lock && git add package-lock.json && git commit -m 'Sync package-lock.json' && git push && npm run unfollow:lock",
         "follow:lock": "git update-index --no-assume-unchanged package-lock.json",
         "unfollow:lock": "git update-index --assume-unchanged package-lock.json",
-        "check-types": "tsc"
+        "check-types": "tsc",
+        "postinstall": "proton-i18n post-install"
     },
     "repository": {
         "type": "git",
