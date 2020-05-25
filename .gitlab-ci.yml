@@ -1,4 +1,4 @@
 include:
-  - project: 'web/core/proton-config'
+  - project: 'deploy-app/fe-scripts'
     ref: master
-    file: '_templates-ci/private-open.gitlab-ci.yaml'
+    file: '/jobs/private-open.gitlab-ci.yaml'
