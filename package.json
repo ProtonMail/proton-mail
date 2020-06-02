@@ -81,7 +81,6 @@
         "react-components": "github:ProtonMail/react-components#master",
         "react-dom": "^16.8.6",
         "react-router-dom": "^4.3.1",
-        "squire-rte": "github:ProtonMail/Squire#hotfix",
         "ttag": "^1.7.14",
         "turndown": "^5.0.3",
         "yetch": "^1.1.0"
