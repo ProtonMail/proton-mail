@@ -80,6 +80,7 @@
         "proton-pack": "github:ProtonMail/proton-pack#semver:^3.0.0",
         "proton-shared": "github:ProtonMail/proton-shared#master",
         "proton-version": "github:ProtonMail/proton-version#semver:^1.0.0",
+        "psl": "^1.8.0",
         "react-components": "github:ProtonMail/react-components#master",
         "ttag": "^1.7.14",
         "turndown": "^5.0.3",
