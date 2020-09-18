@@ -23,8 +23,7 @@
         "sync:lock": "npm run follow:lock && git add package-lock.json && git commit -m 'Sync package-lock.json' && git push && npm run unfollow:lock",
         "follow:lock": "git update-index --no-assume-unchanged package-lock.json",
         "unfollow:lock": "git update-index --assume-unchanged package-lock.json",
-        "check-types": "tsc",
-        "postinstall": "proton-i18n post-install"
+        "check-types": "tsc"
     },
     "repository": {
         "type": "git",
@@ -79,6 +78,7 @@
         "mimemessage": "github:ProtonMail/mimemessage.js#semver:~v1.1.4",
         "proton-pack": "github:ProtonMail/proton-pack#semver:^3.0.0",
         "proton-shared": "github:ProtonMail/proton-shared#master",
+        "proton-translations": "github:ProtonMail/proton-translations#fe-mail",
         "proton-version": "github:ProtonMail/proton-version#semver:^1.0.0",
         "psl": "^1.8.0",
         "react-components": "github:ProtonMail/react-components#master",
