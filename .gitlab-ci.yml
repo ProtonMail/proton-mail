@@ -1,4 +1,4 @@
 include:
   - project: 'deploy-app/fe-scripts'
     ref: master
-    file: '/jobs/private-open.gitlab-ci.yaml'
+    file: '/jobs/webapp/open-source.gitlab-ci.yaml'
