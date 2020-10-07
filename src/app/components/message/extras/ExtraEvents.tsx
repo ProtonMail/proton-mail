@@ -7,14 +7,19 @@ import {
     useAddresses,
     useLoading,
     useConfig,
-    useUserSettings
+    useUserSettings,
+    useGetCalendarUserSettings,
 } from 'react-components';
 import { arrayToBinaryString, decodeUtf8 } from 'pmcrypto';
-import { getDefaultCalendar, getProbablyActiveCalendars } from 'proton-shared/lib/calendar/calendar';
+import {
+    getCanCreateCalendar,
+    getDefaultCalendar,
+    getIsCalendarDisabled,
+    getProbablyActiveCalendars
+} from 'proton-shared/lib/calendar/calendar';
 import isTruthy from 'proton-shared/lib/helpers/isTruthy';
 import { Calendar } from 'proton-shared/lib/interfaces/calendar';
 import { ContactEmail } from 'proton-shared/lib/interfaces/contacts';
-import { getCalendarUserSettingsModel } from 'proton-shared/lib/models/calendarSettingsModel';
 import { useAttachmentCache } from '../../../containers/AttachmentProvider';
 import { formatDownload } from '../../../helpers/attachment/attachmentDownloader';
 import { EVENT_INVITATION_ERROR_TYPE, EventInvitationError } from '../../../helpers/calendar/EventInvitationError';
@@ -44,28 +49,39 @@ const ExtraEvents = ({ message }: Props) => {
     const [addresses = [], loadingAddresses] = useAddresses();
     const config = useConfig();
     const [userSettings, loadingUserSettings] = useUserSettings();
+    const getCalendarUserSettings = useGetCalendarUserSettings();
     const [loadingWidget, withLoadingWidget] = useLoading();
     const [invitations, setInvitations] = useState<(RequireSome<EventInvitation, 'method'> | EventInvitationError)[]>(
         []
     );
     const [defaultCalendar, setDefaultCalendar] = useState<Calendar | undefined>();
+    const [canCreateCalendar, setCanCreateCalendar] = useState<boolean>(true);
     const api = useApi();
     const loadingConfigs =
         loadingContactEmails || loadingAddresses || loadingCalendars || loadingUserSettings || !config;
 
     useEffect(() => {
+        const attachments = getAttachments(message.data);
+        const eventAttachments = filterAttachmentsForEvents(attachments);
+        if (!eventAttachments.length || !message.privateKeys || loadingConfigs) {
+            return;
+        }
+        let unmounted = false;
         const run = async () => {
-            if (!message.privateKeys || loadingConfigs) {
+            const activeCalendars = getProbablyActiveCalendars(calendars);
+            if (calendars.length) {
+                const { DefaultCalendarID } = await getCalendarUserSettings();
+                if (unmounted) {
+                    return;
+                }
+                setDefaultCalendar(getDefaultCalendar(activeCalendars, DefaultCalendarID));
+            }
+
+            const disabledCalendars = calendars.filter((calendar) => getIsCalendarDisabled(calendar));
+            if (unmounted) {
                 return;
             }
-            if (calendars?.length) {
-                const { DefaultCalendarID } = await getCalendarUserSettingsModel(api);
-                const activeCalendars = getProbablyActiveCalendars(calendars);
-                const defaultCalendar = getDefaultCalendar(activeCalendars, DefaultCalendarID);
-                setDefaultCalendar(defaultCalendar);
-            }
-            const attachments = getAttachments(message.data);
-            const eventAttachments = filterAttachmentsForEvents(attachments);
+            setCanCreateCalendar(getCanCreateCalendar(activeCalendars, disabledCalendars));
             const invitations = (
                 await Promise.all(
                     eventAttachments.map(async (attachment: Attachment) => {
@@ -90,11 +106,18 @@ const ExtraEvents = ({ message }: Props) => {
                     })
                 )
             ).filter(isTruthy);
+            if (unmounted) {
+                return;
+            }
             setInvitations(invitations);
         };
 
         withLoadingWidget(run());
-    }, [message.privateKeys, loadingConfigs]);
+
+        return () => {
+            unmounted = true;
+        };
+    }, [message.data, message.privateKeys, loadingConfigs]);
 
     if (loadingConfigs || loadingWidget) {
         return null;
@@ -110,6 +133,7 @@ const ExtraEvents = ({ message }: Props) => {
                         message={message}
                         calendars={calendars}
                         defaultCalendar={defaultCalendar}
+                        canCreateCalendar={canCreateCalendar}
                         contactEmails={contactEmails}
                         ownAddresses={addresses}
                         config={config}
