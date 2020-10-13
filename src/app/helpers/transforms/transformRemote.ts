@@ -1,6 +1,6 @@
 import { MailSettings } from 'proton-shared/lib/interfaces';
+import { isDraft } from 'proton-shared/lib/mail/messages';
 
-import { isDraft } from '../message/messages';
 import { MessageExtended } from '../../models/message';
 import { getContent, setContent } from '../message/messageContent';
 import { hasShowRemote } from '../settings';
@@ -72,7 +72,7 @@ function prepareInjection(html: Element) {
     return attributes;
 }
 
-export const transformRemote = (message: MessageExtended, mailSettings: MailSettings) => {
+export const transformRemote = (message: MessageExtended, mailSettings?: Partial<MailSettings>) => {
     const regex = new RegExp(REGEXP_FIXER, 'g');
     const showImages =
         message.showRemoteImages ||

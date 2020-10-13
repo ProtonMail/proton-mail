@@ -1,3 +1,5 @@
+import { Message } from 'proton-shared/lib/interfaces/mail/Message';
+import { getRecipients } from 'proton-shared/lib/mail/messages';
 import React, { useState, useEffect, useRef, useCallback, DragEvent } from 'react';
 import {
     classnames,
@@ -8,17 +10,17 @@ import {
     useHandler
 } from 'react-components';
 import { c } from 'ttag';
-import { Address, MailSettings } from 'proton-shared/lib/interfaces';
+import { Address } from 'proton-shared/lib/interfaces';
 import { noop } from 'proton-shared/lib/helpers/function';
 import { setBit, clearBit } from 'proton-shared/lib/helpers/bitset';
 import { COMPOSER_MODE } from 'proton-shared/lib/constants';
 
-import { MessageExtended, Message, MessageExtendedWithData, PartialMessageExtended } from '../../models/message';
+import { MessageExtended, MessageExtendedWithData, PartialMessageExtended } from '../../models/message';
 import ComposerTitleBar from './ComposerTitleBar';
 import ComposerMeta from './ComposerMeta';
 import ComposerContent from './ComposerContent';
 import ComposerActions from './ComposerActions';
-import { getRecipients, mergeMessages } from '../../helpers/message/messages';
+import { mergeMessages } from '../../helpers/message/messages';
 import { setContent } from '../../helpers/message/messageContent';
 import ComposerPasswordModal from './ComposerPasswordModal';
 import ComposerExpirationModal from './ComposerExpirationModal';
@@ -79,7 +81,7 @@ const Composer = ({
     onFocus,
     onClose: inputOnClose
 }: Props) => {
-    const [mailSettings] = useMailSettings() as [MailSettings, boolean, Error];
+    const [mailSettings] = useMailSettings();
     const { createNotification } = useNotifications();
 
     const bodyRef = useRef<HTMLDivElement>(null);
@@ -90,7 +92,7 @@ const Composer = ({
 
     // Maximized status of the composer
     const { state: maximized, toggle: toggleMaximized } = useToggle(
-        mailSettings.ComposerMode === COMPOSER_MODE.MAXIMIZED
+        mailSettings?.ComposerMode === COMPOSER_MODE.MAXIMIZED
     );
 
     // Indicates that the composer is in its initial opening

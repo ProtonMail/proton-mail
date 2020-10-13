@@ -1,6 +1,6 @@
 import { MailSettings } from 'proton-shared/lib/interfaces';
+import { isPlainText } from 'proton-shared/lib/mail/messages';
 
-import { isPlainText } from './messages';
 import { MessageExtended, PartialMessageExtended } from '../../models/message';
 import { toText } from '../parserHtml';
 import { findSender } from '../addresses';
@@ -80,7 +80,11 @@ export const getPlainText = (message: MessageExtended, downconvert: boolean) => 
 /**
  * Convert the body of a message in plain text to an HTML version
  */
-export const plainTextToHTML = (message: MessageExtended, mailSettings: MailSettings, addresses: Address[]) => {
+export const plainTextToHTML = (
+    message: MessageExtended,
+    mailSettings: Partial<MailSettings> = {},
+    addresses: Address[]
+) => {
     const sender = findSender(addresses, message.data);
     const content = getContent(message);
 

@@ -1,5 +1,6 @@
 import { MailSettings } from 'proton-shared/lib/interfaces';
 import { PM_SIGNATURE } from 'proton-shared/lib/constants';
+import { isPlainText } from 'proton-shared/lib/mail/messages';
 import { message } from 'proton-shared/lib/sanitize';
 
 import { MESSAGE_ACTIONS } from '../../constants';
@@ -7,7 +8,6 @@ import { dedentTpl } from '../dedent';
 import { replaceLineBreaks } from '../string';
 import { parseInDiv, isHTMLEmpty } from '../dom';
 import { MessageExtended } from '../../models/message';
-import { isPlainText } from './messages';
 import { getPlainTextContent, exportPlainText } from './messageContent';
 import { CLASSNAME_BLOCKQUOTE } from './messageDraft';
 
@@ -19,7 +19,8 @@ export const CLASSNAME_SIGNATURE_EMPTY = 'protonmail_signature_block-empty';
 /**
  * Preformat the protonMail signature
  */
-const getProtonSignature = (mailSettings: MailSettings) => (mailSettings.PMSignature === 0 ? '' : PM_SIGNATURE);
+const getProtonSignature = (mailSettings: Partial<MailSettings> = {}) =>
+    mailSettings.PMSignature === 0 ? '' : PM_SIGNATURE;
 
 /**
  * Generate a space tag, it can be hidden from the UX via a className
@@ -62,7 +63,12 @@ const getClassNamesSignature = (signature: string, protonSignature: string) => {
 /**
  * Generate the template for a signature and clean it
  */
-export const templateBuilder = (signature = '', mailSettings: MailSettings, isReply = false, noSpace = false) => {
+export const templateBuilder = (
+    signature = '',
+    mailSettings: Partial<MailSettings> | undefined = {},
+    isReply = false,
+    noSpace = false
+) => {
     const protonSignature = getProtonSignature(mailSettings);
     const { userClass, protonClass, containerClass } = getClassNamesSignature(signature, protonSignature);
     const space = getSpaces(signature, protonSignature, isReply);
@@ -113,7 +119,7 @@ export const insertSignature = (
  */
 export const changeSignature = (
     message: MessageExtended,
-    mailSettings: MailSettings,
+    mailSettings: Partial<MailSettings> | undefined,
     oldSignature: string,
     newSignature: string
 ) => {

@@ -124,7 +124,9 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', location, hi
                 begin: begin ? String(getUnixTime(begin)) : UNDEFINED,
                 end: end ? String(getUnixTime(end)) : UNDEFINED,
                 attachments: typeof attachments === 'number' ? String(attachments) : UNDEFINED,
-                wildcard: wildcard ? String(wildcard) : UNDEFINED
+                wildcard: wildcard ? String(wildcard) : UNDEFINED,
+                filter: UNDEFINED, // Make sure to reset filter parameter when performing an advanced search
+                sort: UNDEFINED // Make sure to reset sort parameter when performing an advanced search
             })
         );
 
@@ -164,12 +166,12 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', location, hi
         { value: ALL_MAIL, text: c('Mailbox').t`All`, group: c('Group').t`Default folders` },
         { value: INBOX, text: c('Mailbox').t`Inbox`, group: c('Group').t`Default folders` },
         {
-            value: hasBit(mailSettings.ShowMoved, SHOW_MOVED.DRAFTS) ? ALL_DRAFTS : DRAFTS,
+            value: hasBit(mailSettings?.ShowMoved || 0, SHOW_MOVED.DRAFTS) ? ALL_DRAFTS : DRAFTS,
             text: c('Mailbox').t`Drafts`,
             group: c('Group').t`Default folders`
         },
         {
-            value: hasBit(mailSettings.ShowMoved, SHOW_MOVED.SENT) ? ALL_SENT : SENT,
+            value: hasBit(mailSettings?.ShowMoved || 0, SHOW_MOVED.SENT) ? ALL_SENT : SENT,
             text: c('Mailbox').t`Sent`,
             group: c('Group').t`Default folders`
         },
