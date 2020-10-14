@@ -8,11 +8,21 @@ import {
 } from 'proton-shared/lib/api/calendars';
 import { getAttendeeEmail, modifyAttendeesPartstat, withPmAttendees } from 'proton-shared/lib/calendar/attendees';
 import { getIsCalendarDisabled } from 'proton-shared/lib/calendar/calendar';
-import { ICAL_ATTENDEE_STATUS, ICAL_EVENT_STATUS, ICAL_METHOD } from 'proton-shared/lib/calendar/constants';
+import {
+    CALENDAR_FLAGS,
+    ICAL_ATTENDEE_STATUS,
+    ICAL_EVENT_STATUS,
+    ICAL_METHOD
+} from 'proton-shared/lib/calendar/constants';
 import getCreationKeys from 'proton-shared/lib/calendar/integration/getCreationKeys';
 import { findAttendee, getInvitedEventWithAlarms } from 'proton-shared/lib/calendar/integration/invite';
 import { createCalendarEvent } from 'proton-shared/lib/calendar/serialize';
-import { propertyToUTCDate } from 'proton-shared/lib/calendar/vcalConverter';
+import {
+    getHasModifiedAttendees,
+    getHasModifiedDateTimes,
+    getHasModifiedRrule,
+    propertyToUTCDate
+} from 'proton-shared/lib/calendar/vcalConverter';
 import {
     getAttendeeHasPartStat,
     getAttendeePartstat,
@@ -23,6 +33,7 @@ import {
 } from 'proton-shared/lib/calendar/vcalHelper';
 import { withDtstamp } from 'proton-shared/lib/calendar/veventHelper';
 import { API_CODES } from 'proton-shared/lib/constants';
+import { hasBit } from 'proton-shared/lib/helpers/bitset';
 import isTruthy from 'proton-shared/lib/helpers/isTruthy';
 import { omit, pick } from 'proton-shared/lib/helpers/object';
 import { Address, Api } from 'proton-shared/lib/interfaces';
@@ -39,7 +50,6 @@ import { MessageExtended } from '../../models/message';
 import { EVENT_INVITATION_ERROR_TYPE, EventInvitationError } from './EventInvitationError';
 import {
     EventInvitation,
-    getHasModifiedAttendees,
     getInvitationHasAttendee,
     getIsInvitationOutdated,
     getSequence,
@@ -77,7 +87,9 @@ const getVeventWithAlarms = async ({
 type FetchEventInvitation = (args: {
     veventComponent: VcalVeventComponent;
     api: Api;
-    getCalendarInfo: (ID: string) => Promise<Omit<CalendarWidgetData, 'calendar' | 'isCalendarDisabled'>>;
+    getCalendarInfo: (
+        ID: string
+    ) => Promise<Omit<CalendarWidgetData, 'calendar' | 'isCalendarDisabled' | 'calendarNeedsUserAction'>>;
     getCalendarEventRaw: (event: CalendarEvent) => Promise<VcalVeventComponent>;
     getCalendarEventPersonal: (event: CalendarEvent) => Promise<SimpleMap<VcalVeventComponent>>;
     calendars: Calendar[];
@@ -121,6 +133,9 @@ export const fetchEventInvitation: FetchEventInvitation = async ({
     const calendarData = {
         calendar,
         isCalendarDisabled: getIsCalendarDisabled(calendar),
+        calendarNeedsUserAction:
+            hasBit(calendar.Flags, CALENDAR_FLAGS.RESET_NEEDED) ||
+            hasBit(calendar.Flags, CALENDAR_FLAGS.UPDATE_PASSPHRASE),
         ...(await getCalendarInfo(calendar.ID))
     };
     if (!calendarEvents.length) {
@@ -283,14 +298,21 @@ export const updateEventInvitation = async ({
             return { action: NONE };
         }
         const sequenceDiff = getSequence(veventIcs) - getSequence(veventApi);
+        const hasUpdatedDateTimes = getHasModifiedDateTimes(veventIcs, veventApi);
         const hasUpdatedTitle = veventIcs.summary?.value !== veventApi.summary?.value;
         const hasUpdatedDescription = veventIcs.description?.value !== veventApi.description?.value;
         const hasUpdatedLocation = veventIcs.location?.value !== veventApi.location?.value;
-        const hasUpdatedAttendees = getHasModifiedAttendees(veventIcs.attendee, veventApi.attendee);
+        const hasUpdatedRrule = getHasModifiedRrule(veventIcs, veventApi);
+        const hasUpdatedAttendees = getHasModifiedAttendees(veventIcs, veventApi);
         const isReinvited = getEventStatus(veventApi) === CANCELLED;
         const hasBreakingChange = sequenceDiff > 0;
         const hasNonBreakingChange =
-            hasUpdatedTitle || hasUpdatedDescription || hasUpdatedLocation || hasUpdatedAttendees;
+            hasUpdatedDateTimes ||
+            hasUpdatedTitle ||
+            hasUpdatedDescription ||
+            hasUpdatedLocation ||
+            hasUpdatedRrule ||
+            hasUpdatedAttendees;
         const action = hasBreakingChange || isReinvited ? RESET_PARTSTAT : hasNonBreakingChange ? KEEP_PARTSTAT : NONE;
         if ([KEEP_PARTSTAT, RESET_PARTSTAT].includes(action)) {
             // update the api event by the ics one with the appropriate answer
@@ -434,7 +456,9 @@ export const createCalendarEventFromInvitation = async ({
         isSwitchCalendar: false,
         ...(await getCreationKeys({ addressKeys, newCalendarKeys: calendarKeys }))
     });
-    const Events: CreateCalendarEventSyncData[] = [{ Overwrite: 1, Event: { Permissions: 3, ...data } }];
+    const Events: CreateCalendarEventSyncData[] = [
+        { Overwrite: 1, Event: { Permissions: 3, IsOrganizer: 0, ...data } }
+    ];
     const {
         Responses: [
             {
@@ -442,7 +466,7 @@ export const createCalendarEventFromInvitation = async ({
             }
         ]
     } = await api<SyncMultipleApiResponse>({
-        ...syncMultipleEvents(calendar.ID, { MemberID: memberID, Events, IsInvite: 1 }),
+        ...syncMultipleEvents(calendar.ID, { MemberID: memberID, Events }),
         silence: true
     });
     if (Code !== API_CODES.SINGLE_SUCCESS || !Event) {
