@@ -74,9 +74,9 @@
         "eslint-config-airbnb-typescript": "^7.2.1",
         "eslint-config-prettier": "^6.11.0",
         "eslint-config-proton-lint": "github:ProtonMail/proton-lint#semver:^0.0.6",
-        "husky": "^2.3.0",
+        "husky": "^4.3.0",
         "jest": "^24.9.0",
-        "lint-staged": "^8.1.7",
+        "lint-staged": "^10.4.2",
         "prettier": "^2.0.5",
         "proton-bundler": "github:ProtonMail/proton-bundler#semver:^2.0.0",
         "proton-i18n": "github:ProtonMail/proton-i18n#semver:^2.0.0",
@@ -89,8 +89,7 @@
     "lint-staged": {
         "(*.ts|*.tsx|*.js)": [
             "prettier --write",
-            "eslint",
-            "git add"
+            "eslint"
         ]
     },
     "husky": {
