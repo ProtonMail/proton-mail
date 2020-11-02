@@ -10,7 +10,7 @@ import { isMessage as testIsMessage } from '../helpers/elements';
 import { Element } from '../models/element';
 import { useOptimisticApplyLabels } from './optimistic/useOptimisticApplyLabels';
 
-const { ALL_MAIL, ALL_DRAFTS, ALL_SENT, DRAFTS, SENT, STARRED } = MAILBOX_LABEL_IDS;
+const { ALL_MAIL, ALL_DRAFTS, ALL_SENT, DRAFTS, SENT, STARRED, SPAM } = MAILBOX_LABEL_IDS;
 
 const EXPIRATION = 7500;
 
@@ -80,7 +80,55 @@ const getNotificationTextAdded = (isMessage: boolean, elementsCount: number, lab
     );
 };
 
-const getNotificationTextMoved = (isMessage: boolean, elementsCount: number, folderName: string) => {
+const getNotificationTextMoved = (
+    isMessage: boolean,
+    elementsCount: number,
+    folderName: string,
+    folderID?: string,
+    fromLabelID?: string
+) => {
+    if (folderID === SPAM) {
+        if (isMessage) {
+            if (elementsCount === 1) {
+                return c('Success').t`Message moved to spam and sender added to blacklist.`;
+            }
+            return c('Success').ngettext(
+                msgid`${elementsCount} message moved to spam and sender added to blacklist.`,
+                `${elementsCount} messages moved to spam and sender added to blacklist.`,
+                elementsCount
+            );
+        }
+        if (elementsCount === 1) {
+            return c('Success').t`Conversation moved to spam and sender added to blacklist.`;
+        }
+        return c('Success').ngettext(
+            msgid`${elementsCount} conversation moved to spam and sender added to blacklist.`,
+            `${elementsCount} conversations moved to spam and sender added to blacklist.`,
+            elementsCount
+        );
+    }
+
+    if (fromLabelID === SPAM) {
+        if (isMessage) {
+            if (elementsCount === 1) {
+                return c('Success').t`Message moved to ${folderName} and sender removed from blacklist.`;
+            }
+            return c('Success').ngettext(
+                msgid`${elementsCount} message moved to ${folderName} and sender removed from blacklist.`,
+                `${elementsCount} messages moved to ${folderName} and sender removed from blacklist.`,
+                elementsCount
+            );
+        }
+        if (elementsCount === 1) {
+            return c('Success').t`Conversation moved to ${folderName} and sender removed from blacklist.`;
+        }
+        return c('Success').ngettext(
+            msgid`${elementsCount} conversation moved to ${folderName} and sender removed from blacklist.`,
+            `${elementsCount} conversations moved to ${folderName} and sender removed from blacklist.`,
+            elementsCount
+        );
+    }
+
     if (isMessage) {
         if (elementsCount === 1) {
             return c('Success').t`Message moved to ${folderName}.`;
@@ -129,9 +177,8 @@ export const useApplyLabels = () => {
                         try {
                             if (changes[LabelID]) {
                                 return await api(labelAction({ LabelID, IDs: elementIDs }));
-                            } else {
-                                return await api(unlabelAction({ LabelID, IDs: elementIDs }));
                             }
+                            return await api(unlabelAction({ LabelID, IDs: elementIDs }));
                         } catch (error) {
                             rollbacks[LabelID]();
                             throw error;
@@ -143,7 +190,7 @@ export const useApplyLabels = () => {
             };
 
             // No await ==> optimistic
-            handleDo();
+            void handleDo();
 
             let notificationText = c('Success').t`Labels applied.`;
 
@@ -154,19 +201,17 @@ export const useApplyLabels = () => {
 
                 if (changesKeys[0] === MAILBOX_LABEL_IDS.STARRED) {
                     notificationText = getNotificationTextStarred(isMessage, elementsCount);
+                } else if (!Object.values(changes)[0]) {
+                    notificationText = getNotificationTextRemoved(isMessage, elementsCount, labelName);
                 } else {
-                    if (!Object.values(changes)[0]) {
-                        notificationText = getNotificationTextRemoved(isMessage, elementsCount, labelName);
-                    } else {
-                        notificationText = getNotificationTextAdded(isMessage, elementsCount, labelName);
-                    }
+                    notificationText = getNotificationTextAdded(isMessage, elementsCount, labelName);
                 }
             }
 
             if (!silent) {
                 createNotification({
                     text: notificationText,
-                    expiration: EXPIRATION
+                    expiration: EXPIRATION,
                 });
             }
         },
@@ -193,8 +238,8 @@ export const useMoveToFolder = () => {
             const isMessage = testIsMessage(elements[0]);
             const action = isMessage ? labelMessages : labelConversations;
             const canUndo = isMessage
-                ? !([ALL_MAIL, ALL_DRAFTS, ALL_SENT] as string[]).includes(fromLabelID)
-                : ![...labelIDs, ALL_DRAFTS, DRAFTS, ALL_SENT, SENT, STARRED, ALL_MAIL].includes(fromLabelID);
+                ? !([ALL_MAIL, ALL_DRAFTS, ALL_SENT, SPAM] as string[]).includes(fromLabelID)
+                : ![...labelIDs, ALL_DRAFTS, DRAFTS, ALL_SENT, SENT, STARRED, ALL_MAIL, SPAM].includes(fromLabelID);
             const elementIDs = elements.map((element) => element.ID);
 
             const rollback = optimisticApplyLabels(elements, { [folderID]: true }, true);
@@ -215,9 +260,15 @@ export const useMoveToFolder = () => {
             };
 
             // No await ==> optimistic
-            handleDo();
+            void handleDo();
 
-            const notificationText = getNotificationTextMoved(isMessage, elementIDs.length, folderName);
+            const notificationText = getNotificationTextMoved(
+                isMessage,
+                elementIDs.length,
+                folderName,
+                folderID,
+                fromLabelID
+            );
 
             if (!silent) {
                 createNotification({
@@ -227,7 +278,7 @@ export const useMoveToFolder = () => {
                             {canUndo ? <UndoButton onUndo={handleUndo} /> : null}
                         </>
                     ),
-                    expiration: EXPIRATION
+                    expiration: EXPIRATION,
                 });
             }
         },

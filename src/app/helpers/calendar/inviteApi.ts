@@ -4,7 +4,7 @@ import {
     getEventByUID,
     GetEventByUIDArguments,
     syncMultipleEvents,
-    UpdateCalendarEventSyncData
+    UpdateCalendarEventSyncData,
 } from 'proton-shared/lib/api/calendars';
 import { getAttendeeEmail, modifyAttendeesPartstat, withPmAttendees } from 'proton-shared/lib/calendar/attendees';
 import { getIsCalendarDisabled } from 'proton-shared/lib/calendar/calendar';
@@ -12,15 +12,15 @@ import {
     CALENDAR_FLAGS,
     ICAL_ATTENDEE_STATUS,
     ICAL_EVENT_STATUS,
-    ICAL_METHOD
+    ICAL_METHOD,
 } from 'proton-shared/lib/calendar/constants';
 import getCreationKeys from 'proton-shared/lib/calendar/integration/getCreationKeys';
 import { findAttendee, getInvitedEventWithAlarms } from 'proton-shared/lib/calendar/integration/invite';
+import { getIsRruleEqual } from 'proton-shared/lib/calendar/rruleEqual';
 import { createCalendarEvent } from 'proton-shared/lib/calendar/serialize';
 import {
     getHasModifiedAttendees,
     getHasModifiedDateTimes,
-    getHasModifiedRrule,
     propertyToUTCDate
 } from 'proton-shared/lib/calendar/vcalConverter';
 import {
@@ -29,7 +29,7 @@ import {
     getEventStatus,
     getHasAttendee,
     getHasRecurrenceId,
-    getIsAlarmComponent
+    getIsAlarmComponent,
 } from 'proton-shared/lib/calendar/vcalHelper';
 import { withDtstamp } from 'proton-shared/lib/calendar/veventHelper';
 import { API_CODES } from 'proton-shared/lib/constants';
@@ -41,11 +41,14 @@ import {
     Calendar,
     CalendarEvent,
     CalendarWidgetData,
-    SyncMultipleApiResponse
+    DecryptedPersonalVeventMapResult,
+    SyncMultipleApiResponse,
+    VcalAttendeeProperty,
+    VcalVeventComponent,
+    DecryptedVeventResult,
 } from 'proton-shared/lib/interfaces/calendar';
-import { VcalAttendeeProperty, VcalVeventComponent } from 'proton-shared/lib/interfaces/calendar/VcalModel';
 import { ContactEmail } from 'proton-shared/lib/interfaces/contacts';
-import { RequireSome, SimpleMap, Unwrap } from 'proton-shared/lib/interfaces/utils';
+import { RequireSome, Unwrap } from 'proton-shared/lib/interfaces/utils';
 import { MessageExtended } from '../../models/message';
 import { EVENT_INVITATION_ERROR_TYPE, EventInvitationError } from './EventInvitationError';
 import {
@@ -55,7 +58,7 @@ import {
     getSequence,
     InvitationModel,
     processEventInvitation,
-    UPDATE_ACTION
+    UPDATE_ACTION,
 } from './invite';
 
 const { CANCELLED } = ICAL_EVENT_STATUS;
@@ -64,23 +67,24 @@ const { NONE, KEEP_PARTSTAT, RESET_PARTSTAT, CANCEL } = UPDATE_ACTION;
 interface GetVeventWithAlarmsArgs {
     calendarEvent: CalendarEvent;
     memberID?: string;
-    getCalendarEventRaw: (event: CalendarEvent) => Promise<VcalVeventComponent>;
-    getCalendarEventPersonal: (event: CalendarEvent) => Promise<SimpleMap<VcalVeventComponent>>;
+    getCalendarEventRaw: (event: CalendarEvent) => Promise<DecryptedVeventResult>;
+    getCalendarEventPersonal: (event: CalendarEvent) => Promise<DecryptedPersonalVeventMapResult>;
 }
 const getVeventWithAlarms = async ({
     calendarEvent,
     memberID,
     getCalendarEventRaw,
-    getCalendarEventPersonal
+    getCalendarEventPersonal,
 }: GetVeventWithAlarmsArgs) => {
-    const [vevent, eventPersonalMap] = await Promise.all([
+    const [{ veventComponent: vevent }, eventPersonalMap] = await Promise.all([
         getCalendarEventRaw(calendarEvent),
-        getCalendarEventPersonal(calendarEvent)
+        getCalendarEventPersonal(calendarEvent),
     ]);
-    const valarms = memberID ? eventPersonalMap[memberID] : {};
+    const personalVevent = memberID ? eventPersonalMap[memberID] : undefined;
+    const valarms = personalVevent ? personalVevent.veventComponent : {};
     return {
         ...valarms,
-        ...vevent
+        ...vevent,
     };
 };
 
@@ -90,8 +94,8 @@ type FetchEventInvitation = (args: {
     getCalendarInfo: (
         ID: string
     ) => Promise<Omit<CalendarWidgetData, 'calendar' | 'isCalendarDisabled' | 'calendarNeedsUserAction'>>;
-    getCalendarEventRaw: (event: CalendarEvent) => Promise<VcalVeventComponent>;
-    getCalendarEventPersonal: (event: CalendarEvent) => Promise<SimpleMap<VcalVeventComponent>>;
+    getCalendarEventRaw: (event: CalendarEvent) => Promise<DecryptedVeventResult>;
+    getCalendarEventPersonal: (event: CalendarEvent) => Promise<DecryptedPersonalVeventMapResult>;
     calendars: Calendar[];
     defaultCalendar?: Calendar;
     message: MessageExtended;
@@ -112,7 +116,7 @@ export const fetchEventInvitation: FetchEventInvitation = async ({
     defaultCalendar,
     message,
     contactEmails,
-    ownAddresses
+    ownAddresses,
 }) => {
     const recurrenceID = veventComponent['recurrence-id'];
     const params: GetEventByUIDArguments[] = [{ UID: veventComponent.uid.value, Page: 0, PageSize: 1 }];
@@ -136,7 +140,7 @@ export const fetchEventInvitation: FetchEventInvitation = async ({
         calendarNeedsUserAction:
             hasBit(calendar.Flags, CALENDAR_FLAGS.RESET_NEEDED) ||
             hasBit(calendar.Flags, CALENDAR_FLAGS.UPDATE_PASSPHRASE),
-        ...(await getCalendarInfo(calendar.ID))
+        ...(await getCalendarInfo(calendar.ID)),
     };
     if (!calendarEvents.length) {
         return { calendarData };
@@ -148,14 +152,14 @@ export const fetchEventInvitation: FetchEventInvitation = async ({
                     calendarEvent: event,
                     memberID: calendarData.memberID,
                     getCalendarEventRaw,
-                    getCalendarEventPersonal
+                    getCalendarEventPersonal,
                 })
             )
         );
         const [vevent, parentVevent] = vevents;
         const result: Unwrap<ReturnType<FetchEventInvitation>> = { calendarData };
         const { invitation } = processEventInvitation({ vevent }, message, contactEmails, ownAddresses);
-        result.invitation = { ...invitation, calendarEvent: calendarEvent };
+        result.invitation = { ...invitation, calendarEvent };
         if (parentVevent) {
             const { invitation: parentInvitation } = processEventInvitation(
                 { vevent: parentVevent },
@@ -183,24 +187,24 @@ const updateEventApi = async ({
     vevent,
     api,
     calendarData,
-    createSingleEdit = false
+    createSingleEdit = false,
 }: UpdateEventArgs) => {
     const {
         calendar: { ID: calendarID },
         memberID,
         addressKeys,
-        calendarKeys
+        calendarKeys,
     } = calendarData;
     const veventWithPmAttendees = await withPmAttendees(vevent, api);
     const creationKeys = await getCreationKeys({
         Event: createSingleEdit ? undefined : calendarEvent,
         addressKeys,
-        newCalendarKeys: calendarKeys
+        newCalendarKeys: calendarKeys,
     });
     const data = await createCalendarEvent({
         eventComponent: veventWithPmAttendees,
         isSwitchCalendar: false,
-        ...creationKeys
+        ...creationKeys,
     });
     const Events: (CreateCalendarEventSyncData | UpdateCalendarEventSyncData)[] = createSingleEdit
         ? [{ Event: { Permissions: 3, IsOrganizer: 0, ...data }, Overwrite: 1 }]
@@ -208,12 +212,12 @@ const updateEventApi = async ({
     const {
         Responses: [
             {
-                Response: { Code, Event }
-            }
-        ]
+                Response: { Code, Event },
+            },
+        ],
     } = await api<SyncMultipleApiResponse>({
         ...syncMultipleEvents(calendarID, { MemberID: memberID, Events }),
-        silence: true
+        silence: true,
     });
     if (Code !== API_CODES.SINGLE_SUCCESS || !Event) {
         throw new Error('Update unsuccessful');
@@ -250,7 +254,7 @@ export const updateEventInvitation = async ({
     api,
     message,
     contactEmails,
-    ownAddresses
+    ownAddresses,
 }: UpdateEventInvitationArgs): Promise<{
     action: UPDATE_ACTION;
     invitation?: RequireSome<EventInvitation, 'calendarEvent' | 'attendee'>;
@@ -259,7 +263,7 @@ export const updateEventInvitation = async ({
     const {
         calendarEvent,
         vevent: veventApi,
-        attendee: { vcalComponent: vcalAttendeeApi }
+        attendee: { vcalComponent: vcalAttendeeApi },
     } = invitationApi;
     const vcalAttendeeIcs = attendeeIcs?.vcalComponent;
     const recurrenceIdIcs = veventIcs['recurrence-id'];
@@ -302,7 +306,7 @@ export const updateEventInvitation = async ({
         const hasUpdatedTitle = veventIcs.summary?.value !== veventApi.summary?.value;
         const hasUpdatedDescription = veventIcs.description?.value !== veventApi.description?.value;
         const hasUpdatedLocation = veventIcs.location?.value !== veventApi.location?.value;
-        const hasUpdatedRrule = getHasModifiedRrule(veventIcs, veventApi);
+        const hasUpdatedRrule = !getIsRruleEqual(veventIcs.rrule, veventApi.rrule);
         const hasUpdatedAttendees = getHasModifiedAttendees(veventIcs, veventApi);
         const isReinvited = getEventStatus(veventApi) === CANCELLED;
         const hasBreakingChange = sequenceDiff > 0;
@@ -325,8 +329,8 @@ export const updateEventInvitation = async ({
                     ...veventIcs,
                     components: [
                         ...(veventIcs.components || []),
-                        ...(veventApi.components || []).filter((component) => getIsAlarmComponent(component))
-                    ]
+                        ...(veventApi.components || []).filter((component) => getIsAlarmComponent(component)),
+                    ],
                 };
                 const updatedVevent = withDtstamp(
                     getInvitedEventWithAlarms(
@@ -341,7 +345,7 @@ export const updateEventInvitation = async ({
                     vevent: updatedVevent,
                     calendarData,
                     createSingleEdit,
-                    api
+                    api,
                 });
                 const { invitation: updatedInvitation } = processEventInvitation(
                     { vevent: updatedVevent, calendarEvent: updatedCalendarEvent },
@@ -382,21 +386,21 @@ export const updateEventInvitation = async ({
             try {
                 const updatedVevent = createSingleEdit
                     ? {
-                          //TODO properly
+                          // TODO properly
                           ...omit(veventIcs, ['rrule']),
-                          status: { value: CANCELLED }
+                          status: { value: CANCELLED },
                       }
                     : {
                           ...veventApi,
                           dtstamp: veventIcs.dtstamp,
-                          status: { value: CANCELLED }
+                          status: { value: CANCELLED },
                       };
                 await updateEventApi({
                     calendarEvent,
                     vevent: getInvitedEventWithAlarms(updatedVevent, ICAL_ATTENDEE_STATUS.DECLINED),
                     calendarData,
                     createSingleEdit,
-                    api
+                    api,
                 });
                 const { invitation: updatedInvitation } = processEventInvitation(
                     { vevent: updatedVevent },
@@ -422,7 +426,7 @@ export const createCalendarEventFromInvitation = async ({
     vcalAttendee,
     partstat,
     api,
-    calendarData
+    calendarData,
 }: {
     vevent: VcalVeventComponent;
     vcalAttendee: VcalAttendeeProperty;
@@ -439,8 +443,8 @@ export const createCalendarEventFromInvitation = async ({
         ...vcalAttendee,
         parameters: {
             ...vcalAttendee.parameters,
-            partstat
-        }
+            partstat,
+        },
     };
     // add alarms to event if necessary
     const veventToSave = getInvitedEventWithAlarms(vevent, partstat, calendarSettings);
@@ -454,20 +458,20 @@ export const createCalendarEventFromInvitation = async ({
     const data = await createCalendarEvent({
         eventComponent: veventToSaveWithPmAttendees,
         isSwitchCalendar: false,
-        ...(await getCreationKeys({ addressKeys, newCalendarKeys: calendarKeys }))
+        ...(await getCreationKeys({ addressKeys, newCalendarKeys: calendarKeys })),
     });
     const Events: CreateCalendarEventSyncData[] = [
-        { Overwrite: 1, Event: { Permissions: 3, IsOrganizer: 0, ...data } }
+        { Overwrite: 1, Event: { Permissions: 3, IsOrganizer: 0, ...data } },
     ];
     const {
         Responses: [
             {
-                Response: { Code, Event }
-            }
-        ]
+                Response: { Code, Event },
+            },
+        ],
     } = await api<SyncMultipleApiResponse>({
         ...syncMultipleEvents(calendar.ID, { MemberID: memberID, Events }),
-        silence: true
+        silence: true,
     });
     if (Code !== API_CODES.SINGLE_SUCCESS || !Event) {
         throw new Error('Creating calendar event from invitation failed');
@@ -475,7 +479,7 @@ export const createCalendarEventFromInvitation = async ({
     return {
         savedEvent: Event,
         savedVevent: veventToSaveWithPmAttendees,
-        savedVcalAttendee: vcalAttendeeToSave
+        savedVcalAttendee: vcalAttendeeToSave,
     };
 };
 
@@ -487,7 +491,7 @@ export const updateCalendarEventFromInvitation = async ({
     partstat,
     oldPartstat,
     api,
-    calendarData
+    calendarData,
 }: {
     veventApi: VcalVeventComponent;
     calendarEvent: CalendarEvent;
@@ -514,36 +518,36 @@ export const updateCalendarEventFromInvitation = async ({
     const veventToUpdate = veventIcs ? { ...veventIcs, ...pick(veventApi, ['components']) } : { ...veventApi };
     const updatedVevent = {
         ...veventToUpdate,
-        attendee: modifyAttendeesPartstat(veventToUpdate.attendee, { [emailAddress]: partstat })
+        attendee: modifyAttendeesPartstat(veventToUpdate.attendee, { [emailAddress]: partstat }),
     };
     // add alarms to event if necessary
     const veventToSave = getInvitedEventWithAlarms(updatedVevent, partstat, calendarSettings, oldPartstat);
     const veventWithPmAttendees = await withPmAttendees(veventToSave, api);
     const vcalAttendeeToSave = {
         ...vcalAttendee,
-        parameters: { ...vcalAttendee.parameters, partstat }
+        parameters: { ...vcalAttendee.parameters, partstat },
     };
     // update calendar event
     const creationKeys = await getCreationKeys({
         Event: calendarEvent,
         addressKeys,
-        newCalendarKeys: calendarKeys
+        newCalendarKeys: calendarKeys,
     });
     const data = await createCalendarEvent({
         eventComponent: veventWithPmAttendees,
         isSwitchCalendar: false,
-        ...creationKeys
+        ...creationKeys,
     });
     const Events: UpdateCalendarEventSyncData[] = [{ Event: { Permissions: 3, ...data }, ID: calendarEvent.ID }];
     const {
         Responses: [
             {
-                Response: { Code, Event }
-            }
-        ]
+                Response: { Code, Event },
+            },
+        ],
     } = await api<SyncMultipleApiResponse>({
         ...syncMultipleEvents(calendar.ID, { MemberID: memberID, Events }),
-        silence: true
+        silence: true,
     });
     if (Code !== API_CODES.SINGLE_SUCCESS || !Event) {
         throw new Error('Updating calendar event from invitation failed');
@@ -551,6 +555,6 @@ export const updateCalendarEventFromInvitation = async ({
     return {
         savedEvent: Event,
         savedVevent: veventToSave,
-        savedVcalAttendee: vcalAttendeeToSave
+        savedVcalAttendee: vcalAttendeeToSave,
     };
 };

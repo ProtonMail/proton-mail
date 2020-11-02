@@ -35,11 +35,11 @@ const HeaderExtra = ({
     onTrustAttachedKey,
     onResignContact,
     onLoadRemoteImages,
-    onLoadEmbeddedImages
+    onLoadEmbeddedImages,
 }: Props) => {
     const received = message.data && isReceived(message.data);
     return (
-        <section className="message-header-extra mt0-5 border-top pt0-5">
+        <section className="message-header-extra border-top pt0-5">
             <ExtraExpirationTime message={message} />
             <ExtraDecryptedSubject message={message} />
             <ExtraSpamScore message={message} labelID={labelID} />
@@ -47,11 +47,13 @@ const HeaderExtra = ({
             <ExtraUnsubscribe message={message} />
             <ExtraReadReceipt message={message} />
             <ExtraAutoReply message={message} />
-            <ExtraPinKey
-                message={message}
-                onTrustSigningKey={onTrustSigningKey}
-                onTrustAttachedKey={onTrustAttachedKey}
-            />
+            {messageLoaded && (
+                <ExtraPinKey
+                    message={message}
+                    onTrustSigningKey={onTrustSigningKey}
+                    onTrustAttachedKey={onTrustAttachedKey}
+                />
+            )}
             <ExtraAskResign message={message} onResignContact={onResignContact} />
             {!sourceMode && <ExtraImages message={message} type="remote" onLoadImages={onLoadRemoteImages} />}
             {!sourceMode && <ExtraImages message={message} type="embedded" onLoadImages={onLoadEmbeddedImages} />}

@@ -39,7 +39,7 @@ const MessageAttachment = ({ attachment, message }: Props) => {
 
     const classNames = classnames([
         'listAttachments-icon listAttachments-signature-icon mauto file-outer-icon',
-        isEmbedded && 'is-embedded' // unsused at this point
+        isEmbedded && 'is-embedded', // unsused at this point
     ]);
 
     const clickHandler = async () => {
@@ -54,7 +54,7 @@ const MessageAttachment = ({ attachment, message }: Props) => {
         }
     };
 
-    const title = `${attachment.Name} (${humanAttachmentSize})` + getSenderVerificationString(attachmentVerified);
+    const title = `${attachment.Name} (${humanAttachmentSize})${getSenderVerificationString(attachmentVerified)}`;
 
     if (!message.initialized) {
         return null;
@@ -63,7 +63,7 @@ const MessageAttachment = ({ attachment, message }: Props) => {
     return (
         <li className="mr0-5 mt0-5">
             <button
-                className="message-attachment inline-flex flex-nowrap mw100 pm-button listAttachments-item relative no-pointer-events-children"
+                className="message-attachment inline-flex flex-nowrap flex-items-stretch mw100 pm-button listAttachments-item relative no-pointer-events-children"
                 title={title}
                 type="button"
                 onClick={clickHandler}

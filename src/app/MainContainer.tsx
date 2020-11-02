@@ -1,3 +1,4 @@
+import React from 'react';
 import { Route } from 'react-router-dom';
 import { useActiveBreakpoint } from 'react-components';
 
@@ -6,7 +7,8 @@ import ConversationProvider from './containers/ConversationProvider';
 import AttachmentProvider from './containers/AttachmentProvider';
 import ComposerContainer from './containers/ComposerContainer';
 import PageContainer from './containers/PageContainer';
-import React from 'react';
+
+export const MAIN_ROUTE_PATH = '/:labelID?/:elementID?/:messageID?';
 
 const MainContainer = () => {
     const breakpoints = useActiveBreakpoint();
@@ -17,7 +19,7 @@ const MainContainer = () => {
                     <ComposerContainer breakpoints={breakpoints}>
                         {({ onCompose }) => (
                             <Route
-                                path="/:labelID?/:elementID?/:messageID?"
+                                path={MAIN_ROUTE_PATH}
                                 render={() => <PageContainer breakpoints={breakpoints} onCompose={onCompose} />}
                             />
                         )}

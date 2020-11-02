@@ -1,12 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { useFolders } from 'react-components';
 import { MAILBOX_LABEL_IDS } from 'proton-shared/lib/constants';
 
 import { MessageExtended } from '../models/message';
 import { hasLabel, getCurrentFolderID } from '../helpers/elements';
-import { useMessageCache } from '../containers/MessageProvider';
+import { getLocalID, useMessageCache } from '../containers/MessageProvider';
 import { ConversationResult } from './useConversation';
 import { useConversationCache } from '../containers/ConversationProvider';
-import { useFolders } from 'react-components';
 
 const { ALL_MAIL } = MAILBOX_LABEL_IDS;
 
@@ -19,15 +19,14 @@ const cacheEntryIsFailedLoading = (
 ) => {
     if (conversationMode) {
         return cacheEntry === undefined;
-    } else {
-        const messageExtended = cacheEntry as MessageExtended;
-        return messageExtended?.data?.ID && !messageExtended?.data?.Subject;
     }
+    const messageExtended = cacheEntry as MessageExtended;
+    return messageExtended?.data?.ID && !messageExtended?.data?.Subject;
 };
 
 export const useShouldMoveOut = (
     conversationMode: boolean,
-    ID: string | undefined,
+    inputID: string | undefined,
     loading: boolean,
     onBack: () => void
 ) => {
@@ -37,6 +36,8 @@ export const useShouldMoveOut = (
     const [folders = []] = useFolders();
 
     const previousVersionRef = useRef<MessageExtended | ConversationResult | undefined>();
+
+    const ID = useMemo(() => (conversationMode ? inputID : getLocalID(messageCache, inputID || '')), [inputID]);
 
     useEffect(() => {
         if (ID) {
@@ -84,7 +85,6 @@ export const useShouldMoveOut = (
         // Move out of a non existing message
         if (!loading && cacheEntryIsFailedLoading(conversationMode, cacheEntry)) {
             onBack();
-            return;
         }
     }, [cache, ID, loading]);
 };

@@ -5,19 +5,28 @@ import {
     OpenPGPSignature,
     verifyMessage as pmcryptoVerifyMessage,
     createCleartextMessage,
-    DecryptResultPmcrypto
+    DecryptResultPmcrypto,
 } from 'pmcrypto';
 import { Attachment, Message } from 'proton-shared/lib/interfaces/mail/Message';
 import { VERIFICATION_STATUS } from 'proton-shared/lib/mail/constants';
 import { getDate, getSender, isMIME } from 'proton-shared/lib/mail/messages';
 import { c } from 'ttag';
+import { MIME_TYPES } from 'proton-shared/lib/constants';
 
 import { MessageErrors } from '../../models/message';
 import { convert } from '../attachment/attachmentConverter';
 import { AttachmentsCache } from '../../containers/AttachmentProvider';
-import { MIME_TYPES } from 'proton-shared/lib/constants';
 
 const { NOT_VERIFIED } = VERIFICATION_STATUS;
+
+export interface DecryptMessageResult {
+    decryptedBody: string;
+    Attachments?: Attachment[];
+    decryptedSubject?: string;
+    signature?: OpenPGPSignature;
+    errors?: MessageErrors;
+    mimetype?: MIME_TYPES;
+}
 
 const decryptMimeMessage = async (message: Message, privateKeys: OpenPGPKey[], attachmentsCache: AttachmentsCache) => {
     const headerFilename = c('Encrypted Headers').t`Encrypted Headers filename`;
@@ -33,7 +42,7 @@ const decryptMimeMessage = async (message: Message, privateKeys: OpenPGPKey[], a
             privateKeys,
             publicKeys: [], // mandatory, even empty unless there is an error in openpgp
             headerFilename,
-            sender
+            sender,
         });
     } catch (error) {
         return {
@@ -41,8 +50,8 @@ const decryptMimeMessage = async (message: Message, privateKeys: OpenPGPKey[], a
             Attachments: [],
             verified: NOT_VERIFIED,
             errors: {
-                decryption: [error]
-            }
+                decryption: [error],
+            },
         };
     }
 
@@ -62,7 +71,7 @@ const decryptMimeMessage = async (message: Message, privateKeys: OpenPGPKey[], a
         decryptedSubject,
         signature,
         mimetype: mimetype as MIME_TYPES,
-        errors: errors?.length ? { decryption: errors } : undefined
+        errors: errors?.length ? { decryption: errors } : undefined,
     };
 };
 
@@ -74,20 +83,20 @@ const decryptLegacyMessage = async (message: Message, privateKeys: OpenPGPKey[])
             message: message?.Body,
             messageDate: getDate(message),
             privateKeys,
-            publicKeys: []
+            publicKeys: [],
         });
     } catch (error) {
         return {
             decryptedBody: '',
             errors: {
-                decryption: error
-            }
+                decryption: [error],
+            },
         };
     }
 
     const {
         data,
-        signatures: [signature]
+        signatures: [signature],
     } = result;
 
     return { decryptedBody: data, signature };
@@ -102,22 +111,15 @@ export const decryptMessage = async (
     message: Message,
     privateKeys: OpenPGPKey[],
     attachmentsCache: AttachmentsCache
-): Promise<{
-    decryptedBody: string;
-    Attachments?: Attachment[];
-    decryptedSubject?: string;
-    signature?: OpenPGPSignature;
-    errors?: MessageErrors;
-    mimetype?: MIME_TYPES;
-}> => {
+): Promise<DecryptMessageResult> => {
     if (isMIME(message)) {
         return decryptMimeMessage(message, privateKeys, attachmentsCache);
-    } else {
-        return decryptLegacyMessage(message, privateKeys);
     }
+    return decryptLegacyMessage(message, privateKeys);
 };
 
 export const verifyMessage = async (
+    { decryptedBody, signature }: DecryptMessageResult,
     message: Message,
     publicKeys: OpenPGPKey[]
 ): Promise<{
@@ -129,16 +131,19 @@ export const verifyMessage = async (
 
     try {
         result = await pmcryptoVerifyMessage({
-            message: createCleartextMessage(message?.Body),
+            message: createCleartextMessage(decryptedBody),
             date: getDate(message),
-            publicKeys: publicKeys
+            signature,
+            publicKeys,
         });
     } catch (error) {
         return {
             verified: NOT_VERIFIED,
-            verificationErrors: [error]
+            verificationErrors: [error],
         };
     }
-
-    return result;
+    return {
+        verified: result.verified,
+        signature,
+    };
 };

@@ -7,16 +7,20 @@ import { MAILBOX_LABEL_IDS } from 'proton-shared/lib/constants';
 import { MailSettings } from 'proton-shared/lib/interfaces';
 import { Message } from 'proton-shared/lib/interfaces/mail/Message';
 import { hasAttachments as messageHasAttachments } from 'proton-shared/lib/mail/messages';
+import { Folder } from 'proton-shared/lib/interfaces/Folder';
 
 import { ELEMENT_TYPES } from '../constants';
 import { Element } from '../models/element';
 import { Sort, SearchParameters, Filter } from '../models/tools';
 import { isConversationMode } from './mailSettings';
-import { hasAttachments as conversationHasAttachments } from './conversation';
+import {
+    isUnread as conversationIsUnread,
+    hasAttachments as conversationHasAttachments,
+    getNumAttachments as conversationNumAttachments,
+} from './conversation';
 
 import { LabelIDsChanges } from '../models/event';
 import { Conversation } from '../models/conversation';
-import { Folder } from 'proton-shared/lib/interfaces/Folder';
 
 const { INBOX, TRASH, SPAM, ARCHIVE } = MAILBOX_LABEL_IDS;
 
@@ -83,22 +87,9 @@ export const isUnread = (element: Element | undefined, labelID: string | undefin
 
     if (isMessage(element)) {
         return (element as Message).Unread !== 0;
-    } else {
-        const conversation = element as Conversation;
-        const labelUnread = conversation.Labels?.find((label) => label.ID === labelID)?.ContextNumUnread;
-
-        if (labelUnread !== undefined) {
-            return labelUnread !== 0;
-        }
-        if (conversation.ContextNumUnread !== undefined && conversation.ContextNumUnread !== 0) {
-            return conversation.ContextNumUnread !== 0;
-        }
-        if (conversation.NumUnread !== undefined) {
-            return conversation.NumUnread !== 0;
-        }
     }
 
-    return false;
+    return conversationIsUnread(element as Conversation, labelID);
 };
 
 export const isUnreadMessage = (message: Message) => isUnread(message, undefined);
@@ -119,7 +110,7 @@ export const getSize = ({ Size = 0 }: Element) => Size;
 export const sort = (elements: Element[], sort: Sort, labelID: string) => {
     const getValue = {
         Time: (element: Element, labelID: string) => getDate(element, labelID).getTime(),
-        Size: getSize
+        Size: getSize,
     }[sort.sort] as any;
     const compare = (a: Element, b: Element) => {
         const valueA = getValue(a, labelID);
@@ -151,8 +142,11 @@ export const getCounterMap = (
     }, {});
 };
 
-export const hasAttachments = (element: Element) =>
-    isMessage(element) ? messageHasAttachments(element as Message) : conversationHasAttachments(element);
+export const hasAttachments = (element: Element, labelID: string | undefined) =>
+    isMessage(element) ? messageHasAttachments(element as Message) : conversationHasAttachments(element, labelID);
+
+export const getNumAttachments = (element: Element, labelID: string | undefined) =>
+    isMessage(element) ? (element as Message)?.NumAttachments || 0 : conversationNumAttachments(element, labelID);
 
 /**
  * Starting from the element LabelIDs list, add and remove labels from an event manager event
@@ -163,11 +157,10 @@ export const parseLabelIDsInEvent = <T extends Element>(element: T, changes: T &
             diff((element as Message).LabelIDs || [], changes.LabelIDsRemoved || []).concat(changes.LabelIDsAdded || [])
         );
         return { ...element, ...omit(changes, ['LabelIDsRemoved', 'LabelIDsAdded']), LabelIDs };
-    } else {
-        // Conversation don't use LabelIDs even if these properties are still present in update events
-        // The conversation.Labels object is fully updated each time so we can safely ignore them
-        return { ...element, ...omit(changes, ['LabelIDsRemoved', 'LabelIDsAdded']) };
     }
+    // Conversation don't use LabelIDs even if these properties are still present in update events
+    // The conversation.Labels object is fully updated each time so we can safely ignore them
+    return { ...element, ...omit(changes, ['LabelIDsRemoved', 'LabelIDsAdded']) };
 };
 
 export const isSearch = (searchParams: SearchParameters) =>
@@ -191,7 +184,7 @@ export const getCurrentFolderID = (element: Element | undefined, customFoldersLi
         [INBOX]: true,
         [TRASH]: true,
         [SPAM]: true,
-        [ARCHIVE]: true
+        [ARCHIVE]: true,
     };
     const customFolders = toMap(customFoldersList, 'ID');
     return labelIDs.find((labelID) => standardFolders[labelID] || customFolders[labelID]) || '';

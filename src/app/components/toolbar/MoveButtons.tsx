@@ -21,18 +21,9 @@ interface Props {
     breakpoints: Breakpoints;
     selectedIDs: string[];
     onBack: () => void;
-    conversationMode: boolean;
 }
 
-const MoveButtons = ({
-    labelID = '',
-    labels = [],
-    folders = [],
-    breakpoints,
-    selectedIDs = [],
-    onBack,
-    conversationMode
-}: Props) => {
+const MoveButtons = ({ labelID = '', labels = [], folders = [], breakpoints, selectedIDs = [], onBack }: Props) => {
     const [loading, withLoading] = useLoading();
     const moveToFolder = useMoveToFolder();
     const labelIDs = labels.map(({ ID }) => ID);
@@ -78,13 +69,27 @@ const MoveButtons = ({
         <ToolbarButton
             key="spam"
             loading={loading}
-            title={c('Action').t`Move to Spam and add sender to blacklist`}
+            title={c('Action').t`Move to spam`}
             onClick={() => withLoading(handleMove(SPAM))}
             disabled={!selectedIDs.length}
             data-test-id="toolbar:movetospam"
         >
             <Icon className="toolbar-icon mauto" name="spam" />
-            <span className="sr-only">{c('Action').t`Move to Spam and add sender to blacklist`}</span>
+            <span className="sr-only">{c('Action').t`Move to spam`}</span>
+        </ToolbarButton>
+    );
+
+    const nospamButton = (
+        <ToolbarButton
+            key="nospam"
+            loading={loading}
+            title={c('Action').t`Move to inbox (not spam)`}
+            onClick={() => withLoading(handleMove(INBOX))}
+            disabled={!selectedIDs.length}
+            data-test-id="toolbar:movetonospam"
+        >
+            <Icon className="toolbar-icon mauto" name="nospam" />
+            <span className="sr-only">{c('Action').t`Move to inbox (not spam)`}</span>
         </ToolbarButton>
     );
 
@@ -102,9 +107,7 @@ const MoveButtons = ({
         </ToolbarButton>
     );
 
-    const deleteButton = (
-        <DeleteButton key="delete" labelID={labelID} conversationMode={conversationMode} selectedIDs={selectedIDs} />
-    );
+    const deleteButton = <DeleteButton key="delete" labelID={labelID} selectedIDs={selectedIDs} />;
 
     let buttons: ReactNode[] = [];
 
@@ -115,28 +118,26 @@ const MoveButtons = ({
         } else {
             buttons = [trashButton];
         }
-    } else {
-        if (labelID === INBOX) {
-            buttons = [trashButton, archiveButton, spamButton];
-        } else if (labelID === DRAFTS || labelID === ALL_DRAFTS) {
-            buttons = [trashButton, archiveButton, deleteButton];
-        } else if (labelID === SENT || labelID === ALL_SENT) {
-            buttons = [trashButton, archiveButton, deleteButton];
-        } else if (labelID === STARRED) {
-            buttons = [inboxButton, trashButton, archiveButton];
-        } else if (labelID === ARCHIVE) {
-            buttons = [inboxButton, trashButton, spamButton];
-        } else if (labelID === SPAM) {
-            buttons = [inboxButton, trashButton, deleteButton];
-        } else if (labelID === TRASH) {
-            buttons = [inboxButton, archiveButton, deleteButton];
-        } else if (labelID === ALL_MAIL) {
-            buttons = [inboxButton, trashButton, archiveButton];
-        } else if (isCustomFolder(labelID, folders)) {
-            buttons = [inboxButton, trashButton, archiveButton];
-        } else if (isCustomLabel(labelID, labels)) {
-            buttons = [inboxButton, trashButton, archiveButton];
-        }
+    } else if (labelID === INBOX) {
+        buttons = [trashButton, archiveButton, spamButton];
+    } else if (labelID === DRAFTS || labelID === ALL_DRAFTS) {
+        buttons = [trashButton, archiveButton, deleteButton];
+    } else if (labelID === SENT || labelID === ALL_SENT) {
+        buttons = [trashButton, archiveButton, deleteButton];
+    } else if (labelID === STARRED) {
+        buttons = [inboxButton, trashButton, archiveButton];
+    } else if (labelID === ARCHIVE) {
+        buttons = [inboxButton, trashButton, spamButton];
+    } else if (labelID === SPAM) {
+        buttons = [nospamButton, trashButton, deleteButton];
+    } else if (labelID === TRASH) {
+        buttons = [inboxButton, archiveButton, deleteButton];
+    } else if (labelID === ALL_MAIL) {
+        buttons = [inboxButton, trashButton, archiveButton];
+    } else if (isCustomFolder(labelID, folders)) {
+        buttons = [inboxButton, trashButton, archiveButton];
+    } else if (isCustomLabel(labelID, labels)) {
+        buttons = [inboxButton, trashButton, archiveButton];
     }
 
     return <>{buttons}</>; // TS limitation

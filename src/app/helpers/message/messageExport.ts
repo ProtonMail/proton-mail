@@ -11,10 +11,9 @@ import { MessageExtended } from '../../models/message';
 import { mutateHTMLCid } from '../embedded/embeddedParser';
 import { find } from '../embedded/embeddedFinder';
 import { getDocumentContent, getPlainTextContent } from './messageContent';
-import { constructMime } from '../send/sendMimeBuilder';
+import { constructMimeFromSource } from '../send/sendMimeBuilder';
 import { splitMail, combineHeaders } from '../mail';
 import { AttachmentsCache } from '../../containers/AttachmentProvider';
-import { parseInDiv } from '../../helpers/dom';
 
 export const prepareExport = (message: MessageExtended) => {
     if (!message.document) {
@@ -34,7 +33,7 @@ const encryptBody = async (content: string, publicKeys?: OpenPGPKey[], privateKe
         publicKeys: [publicKeys?.[0]] as OpenPGPKey[],
         privateKeys: [privateKeys?.[0]] as OpenPGPKey[],
         // format: 'utf8',
-        compression: enums.compression.zip
+        compression: enums.compression.zip,
     });
 
     return data;
@@ -63,7 +62,7 @@ export const encryptAttachmentKeyPackets = async (
                 const result = await encryptSessionKey({
                     data: sessionKey.data,
                     algorithm: sessionKey.algorithm,
-                    publicKeys: newAddressPublicKeys
+                    publicKeys: newAddressPublicKeys,
                 });
                 packets[attachment.ID || ''] = encodeBase64(
                     arrayToBinaryString(result.message.packets.write() as Uint8Array)
@@ -86,7 +85,7 @@ export const createMessage = async (message: MessageExtended, api: Api): Promise
             Action: message.action !== MESSAGE_ACTIONS.NEW ? message.action : undefined,
             Message: { ...message.data, Body },
             ParentID: message.ParentID,
-            AttachmentKeyPackets
+            AttachmentKeyPackets,
         } as any)
     );
 
@@ -125,12 +124,11 @@ export const updateMessage = async (
  * Use mime format, don't encrypt,
  */
 export const exportBlob = async (message: MessageExtended, attachmentsCache: AttachmentsCache, api: Api) => {
-    const document = parseInDiv(message.decryptedBody || '');
-    const mimeMessage = await constructMime({ ...message, document }, attachmentsCache, api, false);
+    const mimeMessage = await constructMimeFromSource(message, attachmentsCache, api);
     const { body, headers: mimeHeaders } = splitMail(mimeMessage);
     const headers = await combineHeaders(message.data?.Header || '', mimeHeaders);
 
     return new Blob([`${headers}\r\n${body}`], {
-        type: 'data:text/plain;charset=utf-8;'
+        type: 'data:text/plain;charset=utf-8;',
     });
 };

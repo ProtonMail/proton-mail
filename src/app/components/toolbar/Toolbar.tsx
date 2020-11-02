@@ -63,7 +63,7 @@ const Toolbar = ({
     page,
     onPage,
     onElement,
-    onNavigate
+    onNavigate,
 }: Props) => {
     const [labels] = useLabels();
     const [folders] = useFolders();
@@ -98,12 +98,11 @@ const Toolbar = ({
                     breakpoints={breakpoints}
                     selectedIDs={selectedIDs}
                     onBack={onBack}
-                    conversationMode={conversationMode}
                 />
                 <ToolbarSeparator />
                 <ToolbarDropdown
                     autoClose={false}
-                    noMaxSize={true}
+                    noMaxSize
                     disabled={!selectedIDs || !selectedIDs.length}
                     content={<Icon className="toolbar-icon" name="folder" />}
                     dropDownClassName="moveDropdown"
@@ -124,7 +123,7 @@ const Toolbar = ({
                 </ToolbarDropdown>
                 <ToolbarDropdown
                     autoClose={false}
-                    noMaxSize={true}
+                    noMaxSize
                     disabled={!selectedIDs || !selectedIDs.length}
                     content={<Icon className="toolbar-icon" name="label" />}
                     dropDownClassName="labelDropdown"

@@ -11,7 +11,7 @@ import {
     useContactGroups,
     useFolders,
     ButtonGroup as OriginalButtonGroup,
-    Tooltip
+    Tooltip,
 } from 'react-components';
 import { Label } from 'proton-shared/lib/interfaces/Label';
 import { ContactEmail } from 'proton-shared/lib/interfaces/contacts';
@@ -39,6 +39,8 @@ import HeaderRecipientType from './HeaderRecipientType';
 import HeaderRecipientItem from './HeaderRecipientItem';
 import { OnCompose } from '../../../hooks/useCompose';
 import { Breakpoints } from '../../../models/utils';
+import ItemAction from '../../list/ItemAction';
+import EncryptionStatusIcon from '../EncryptionStatusIcon';
 
 // Hacky override of the typing
 const ButtonGroup = OriginalButtonGroup as ({
@@ -94,7 +96,7 @@ const HeaderExpanded = ({
     onBack,
     onCompose,
     onSourceMode,
-    breakpoints
+    breakpoints,
 }: Props) => {
     const [contacts = []] = useContactEmails() as [ContactEmail[] | undefined, boolean, Error];
     const [contactGroups = []] = useContactGroups();
@@ -118,22 +120,20 @@ const HeaderExpanded = ({
     const handleCompose = (action: MESSAGE_ACTIONS) => () => {
         onCompose({
             action,
-            referenceMessage: message
+            referenceMessage: message,
         });
     };
 
     const from = (
         <HeaderRecipientItem
             recipientOrGroup={{ recipient: message.data?.Sender }}
-            message={message}
-            globalIcon={messageViewIcons.globalIcon}
             contacts={contacts}
             onCompose={onCompose}
             isLoading={!messageLoaded}
         />
     );
 
-    const isNarrow = breakpoints.isNarrow;
+    const { isNarrow } = breakpoints;
 
     return (
         <div
@@ -141,34 +141,60 @@ const HeaderExpanded = ({
                 'message-header message-header-expanded',
                 showDetails && 'message-header--showDetails',
                 isSentMessage ? 'is-outbound' : 'is-inbound',
-                !messageLoaded && 'is-loading'
+                !messageLoaded && 'is-loading',
             ])}
         >
             <div className="flex flex-nowrap flex-items-center cursor-pointer" onClick={handleClick}>
-                <span className="flex flex-item-fluid">
+                <span className="flex flex-item-fluid flex-nowrap mr0-5">
                     {showDetails ? (
-                        <HeaderRecipientType label={c('Label').t`From:`} className="flex flex-nowrap pr0-5">
+                        <HeaderRecipientType
+                            label={c('Label').t`From:`}
+                            className={classnames([
+                                'flex flex-items-start flex-nowrap',
+                                !messageLoaded && 'flex-item-fluid',
+                            ])}
+                        >
                             {from}
                         </HeaderRecipientType>
                     ) : (
-                        <div className="flex-item-fluid flex flex-nowrap pr0-5">{from}</div>
+                        <div
+                            className={classnames([
+                                'flex flex-nowrap is-appearing-content',
+                                !messageLoaded && 'flex-item-fluid',
+                            ])}
+                        >
+                            {from}
+                        </div>
                     )}
                 </span>
-                <div className="flex flex-items-center flex-item-noshrink">
+                <div
+                    className={classnames([
+                        'message-header-metas-container flex flex-items-center flex-item-noshrink',
+                        isNarrow && 'flex-self-start',
+                    ])}
+                >
                     {messageLoaded && !showDetails && (
                         <>
-                            <span className="ml0-5 inline-flex is-appearing-content">
+                            <span className="inline-flex is-appearing-content">
+                                <ItemAction element={message.data} className="flex-item-noshrink" />
+                                <EncryptionStatusIcon {...messageViewIcons.globalIcon} className="mr0-5" />
                                 <ItemLocation message={message.data} mailSettings={mailSettings} />
                             </span>
-                            <ItemDate className="ml0-5 is-appearing-content" element={message.data} labelID={labelID} />
+                            {!isNarrow && (
+                                <ItemDate
+                                    className="ml0-5 is-appearing-content"
+                                    element={message.data}
+                                    labelID={labelID}
+                                />
+                            )}
                         </>
                     )}
-                    {!messageLoaded && <span className="message-header-metas ml0-5 inline-flex"></span>}
-                    {showDetails && (
+                    {messageLoaded && showDetails && (
                         <span className="ml0-5 inline-flex is-appearing-content">
-                            <ItemLocation message={message.data} mailSettings={mailSettings} />
+                            <ItemAction element={message.data} className="flex-item-noshrink" />
                         </span>
                     )}
+                    {!messageLoaded && <span className="message-header-metas ml0-5 inline-flex" />}
                     <span className="message-header-star ml0-5 inline-flex">
                         <ItemStar element={message.data} />
                     </span>
@@ -176,11 +202,11 @@ const HeaderExpanded = ({
             </div>
             <div
                 className={classnames([
-                    'flex flex-nowrap flex-items-start mb0-5 onmobile-flex-wrap',
-                    !showDetails && 'mt0-5'
+                    'flex flex-nowrap flex-items-center mb0-5 onmobile-flex-wrap',
+                    !showDetails && 'mt0-5',
                 ])}
             >
-                <div className="flex-item-fluid flex flex-nowrap onmobile-flex-wrap pr1 message-header-recipients">
+                <div className="flex-item-fluid flex flex-nowrap mr0-5 onmobile-mr0 message-header-recipients">
                     {showDetails ? (
                         <HeaderRecipientsDetails
                             message={message}
@@ -198,22 +224,31 @@ const HeaderExpanded = ({
                             isLoading={!messageLoaded}
                         />
                     )}
-                    <span className="message-show-hide-link-container onmobile-w100 flex-item-noshrink">
+                    <span
+                        className={classnames([
+                            'message-show-hide-link-container flex-item-noshrink',
+                            showDetails ? 'mt0-25 onmobile-mt0-5' : 'ml0-5',
+                        ])}
+                    >
                         {messageLoaded && (
                             <button
                                 type="button"
                                 onClick={toggleDetails}
-                                className="message-show-hide-link pm-button--link alignleft alignbaseline is-appearing-content"
+                                className="message-show-hide-link pm-button--link alignbaseline is-appearing-content"
                                 disabled={!messageLoaded}
                             >
-                                {showDetails ? c('Action').t`Hide details` : c('Action').t`Show details`}
+                                {showDetails
+                                    ? c('Action').t`Hide details`
+                                    : isNarrow
+                                    ? c('Action').t`Details`
+                                    : c('Action').t`Show details`}
                             </button>
                         )}
                     </span>
                 </div>
-                {messageLoaded && !showDetails && (
+                {messageLoaded && !showDetails && !isNarrow && (
                     <>
-                        <div className="flex-item-noshrink flex flex-items-center onmobile-w100 onmobile-pt0-25 onmobile-pb0-25 message-header-expanded-label-container is-appearing-content">
+                        <div className="flex-item-noshrink flex flex-items-center message-header-expanded-label-container is-appearing-content">
                             <ItemLabels
                                 element={message.data}
                                 labels={labels}
@@ -221,13 +256,36 @@ const HeaderExpanded = ({
                                 maxNumber={5}
                                 className="onmobile-pt0-25"
                             />
-                        </div>
-                        <div className="flex-item-noshrink mauto flex onmobile-mt0-25">
-                            <ItemAttachmentIcon element={message.data} className="ml0-5" />
+                            <ItemAttachmentIcon element={message.data} labelID={labelID} className="ml0-5" />
                         </div>
                     </>
                 )}
             </div>
+
+            {!showDetails && isNarrow && (
+                <div className="flex flex-spacebetween flex-items-center border-top pt0-5 mb0-5">
+                    {messageLoaded ? (
+                        <>
+                            <div className="flex flex-nowrap flex-items-center">
+                                <Icon name="calendar" className="ml0-5 mr0-5" />
+                                <ItemDate className="is-appearing-content" element={message.data} labelID={labelID} />
+                            </div>
+                            <div className="mlauto flex flex-nowrap">
+                                <ItemLabels
+                                    element={message.data}
+                                    labels={labels}
+                                    showUnlabel
+                                    maxNumber={1}
+                                    className="is-appearing-content"
+                                />
+                                <ItemAttachmentIcon element={message.data} labelID={labelID} className="ml0-5" />
+                            </div>
+                        </>
+                    ) : (
+                        <span className="message-header-metas inline-flex" />
+                    )}
+                </div>
+            )}
 
             {showDetails && (
                 <HeaderExpandedDetails
@@ -235,6 +293,7 @@ const HeaderExpanded = ({
                     message={message}
                     messageViewIcons={messageViewIcons}
                     labels={labels}
+                    mailSettings={mailSettings}
                 />
             )}
 
@@ -279,7 +338,7 @@ const HeaderExpanded = ({
                             </HeaderDropdown>
                             <HeaderDropdown
                                 autoClose={false}
-                                noMaxSize={true}
+                                noMaxSize
                                 content={<Icon name="folder" alt={c('Action').t`Move to`} />}
                                 className="pm-button pm-group-button pm-button--for-icon"
                                 dropDownClassName="moveDropdown"
@@ -300,7 +359,7 @@ const HeaderExpanded = ({
                             </HeaderDropdown>
                             <HeaderDropdown
                                 autoClose={false}
-                                noMaxSize={true}
+                                noMaxSize
                                 content={<Icon name="label" alt={c('Action').t`Label as`} />}
                                 className="pm-button pm-group-button pm-button--for-icon"
                                 dropDownClassName="labelDropdown"
@@ -352,7 +411,7 @@ const HeaderExpanded = ({
                     </ButtonGroup>
                 </Group>
             </div>
-            {/*{messageLoaded ? <HeaderAttachmentEvent message={message} /> : null}*/}
+            {/* {messageLoaded ? <HeaderAttachmentEvent message={message} /> : null} */}
         </div>
     );
 };

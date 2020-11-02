@@ -19,7 +19,7 @@ import {
     useLoading,
     useMailSettings,
     useModals,
-    useNotifications
+    useNotifications,
 } from 'react-components';
 import { c } from 'ttag';
 
@@ -33,7 +33,7 @@ enum PROMPT_KEY_PINNING_TYPE {
     AUTOPROMPT = 1,
     PIN_UNSEEN,
     PIN_ATTACHED_SIGNING,
-    PIN_ATTACHED
+    PIN_ATTACHED,
 }
 
 interface Params {
@@ -46,7 +46,7 @@ const getPromptKeyPinningType = ({
     message,
     mailSettings = {},
     addresses,
-    senderAddress
+    senderAddress,
 }: Params): PROMPT_KEY_PINNING_TYPE | undefined => {
     if (addresses.find(({ Email }) => normalizeInternalEmail(Email) === normalizeInternalEmail(senderAddress))) {
         // Do not pin keys for own addresses
@@ -148,7 +148,7 @@ const ExtraPinKey = ({ message, onTrustSigningKey, onTrustAttachedKey }: Props) 
         !senderAddress ||
         (isPinUnseen && !contactID) ||
         !bePinnedPublicKey;
-    const bannerColorClassName = isPinUnseen ? 'bg-global-attention' : 'bg-white-dm';
+    const bannerColorClassName = isPinUnseen ? 'bg-global-attention color-black' : 'bg-white-dm';
 
     if (promptKeyPinningType === undefined) {
         return null;
@@ -168,7 +168,7 @@ const ExtraPinKey = ({ message, onTrustSigningKey, onTrustAttachedKey }: Props) 
             name,
             contactID,
             isInternal: isSenderInternal,
-            bePinnedPublicKey
+            bePinnedPublicKey,
         };
         const handleSubmit =
             promptKeyPinningType === PROMPT_KEY_PINNING_TYPE.PIN_ATTACHED
@@ -181,23 +181,23 @@ const ExtraPinKey = ({ message, onTrustSigningKey, onTrustAttachedKey }: Props) 
         <div
             className={classnames([
                 'rounded bordered-container p0-5 mb0-5 flex flex-nowrap flex-items-center flex-spacebetween',
-                bannerColorClassName
+                bannerColorClassName,
             ])}
         >
             <div className="flex flex-nowrap mr1">
-                {<Icon name="key" className="mtauto mbauto mr0-5 flex-item-noshrink" />}
+                <Icon name="key" className="mtauto mbauto mr0-5 flex-item-noshrink" />
                 <div>
                     <span className="mr0-5">{getBannerMessage(promptKeyPinningType)}</span>
                     {promptKeyPinningType === PROMPT_KEY_PINNING_TYPE.AUTOPROMPT ? (
                         <InlineLinkButton
-                            className="underline"
+                            className="color-currentColor underline"
                             disabled={loadingDisablePromptPin}
                             onClick={() => withLoadingDisablePromptPin(handleDisablePromptPin())}
                         >
                             {c('Action').t`Never show`}
                         </InlineLinkButton>
                     ) : (
-                        <LearnMore url="https://protonmail.com/support/knowledge-base/address-verification/" />
+                        <LearnMore className="color-currentColor" url="https://protonmail.com/support/knowledge-base/address-verification/" />
                     )}
                 </div>
             </div>

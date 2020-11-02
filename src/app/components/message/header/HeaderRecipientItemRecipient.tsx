@@ -10,7 +10,7 @@ import {
     DropdownMenuButton,
     Icon,
     useNotifications,
-    useModals
+    useModals,
 } from 'react-components';
 import { ContactEmail } from 'proton-shared/lib/interfaces/contacts';
 import { getInitial } from 'proton-shared/lib/helpers/string';
@@ -24,10 +24,8 @@ import { MESSAGE_ACTIONS } from '../../../constants';
 import { OnCompose } from '../../../hooks/useCompose';
 import HeaderRecipientItemLayout from './HeaderRecipientItemLayout';
 import { getContactOfRecipient } from '../../../helpers/contacts';
-import { MessageExtended } from '../../../models/message';
 
 interface Props {
-    message: MessageExtended;
     recipient: Recipient;
     mapStatusIcons?: MapStatusIcons;
     globalIcon?: StatusIcon;
@@ -38,14 +36,13 @@ interface Props {
 }
 
 const HeaderRecipientItemRecipient = ({
-    message,
     recipient,
     mapStatusIcons,
     globalIcon,
     showAddress = true,
     showLockIcon = true,
     contacts,
-    onCompose
+    onCompose,
 }: Props) => {
     const [uid] = useState(generateUID('dropdown-recipient'));
     const { anchorRef, isOpen, toggle, close } = usePopperAnchor<HTMLButtonElement>();
@@ -59,7 +56,7 @@ const HeaderRecipientItemRecipient = ({
         event.stopPropagation();
         onCompose({
             action: MESSAGE_ACTIONS.NEW,
-            referenceMessage: { data: { ToList: [recipient] } }
+            referenceMessage: { data: { ToList: [recipient] } },
         });
         close();
     };
@@ -83,13 +80,13 @@ const HeaderRecipientItemRecipient = ({
             <ContactModal
                 properties={[
                     { field: 'email', value: recipient.Address || '' },
-                    { field: 'fn', value: recipient.Name || recipient.Address || '' }
+                    { field: 'fn', value: recipient.Name || recipient.Address || '' },
                 ]}
             />
         );
     };
 
-    const icon = globalIcon ? globalIcon : mapStatusIcons ? mapStatusIcons[recipient.Address as string] : undefined;
+    const icon = globalIcon || (mapStatusIcons ? mapStatusIcons[recipient.Address as string] : undefined);
     const label = getRecipientLabelDetailed(recipient, contacts);
     const initial = getInitial(label);
 
@@ -99,6 +96,7 @@ const HeaderRecipientItemRecipient = ({
                 <>
                     <button
                         ref={anchorRef}
+                        type="button"
                         onClick={toggle}
                         aria-expanded={isOpen}
                         className="item-icon flex-item-noshrink rounded50 inline-flex stop-propagation mr0-5"
@@ -107,7 +105,7 @@ const HeaderRecipientItemRecipient = ({
                             {initial}
                         </span>
                         <span className="mauto item-caret hidden" aria-hidden="true">
-                            <Icon name="caret"></Icon>
+                            <Icon name="caret" />
                         </span>
                         <span className="sr-only">{c('Action').t`Address options`}</span>
                     </button>
@@ -145,12 +143,11 @@ const HeaderRecipientItemRecipient = ({
             icon={
                 showLockIcon &&
                 icon && (
-                    <span className="flex pl0-25 pr0-25 flex-item-noshrink message-recipient-item-lockIcon">
+                    <span className="flex ml0-25 flex-item-noshrink message-recipient-item-lockIcon">
                         <EncryptionStatusIcon {...icon} />
                     </span>
                 )
             }
-            message={message}
         />
     );
 };

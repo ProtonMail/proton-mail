@@ -8,7 +8,7 @@ import {
     DropdownMenu,
     DropdownMenuButton,
     useModals,
-    useNotifications
+    useNotifications,
 } from 'react-components';
 import { ContactEmail } from 'proton-shared/lib/interfaces/contacts';
 import { textToClipboard } from 'proton-shared/lib/helpers/browser';
@@ -22,10 +22,8 @@ import { MESSAGE_ACTIONS } from '../../../constants';
 import { OnCompose } from '../../../hooks/useCompose';
 import HeaderGroupModal from './HeaderGroupModal';
 import { MapStatusIcons, StatusIcon } from '../../../models/crypto';
-import { MessageExtended } from '../../../models/message';
 
 interface Props {
-    message: MessageExtended;
     group: RecipientGroup;
     mapStatusIcons?: MapStatusIcons;
     globalIcon?: StatusIcon;
@@ -35,13 +33,12 @@ interface Props {
 }
 
 const HeaderRecipientItemGroup = ({
-    message,
     group,
     mapStatusIcons,
     globalIcon,
     contacts,
     showAddress = true,
-    onCompose
+    onCompose,
 }: Props) => {
     const { createModal } = useModals();
     const { createNotification } = useNotifications();
@@ -62,7 +59,7 @@ const HeaderRecipientItemGroup = ({
         event.stopPropagation();
         onCompose({
             action: MESSAGE_ACTIONS.NEW,
-            referenceMessage: { data: { ToList: group.recipients } }
+            referenceMessage: { data: { ToList: group.recipients } },
         });
         close();
     };
@@ -92,6 +89,7 @@ const HeaderRecipientItemGroup = ({
                 <>
                     <button
                         ref={anchorRef}
+                        type="button"
                         onClick={toggle}
                         aria-expanded={isOpen}
                         className="item-icon flex-item-noshrink rounded50 inline-flex stop-propagation mr0-5"
@@ -100,7 +98,7 @@ const HeaderRecipientItemGroup = ({
                             {initial}
                         </span>
                         <span className="mauto item-caret hidden" aria-hidden="true">
-                            <Icon name="caret"></Icon>
+                            <Icon name="caret" />
                         </span>
                         <span className="sr-only">{c('Action').t`Address options`}</span>
                     </button>
@@ -126,7 +124,6 @@ const HeaderRecipientItemGroup = ({
             showAddress={showAddress}
             address={addresses}
             title={`${label} ${allAddresses}`}
-            message={message}
         />
     );
 };

@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { useLabels, classnames } from 'react-components';
 import { MailSettings } from 'proton-shared/lib/interfaces';
 
-import MessageView from '../message/MessageView';
+import MessageView from './MessageView';
 import { useMessage } from '../../hooks/message/useMessage';
 import { OnCompose } from '../../hooks/useCompose';
 import { useShouldMoveOut } from '../../hooks/useShouldMoveOut';
@@ -32,7 +32,7 @@ const MessageOnlyView = ({ hidden, labelID, messageID, mailSettings, onBack, onC
     // Manage loading the message
     useEffect(() => {
         if (!messageLoaded) {
-            addAction(load);
+            void addAction(load);
         }
     }, [messageLoaded]);
 
@@ -45,6 +45,7 @@ const MessageOnlyView = ({ hidden, labelID, messageID, mailSettings, onBack, onC
                 className={classnames([hidden && 'hidden'])}
                 loading={!messageLoaded}
                 element={message.data || {}}
+                breakpoints={breakpoints}
             />
             <div className={classnames(['scroll-if-needed flex-item-fluid pt0-5 mw100', hidden && 'hidden'])}>
                 <MessageView
