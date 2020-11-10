@@ -1,8 +1,7 @@
 import { getUnixTime } from 'date-fns';
 import {
     CreateCalendarEventSyncData,
-    getEventByUID,
-    GetEventByUIDArguments,
+    DeleteCalendarEventSyncData,
     syncMultipleEvents,
     UpdateCalendarEventSyncData,
 } from 'proton-shared/lib/api/calendars';
@@ -15,13 +14,15 @@ import {
     ICAL_METHOD,
 } from 'proton-shared/lib/calendar/constants';
 import getCreationKeys from 'proton-shared/lib/calendar/integration/getCreationKeys';
+import getPaginatedEventsByUID from 'proton-shared/lib/calendar/integration/getPaginatedEventsByUID';
 import { findAttendee, getInvitedEventWithAlarms } from 'proton-shared/lib/calendar/integration/invite';
 import { getIsRruleEqual } from 'proton-shared/lib/calendar/rruleEqual';
 import { createCalendarEvent } from 'proton-shared/lib/calendar/serialize';
 import {
     getHasModifiedAttendees,
     getHasModifiedDateTimes,
-    propertyToUTCDate
+    getHasModifiedDtstamp,
+    propertyToUTCDate,
 } from 'proton-shared/lib/calendar/vcalConverter';
 import {
     getAttendeeHasPartStat,
@@ -40,12 +41,14 @@ import { Address, Api } from 'proton-shared/lib/interfaces';
 import {
     Calendar,
     CalendarEvent,
+    CalendarEventWithMetadata,
     CalendarWidgetData,
     DecryptedPersonalVeventMapResult,
     SyncMultipleApiResponse,
     VcalAttendeeProperty,
     VcalVeventComponent,
     DecryptedVeventResult,
+    SingleEditWidgetData,
 } from 'proton-shared/lib/interfaces/calendar';
 import { ContactEmail } from 'proton-shared/lib/interfaces/contacts';
 import { RequireSome, Unwrap } from 'proton-shared/lib/interfaces/utils';
@@ -53,9 +56,11 @@ import { MessageExtended } from '../../models/message';
 import { EVENT_INVITATION_ERROR_TYPE, EventInvitationError } from './EventInvitationError';
 import {
     EventInvitation,
+    getCanCreateSingleEdit,
     getInvitationHasAttendee,
     getIsInvitationOutdated,
     getSequence,
+    getSingleEditWidgetData,
     InvitationModel,
     processEventInvitation,
     UPDATE_ACTION,
@@ -65,7 +70,7 @@ const { CANCELLED } = ICAL_EVENT_STATUS;
 const { NONE, KEEP_PARTSTAT, RESET_PARTSTAT, CANCEL } = UPDATE_ACTION;
 
 interface GetVeventWithAlarmsArgs {
-    calendarEvent: CalendarEvent;
+    calendarEvent: CalendarEventWithMetadata;
     memberID?: string;
     getCalendarEventRaw: (event: CalendarEvent) => Promise<DecryptedVeventResult>;
     getCalendarEventPersonal: (event: CalendarEvent) => Promise<DecryptedPersonalVeventMapResult>;
@@ -88,6 +93,46 @@ const getVeventWithAlarms = async ({
     };
 };
 
+const getIsNonSoughtEvent = (event: CalendarEventWithMetadata, vevent: VcalVeventComponent) => {
+    if (!event.RecurrenceID) {
+        return false;
+    }
+    if (!getHasRecurrenceId(vevent)) {
+        return true;
+    }
+    return getUnixTime(propertyToUTCDate(vevent['recurrence-id'])) !== event.RecurrenceID;
+};
+
+export type FetchAllEventsByUID = ({
+    uid,
+    api,
+    recurrenceID,
+}: {
+    uid: string;
+    recurrenceID?: number;
+    api: Api;
+}) => Promise<{
+    event?: CalendarEventWithMetadata;
+    otherEvents: CalendarEventWithMetadata[];
+    parentEvent?: CalendarEventWithMetadata;
+    otherParentEvents?: CalendarEventWithMetadata[];
+}>;
+
+const fetchAllEventsByUID: FetchAllEventsByUID = async ({ uid, api, recurrenceID }) => {
+    const promises: Promise<CalendarEventWithMetadata[]>[] = [getPaginatedEventsByUID({ api, uid })];
+    if (recurrenceID) {
+        promises.unshift(getPaginatedEventsByUID({ api, uid, recurrenceID }));
+    }
+    const [[event, ...otherEvents] = [], [parentEvent, ...otherParentEvents] = []] = await Promise.all(promises);
+    if (parentEvent) {
+        // If recurrenceID is passed, but not single edit is found, return the parent
+        return event
+            ? { event, otherEvents, parentEvent, otherParentEvents }
+            : { event: parentEvent, otherEvents: otherParentEvents };
+    }
+    return { event, otherEvents };
+};
+
 type FetchEventInvitation = (args: {
     veventComponent: VcalVeventComponent;
     api: Api;
@@ -101,10 +146,13 @@ type FetchEventInvitation = (args: {
     message: MessageExtended;
     contactEmails: ContactEmail[];
     ownAddresses: Address[];
+    isFreeUser: boolean;
 }) => Promise<{
     invitation?: RequireSome<EventInvitation, 'calendarEvent'>;
     parentInvitation?: RequireSome<EventInvitation, 'calendarEvent'>;
     calendarData?: CalendarWidgetData;
+    singleEditData?: SingleEditWidgetData;
+    hasDecryptionError?: boolean;
 }>;
 export const fetchEventInvitation: FetchEventInvitation = async ({
     veventComponent,
@@ -117,18 +165,21 @@ export const fetchEventInvitation: FetchEventInvitation = async ({
     message,
     contactEmails,
     ownAddresses,
+    isFreeUser,
 }) => {
-    const recurrenceID = veventComponent['recurrence-id'];
-    const params: GetEventByUIDArguments[] = [{ UID: veventComponent.uid.value, Page: 0, PageSize: 1 }];
-    if (recurrenceID) {
-        // we want to retrieve the single edit plus the parent in this case
-        const timestamp = getUnixTime(propertyToUTCDate(recurrenceID));
-        params.unshift({ UID: veventComponent.uid.value, Page: 0, PageSize: 1, RecurrenceID: timestamp });
+    if (isFreeUser) {
+        // The API may return calendar data for downgraded free users,
+        // but at the moment those users are not entitled to have a calendar
+        return {};
     }
-    const response = await Promise.all(params.map((args) => api<{ Events: CalendarEvent[] }>(getEventByUID(args))));
-    // keep only the first event the API found (typically the one from the default calendar)
-    const calendarEvents = response.map(({ Events: [event] = [] }) => event).filter(isTruthy);
-    const [calendarEvent, calendarParentEvent] = calendarEvents;
+    const recurrenceID = veventComponent['recurrence-id'];
+    const timestamp = recurrenceID ? getUnixTime(propertyToUTCDate(recurrenceID)) : undefined;
+    const allEventsWithUID = await fetchAllEventsByUID({
+        uid: veventComponent.uid.value,
+        api,
+        recurrenceID: timestamp,
+    });
+    const { event: calendarEvent, parentEvent: calendarParentEvent } = allEventsWithUID;
     const calendar =
         calendars.find(({ ID }) => ID === (calendarEvent || calendarParentEvent)?.CalendarID) || defaultCalendar;
     if (!calendar) {
@@ -142,12 +193,14 @@ export const fetchEventInvitation: FetchEventInvitation = async ({
             hasBit(calendar.Flags, CALENDAR_FLAGS.UPDATE_PASSPHRASE),
         ...(await getCalendarInfo(calendar.ID)),
     };
-    if (!calendarEvents.length) {
+    // if we retrieved a single edit when not looking for one, or looking for another one, do not return it
+    if (!calendarEvent || getIsNonSoughtEvent(calendarEvent, veventComponent)) {
         return { calendarData };
     }
+    const singleEditData = getSingleEditWidgetData(allEventsWithUID);
     try {
         const vevents = await Promise.all(
-            calendarEvents.map((event) =>
+            [calendarEvent, calendarParentEvent].filter(isTruthy).map((event) =>
                 getVeventWithAlarms({
                     calendarEvent: event,
                     memberID: calendarData.memberID,
@@ -157,10 +210,10 @@ export const fetchEventInvitation: FetchEventInvitation = async ({
             )
         );
         const [vevent, parentVevent] = vevents;
-        const result: Unwrap<ReturnType<FetchEventInvitation>> = { calendarData };
+        const result: Unwrap<ReturnType<FetchEventInvitation>> = { calendarData, singleEditData };
         const { invitation } = processEventInvitation({ vevent }, message, contactEmails, ownAddresses);
         result.invitation = { ...invitation, calendarEvent };
-        if (parentVevent) {
+        if (parentVevent && calendarParentEvent) {
             const { invitation: parentInvitation } = processEventInvitation(
                 { vevent: parentVevent },
                 message,
@@ -171,7 +224,9 @@ export const fetchEventInvitation: FetchEventInvitation = async ({
         }
         return result;
     } catch (e) {
-        return { calendarData };
+        // We need to detect if the error is due to a failed decryption of the event.
+        // We don't have a great way of doing this as the error comes from openpgp
+        return { calendarData, hasDecryptionError: e.message.includes('decrypt') };
     }
 };
 
@@ -181,6 +236,8 @@ interface UpdateEventArgs {
     api: Api;
     calendarData: Required<CalendarWidgetData>;
     createSingleEdit?: boolean;
+    deleteIds?: string[];
+    overwrite: boolean;
 }
 const updateEventApi = async ({
     calendarEvent,
@@ -188,6 +245,8 @@ const updateEventApi = async ({
     api,
     calendarData,
     createSingleEdit = false,
+    overwrite,
+    deleteIds = [],
 }: UpdateEventArgs) => {
     const {
         calendar: { ID: calendarID },
@@ -206,9 +265,14 @@ const updateEventApi = async ({
         isSwitchCalendar: false,
         ...creationKeys,
     });
-    const Events: (CreateCalendarEventSyncData | UpdateCalendarEventSyncData)[] = createSingleEdit
-        ? [{ Event: { Permissions: 3, IsOrganizer: 0, ...data }, Overwrite: 1 }]
-        : [{ Event: { Permissions: 3, ...data }, ID: calendarEvent.ID }];
+    const deleteEvents = deleteIds.map((id) => ({ ID: id }));
+    const Events: (
+        | CreateCalendarEventSyncData
+        | UpdateCalendarEventSyncData
+        | DeleteCalendarEventSyncData
+    )[] = createSingleEdit
+        ? [{ Event: { Permissions: 3, IsOrganizer: 0, ...data }, Overwrite: overwrite ? 1 : 0 }]
+        : [...deleteEvents, { Event: { Permissions: 3, ...data }, ID: calendarEvent.ID }];
     const {
         Responses: [
             {
@@ -228,7 +292,7 @@ const updateEventApi = async ({
 interface UpdateEventInvitationArgs
     extends Omit<
         RequireSome<InvitationModel, 'invitationIcs' | 'invitationApi'>,
-        'timeStatus' | 'canCreateCalendar' | 'hasNoCalendars'
+        'timeStatus' | 'isFreeUser' | 'canCreateCalendar' | 'hasNoCalendars'
     > {
     isOrganizerMode: boolean;
     isAddressDisabled: boolean;
@@ -239,14 +303,17 @@ interface UpdateEventInvitationArgs
     invitationApi: RequireSome<EventInvitation, 'calendarEvent' | 'attendee'>;
     parentInvitationApi?: RequireSome<EventInvitation, 'calendarEvent'>;
     calendarData: Required<CalendarWidgetData>;
+    singleEditData?: SingleEditWidgetData;
     api: Api;
     message: MessageExtended;
     contactEmails: ContactEmail[];
     ownAddresses: Address[];
+    overwrite: boolean;
 }
 export const updateEventInvitation = async ({
     isOrganizerMode,
     calendarData,
+    singleEditData,
     isAddressDisabled,
     invitationIcs,
     invitationApi,
@@ -255,17 +322,15 @@ export const updateEventInvitation = async ({
     message,
     contactEmails,
     ownAddresses,
+    overwrite,
 }: UpdateEventInvitationArgs): Promise<{
     action: UPDATE_ACTION;
     invitation?: RequireSome<EventInvitation, 'calendarEvent' | 'attendee'>;
 }> => {
     const { method, vevent: veventIcs, attendee: attendeeIcs } = invitationIcs;
-    const {
-        calendarEvent,
-        vevent: veventApi,
-        attendee: { vcalComponent: vcalAttendeeApi },
-    } = invitationApi;
+    const { calendarEvent, vevent: veventApi, attendee: attendeeApi } = invitationApi;
     const vcalAttendeeIcs = attendeeIcs?.vcalComponent;
+    const vcalAttendeeApi = attendeeApi?.vcalComponent;
     const recurrenceIdIcs = veventIcs['recurrence-id'];
 
     if (isOrganizerMode) {
@@ -291,7 +356,13 @@ export const updateEventInvitation = async ({
         }
     }
     // attendee mode
-    if (isAddressDisabled || calendarData.isCalendarDisabled || getIsInvitationOutdated(veventIcs, veventApi)) {
+    if (
+        isAddressDisabled ||
+        calendarData.isCalendarDisabled ||
+        getIsInvitationOutdated(veventIcs, veventApi) ||
+        !attendeeIcs ||
+        !attendeeApi
+    ) {
         // do not update
         return { action: NONE };
     }
@@ -301,26 +372,33 @@ export const updateEventInvitation = async ({
             // TODO: check for SharedEventID and create new event accordingly
             return { action: NONE };
         }
+        const hasUpdatedDtstamp = getHasModifiedDtstamp(veventIcs, veventApi);
         const sequenceDiff = getSequence(veventIcs) - getSequence(veventApi);
         const hasUpdatedDateTimes = getHasModifiedDateTimes(veventIcs, veventApi);
         const hasUpdatedTitle = veventIcs.summary?.value !== veventApi.summary?.value;
         const hasUpdatedDescription = veventIcs.description?.value !== veventApi.description?.value;
         const hasUpdatedLocation = veventIcs.location?.value !== veventApi.location?.value;
         const hasUpdatedRrule = !getIsRruleEqual(veventIcs.rrule, veventApi.rrule);
-        const hasUpdatedAttendees = getHasModifiedAttendees(veventIcs, veventApi);
+        const hasUpdatedAttendees = getHasModifiedAttendees({ veventIcs, veventApi, attendeeIcs, attendeeApi });
         const isReinvited = getEventStatus(veventApi) === CANCELLED;
-        const hasBreakingChange = sequenceDiff > 0;
-        const hasNonBreakingChange =
-            hasUpdatedDateTimes ||
-            hasUpdatedTitle ||
-            hasUpdatedDescription ||
-            hasUpdatedLocation ||
-            hasUpdatedRrule ||
-            hasUpdatedAttendees;
+        const hasBreakingChange = hasUpdatedDtstamp ? sequenceDiff > 0 : false;
+        const hasNonBreakingChange = hasUpdatedDtstamp
+            ? hasUpdatedDateTimes ||
+              hasUpdatedTitle ||
+              hasUpdatedDescription ||
+              hasUpdatedLocation ||
+              hasUpdatedRrule ||
+              hasUpdatedAttendees
+            : false;
         const action = hasBreakingChange || isReinvited ? RESET_PARTSTAT : hasNonBreakingChange ? KEEP_PARTSTAT : NONE;
         if ([KEEP_PARTSTAT, RESET_PARTSTAT].includes(action)) {
             // update the api event by the ics one with the appropriate answer
             const createSingleEdit = getHasRecurrenceId(veventIcs) && !getHasRecurrenceId(veventApi);
+            const canCreateSingleEdit = createSingleEdit ? getCanCreateSingleEdit(veventIcs, veventApi) : undefined;
+            if (createSingleEdit && !canCreateSingleEdit) {
+                // The parent has been updated. Nothing to do then
+                return { action: NONE };
+            }
             try {
                 if (!vcalAttendeeIcs) {
                     throw new Error('Missing attendee parameters');
@@ -340,12 +418,15 @@ export const updateEventInvitation = async ({
                         getAttendeePartstat(vcalAttendeeApi)
                     )
                 );
+                // we are updating a recurring event with previous modifications. We must delete those
                 const updatedCalendarEvent = await updateEventApi({
                     calendarEvent,
                     vevent: updatedVevent,
                     calendarData,
                     createSingleEdit,
+                    deleteIds: singleEditData?.ids,
                     api,
+                    overwrite,
                 });
                 const { invitation: updatedInvitation } = processEventInvitation(
                     { vevent: updatedVevent, calendarEvent: updatedCalendarEvent },
@@ -383,6 +464,11 @@ export const updateEventInvitation = async ({
         // cancel API event if needed
         if (cancel) {
             const createSingleEdit = getHasRecurrenceId(veventIcs) && !getHasRecurrenceId(veventApi);
+            const canCreateSingleEdit = createSingleEdit ? getCanCreateSingleEdit(veventIcs, veventApi) : undefined;
+            if (createSingleEdit && !canCreateSingleEdit) {
+                // The parent has been updated. Nothing to do then
+                return { action: NONE };
+            }
             try {
                 const updatedVevent = createSingleEdit
                     ? {
@@ -401,6 +487,7 @@ export const updateEventInvitation = async ({
                     calendarData,
                     createSingleEdit,
                     api,
+                    overwrite,
                 });
                 const { invitation: updatedInvitation } = processEventInvitation(
                     { vevent: updatedVevent },
@@ -427,12 +514,14 @@ export const createCalendarEventFromInvitation = async ({
     partstat,
     api,
     calendarData,
+    overwrite,
 }: {
     vevent: VcalVeventComponent;
     vcalAttendee: VcalAttendeeProperty;
     partstat: ICAL_ATTENDEE_STATUS;
     calendarData?: CalendarWidgetData;
     api: Api;
+    overwrite: boolean;
 }) => {
     const { calendar, memberID, addressKeys, calendarKeys, calendarSettings } = calendarData || {};
     if (!calendar || !memberID || !addressKeys || !calendarKeys || !calendarSettings) {
@@ -461,7 +550,7 @@ export const createCalendarEventFromInvitation = async ({
         ...(await getCreationKeys({ addressKeys, newCalendarKeys: calendarKeys })),
     });
     const Events: CreateCalendarEventSyncData[] = [
-        { Overwrite: 1, Event: { Permissions: 3, IsOrganizer: 0, ...data } },
+        { Overwrite: overwrite ? 1 : 0, Event: { Permissions: 3, IsOrganizer: 0, ...data } },
     ];
     const {
         Responses: [
@@ -483,7 +572,7 @@ export const createCalendarEventFromInvitation = async ({
     };
 };
 
-export const updateCalendarEventFromInvitation = async ({
+export const updatePartstatFromInvitation = async ({
     veventApi,
     calendarEvent,
     veventIcs,
@@ -501,6 +590,7 @@ export const updateCalendarEventFromInvitation = async ({
     oldPartstat?: ICAL_ATTENDEE_STATUS;
     calendarData?: CalendarWidgetData;
     api: Api;
+    overwrite: boolean;
 }) => {
     const { calendar, memberID, addressKeys, calendarKeys, calendarSettings } = calendarData || {};
     if (
@@ -515,7 +605,9 @@ export const updateCalendarEventFromInvitation = async ({
         throw new Error('Missing data for updating calendar event from invitation');
     }
     const emailAddress = getAttendeeEmail(vcalAttendee);
-    const veventToUpdate = veventIcs ? { ...veventIcs, ...pick(veventApi, ['components']) } : { ...veventApi };
+    const veventToUpdate = veventIcs
+        ? { ...veventIcs, ...pick(veventApi, ['components', 'exdate']) }
+        : { ...veventApi };
     const updatedVevent = {
         ...veventToUpdate,
         attendee: modifyAttendeesPartstat(veventToUpdate.attendee, { [emailAddress]: partstat }),

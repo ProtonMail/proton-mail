@@ -1,4 +1,4 @@
-import { getUnixTime, format } from 'date-fns';
+import { format, getUnixTime } from 'date-fns';
 import { getAttendeeEmail, getSupportedAttendee } from 'proton-shared/lib/calendar/attendees';
 import { getIsCalendarDisabled } from 'proton-shared/lib/calendar/calendar';
 import {
@@ -8,7 +8,9 @@ import {
     ICAL_MIME_TYPE,
     MAX_LENGTHS,
 } from 'proton-shared/lib/calendar/constants';
-import { findAttendee, getParticipant } from 'proton-shared/lib/calendar/integration/invite';
+import { getSelfAttendeeData, getParticipant } from 'proton-shared/lib/calendar/integration/invite';
+import { getOccurrencesBetween } from 'proton-shared/lib/calendar/recurring';
+
 import { getHasConsistentRrule, getSupportedRrule } from 'proton-shared/lib/calendar/rrule';
 import {
     getIsDateOutOfBounds,
@@ -26,10 +28,12 @@ import {
 } from 'proton-shared/lib/calendar/vcalConverter';
 import {
     getHasDtStart,
+    getHasRecurrenceId,
     getHasUid,
     getIsCalendar,
     getIsEventComponent,
     getIsPropertyAllDay,
+    getIsRecurring,
     getIsTimezoneComponent,
     getIsXOrIanaComponent,
     getPropertyTzid,
@@ -39,11 +43,17 @@ import { addDays, format as formatUTC, isNextDay } from 'proton-shared/lib/date-
 import { convertUTCDateTimeToZone, fromUTCDate, getSupportedTimezone } from 'proton-shared/lib/date/timezone';
 import { unique } from 'proton-shared/lib/helpers/array';
 import { hasBit } from 'proton-shared/lib/helpers/bitset';
-import { cleanEmail, normalizeInternalEmail } from 'proton-shared/lib/helpers/email';
+import { cleanEmail } from 'proton-shared/lib/helpers/email';
 import { splitExtension } from 'proton-shared/lib/helpers/file';
 import { truncate } from 'proton-shared/lib/helpers/string';
 import { Address } from 'proton-shared/lib/interfaces';
-import { Calendar, CalendarEvent, CalendarWidgetData, Participant } from 'proton-shared/lib/interfaces/calendar';
+import {
+    Calendar,
+    CalendarEvent,
+    CalendarWidgetData,
+    Participant,
+    SingleEditWidgetData,
+} from 'proton-shared/lib/interfaces/calendar';
 import {
     VcalDateOrDateTimeProperty,
     VcalDateTimeProperty,
@@ -55,11 +65,12 @@ import {
 } from 'proton-shared/lib/interfaces/calendar/VcalModel';
 import { ContactEmail } from 'proton-shared/lib/interfaces/contacts';
 import { Attachment, Message } from 'proton-shared/lib/interfaces/mail/Message';
-import { RequireSome } from 'proton-shared/lib/interfaces/utils';
+import { RequireSome, Unwrap } from 'proton-shared/lib/interfaces/utils';
 import { getOriginalTo } from 'proton-shared/lib/mail/messages';
 import { c } from 'ttag';
 import { MessageExtended } from '../../models/message';
 import { EVENT_INVITATION_ERROR_TYPE, EventInvitationError } from './EventInvitationError';
+import { FetchAllEventsByUID } from './inviteApi';
 
 export enum EVENT_TIME_STATUS {
     PAST,
@@ -89,6 +100,8 @@ export enum UPDATE_ACTION {
 export interface InvitationModel {
     isOrganizerMode: boolean;
     timeStatus: EVENT_TIME_STATUS;
+    isFreeUser: boolean;
+    isForwardedInvitation?: boolean;
     isAddressDisabled: boolean;
     canCreateCalendar: boolean;
     hasNoCalendars: boolean;
@@ -97,10 +110,12 @@ export interface InvitationModel {
     hideSummary?: boolean;
     hideLink?: boolean;
     calendarData?: CalendarWidgetData;
+    singleEditData?: SingleEditWidgetData;
     invitationIcs?: RequireSome<EventInvitation, 'method'>;
     invitationApi?: RequireSome<EventInvitation, 'calendarEvent' | 'attendee'>;
     parentInvitationApi?: RequireSome<EventInvitation, 'calendarEvent'>;
     error?: EventInvitationError;
+    hasDecryptionError?: boolean;
 }
 
 export const getHasInvitation = (model: InvitationModel): model is RequireSome<InvitationModel, 'invitationIcs'> => {
@@ -127,7 +142,7 @@ export const getHasFullCalendarData = (data?: CalendarWidgetData): data is Requi
 export const filterAttachmentsForEvents = (attachments: Attachment[]): Attachment[] =>
     attachments.filter(
         ({ Name = '', MIMEType = '' }) =>
-            ICAL_EXTENSIONS.includes(splitExtension(Name)[1]) && MIMEType === ICAL_MIME_TYPE
+            ICAL_EXTENSIONS.includes(splitExtension(Name)[1]) && MIMEType.includes(ICAL_MIME_TYPE)
     );
 
 const withMessageDtstamp = <T>(properties: VcalVeventComponent & T, { Time }: Message): VcalVeventComponent & T => {
@@ -166,6 +181,16 @@ export const getIsOrganizerMode = (event: VcalVeventComponent, emailTo: string) 
     return cleanEmail(organizerEmail) === cleanEmail(emailTo);
 };
 
+export const getSingleEditWidgetData = ({
+    otherEvents,
+    otherParentEvents,
+}: Unwrap<ReturnType<FetchAllEventsByUID>>) => {
+    const singleEdits = (otherParentEvents || otherEvents).filter(({ RecurrenceID }) => !!RecurrenceID);
+    return {
+        ids: singleEdits.map(({ ID }) => ID),
+    };
+};
+
 export const getIsInvitationOutdated = (veventIcs: VcalVeventComponent, veventApi?: VcalVeventComponent) => {
     if (!veventApi) {
         return false;
@@ -182,6 +207,19 @@ export const getIsInvitationOutdated = (veventIcs: VcalVeventComponent, veventAp
         return false;
     }
     return getSequence(veventIcs) < getSequence(veventApi);
+};
+
+/**
+ * Determines if a single edit can be created from a parent. So basically check if the recurrence-id
+ * matches a parent occurrence
+ */
+export const getCanCreateSingleEdit = (singleEditVevent: VcalVeventComponent, parentVevent: VcalVeventComponent) => {
+    if (!getIsRecurring(parentVevent) || !getHasRecurrenceId(singleEditVevent)) {
+        return false;
+    }
+    const utcStart = +propertyToUTCDate(singleEditVevent['recurrence-id']);
+    const occurrencesAtStart = getOccurrencesBetween(parentVevent, utcStart, utcStart);
+    return occurrencesAtStart.length === 1;
 };
 
 /**
@@ -282,15 +320,13 @@ export const processEventInvitation = <T>(
 ): ProcessedInvitation<T> => {
     const { vevent } = invitation;
     const timeStatus = getEventTimeStatus(vevent, Date.now());
-    const attendees = vevent.attendee;
+    const attendees = vevent.attendee || [];
     const { organizer } = vevent;
     const originalTo = getOriginalTo(message.data);
     const isOrganizerMode = getIsOrganizerMode(vevent, originalTo);
-    const selfEmailAddress = isOrganizerMode ? message.data?.SenderAddress || '' : originalTo;
-    const { attendee } = findAttendee(selfEmailAddress, attendees);
-    const selfAddress = ownAddresses.find(
-        ({ Email }) => normalizeInternalEmail(Email) === normalizeInternalEmail(selfEmailAddress)
-    );
+    const { selfAddress, selfAttendee } = isOrganizerMode
+        ? getSelfAttendeeData([], ownAddresses)
+        : getSelfAttendeeData(attendees, ownAddresses);
     const isAddressDisabled = selfAddress ? selfAddress.Status === 0 : false;
 
     const processed: EventInvitation & T = { ...invitation };
@@ -303,8 +339,8 @@ export const processEventInvitation = <T>(
     if (organizer) {
         processed.organizer = getParticipant(organizer, contactEmails, ownAddresses, originalTo);
     }
-    if (attendee) {
-        processed.attendee = getParticipant(attendee, contactEmails, ownAddresses, originalTo);
+    if (selfAttendee) {
+        processed.attendee = getParticipant(selfAttendee, contactEmails, ownAddresses, originalTo);
     }
 
     return { isOrganizerMode, timeStatus, isAddressDisabled, invitation: processed };
@@ -316,6 +352,7 @@ interface GetInitialInvitationModelArgs {
     contactEmails: ContactEmail[];
     ownAddresses: Address[];
     calendar?: Calendar;
+    isFreeUser: boolean;
     hasNoCalendars: boolean;
     canCreateCalendar: boolean;
 }
@@ -325,6 +362,7 @@ export const getInitialInvitationModel = ({
     contactEmails,
     ownAddresses,
     calendar,
+    isFreeUser,
     hasNoCalendars,
     canCreateCalendar,
 }: GetInitialInvitationModelArgs) => {
@@ -332,6 +370,7 @@ export const getInitialInvitationModel = ({
         return {
             isOrganizerMode: false,
             isAddressDisabled: false,
+            isFreeUser,
             canCreateCalendar,
             hasNoCalendars,
             timeStatus: EVENT_TIME_STATUS.FUTURE,
@@ -347,10 +386,12 @@ export const getInitialInvitationModel = ({
     const result: InvitationModel = {
         isOrganizerMode,
         timeStatus,
+        isFreeUser,
         isAddressDisabled,
         canCreateCalendar,
         hasNoCalendars,
         invitationIcs: invitation,
+        isForwardedInvitation: !isOrganizerMode && !invitation.attendee,
     };
     if (calendar) {
         result.calendarData = {
@@ -629,19 +670,27 @@ export const getSupportedEventInvitation = (
 export const getCalendarEventLink = (model: RequireSome<InvitationModel, 'invitationIcs'>) => {
     const {
         hideLink,
+        isForwardedInvitation,
         isOutdated,
-        timeStatus,
         calendarData,
         invitationIcs: { method },
         invitationApi,
+        isFreeUser,
         canCreateCalendar,
     } = model;
 
-    if (hideLink) {
+    if (hideLink || isForwardedInvitation) {
         return {};
     }
 
-    const canBeAnswered = method === ICAL_METHOD.REQUEST && timeStatus !== EVENT_TIME_STATUS.PAST && !isOutdated;
+    const canBeAnswered = method === ICAL_METHOD.REQUEST && !isOutdated;
+
+    if (isFreeUser && canBeAnswered) {
+        return {
+            to: '',
+            text: c('Link').t`Create a new calendar to answer this invitation`,
+        };
+    }
 
     // the calendar needs a user action to be active
     if (calendarData?.calendarNeedsUserAction) {
@@ -693,14 +742,23 @@ export const getCalendarEventLink = (model: RequireSome<InvitationModel, 'invita
 export const getDoNotDisplayButtons = (model: RequireSome<InvitationModel, 'invitationIcs'>) => {
     const {
         isOrganizerMode,
+        isForwardedInvitation,
         invitationIcs: { method },
         calendarData,
         isOutdated,
+        isFreeUser,
         isAddressDisabled,
     } = model;
 
     if (isOrganizerMode) {
         return false;
     }
-    return method === ICAL_METHOD.CANCEL || !!isOutdated || isAddressDisabled || !!calendarData?.isCalendarDisabled;
+    return (
+        method === ICAL_METHOD.CANCEL ||
+        !!isOutdated ||
+        isAddressDisabled ||
+        !!calendarData?.isCalendarDisabled ||
+        isFreeUser ||
+        isForwardedInvitation
+    );
 };

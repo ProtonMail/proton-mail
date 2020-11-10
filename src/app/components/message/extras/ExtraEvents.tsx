@@ -10,6 +10,7 @@ import {
     useLoading,
     useUserSettings,
     useGetCalendarUserSettings,
+    useUser,
 } from 'react-components';
 import { arrayToBinaryString, decodeUtf8 } from 'pmcrypto';
 import {
@@ -46,6 +47,7 @@ const ExtraEvents = ({ message }: Props) => {
         Error
     ];
     const [addresses = [], loadingAddresses] = useAddresses();
+    const [user, loadingUser] = useUser();
     const [userSettings, loadingUserSettings] = useUserSettings();
     const getCalendarUserSettings = useGetCalendarUserSettings();
     const [loadingWidget, withLoadingWidget] = useLoading();
@@ -55,7 +57,8 @@ const ExtraEvents = ({ message }: Props) => {
     const [defaultCalendar, setDefaultCalendar] = useState<Calendar | undefined>();
     const [canCreateCalendar, setCanCreateCalendar] = useState<boolean>(true);
     const api = useApi();
-    const loadingConfigs = loadingContactEmails || loadingAddresses || loadingCalendars || loadingUserSettings;
+    const loadingConfigs =
+        loadingContactEmails || loadingAddresses || loadingCalendars || loadingUserSettings || loadingUser;
 
     useEffect(() => {
         const attachments = getAttachments(message.data);
@@ -64,7 +67,7 @@ const ExtraEvents = ({ message }: Props) => {
             setInvitations([]);
             return;
         }
-        if (!message.privateKeys || loadingConfigs) {
+        if (!message.privateKeys || message.errors?.decryption?.length || loadingConfigs) {
             return;
         }
         let unmounted = false;
@@ -118,7 +121,7 @@ const ExtraEvents = ({ message }: Props) => {
         return () => {
             unmounted = true;
         };
-    }, [message.data, message.privateKeys, loadingConfigs]);
+    }, [message.data, message.privateKeys, message.errors, loadingConfigs]);
 
     if (loadingConfigs || loadingWidget) {
         return null;
@@ -137,6 +140,7 @@ const ExtraEvents = ({ message }: Props) => {
                         canCreateCalendar={canCreateCalendar}
                         contactEmails={contactEmails}
                         ownAddresses={addresses}
+                        user={user}
                         userSettings={userSettings}
                     />
                 );

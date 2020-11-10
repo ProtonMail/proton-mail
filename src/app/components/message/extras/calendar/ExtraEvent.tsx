@@ -1,7 +1,7 @@
 import { ICAL_METHOD } from 'proton-shared/lib/calendar/constants';
 import { getDisplayTitle } from 'proton-shared/lib/calendar/helper';
 import { FEATURE_FLAGS } from 'proton-shared/lib/constants';
-import { Address, UserSettings } from 'proton-shared/lib/interfaces';
+import { Address, UserModel, UserSettings } from 'proton-shared/lib/interfaces';
 import { Calendar } from 'proton-shared/lib/interfaces/calendar';
 import { ContactEmail } from 'proton-shared/lib/interfaces/contacts';
 import { RequireSome } from 'proton-shared/lib/interfaces/utils';
@@ -60,6 +60,7 @@ interface Props {
     defaultCalendar?: Calendar;
     contactEmails: ContactEmail[];
     ownAddresses: Address[];
+    user: UserModel;
     userSettings: UserSettings;
 }
 const ExtraEvent = ({
@@ -70,8 +71,10 @@ const ExtraEvent = ({
     canCreateCalendar,
     contactEmails,
     ownAddresses,
+    user,
     userSettings,
 }: Props) => {
+    const isFreeUser = user.isFree;
     const [model, setModel] = useState<InvitationModel>(() =>
         getInitialInvitationModel({
             invitationOrError,
@@ -81,6 +84,7 @@ const ExtraEvent = ({
             calendar: defaultCalendar,
             hasNoCalendars: calendars.length === 0,
             canCreateCalendar,
+            isFreeUser,
         })
     );
     const [loading, withLoading] = useLoading(true);
@@ -99,6 +103,7 @@ const ExtraEvent = ({
                 contactEmails,
                 ownAddresses,
                 calendar: defaultCalendar,
+                isFreeUser,
                 hasNoCalendars: calendars.length === 0,
                 canCreateCalendar,
             })
@@ -118,9 +123,17 @@ const ExtraEvent = ({
             let invitationApi;
             let parentInvitationApi;
             let calendarData;
+            let hasDecryptionError;
+            let singleEditData;
             try {
                 // check if an event with the same uid exists in the calendar already
-                const { invitation, parentInvitation, calendarData: calData } = await fetchEventInvitation({
+                const {
+                    invitation,
+                    parentInvitation,
+                    calendarData: calData,
+                    singleEditData: singleData,
+                    hasDecryptionError: hasDecryptError,
+                } = await fetchEventInvitation({
                     veventComponent: invitationIcs.vevent,
                     api,
                     getCalendarInfo,
@@ -131,15 +144,18 @@ const ExtraEvent = ({
                     message,
                     contactEmails,
                     ownAddresses,
+                    isFreeUser,
                 });
                 invitationApi = invitation;
                 calendarData = calData;
+                singleEditData = singleData;
+                hasDecryptionError = hasDecryptError;
                 const isOutdated = getIsInvitationOutdated(invitationIcs.vevent, invitationApi?.vevent);
                 if (parentInvitation) {
                     parentInvitationApi = parentInvitation;
                 }
                 if (!unmounted) {
-                    setModel({ ...model, isOutdated, calendarData });
+                    setModel({ ...model, isOutdated, calendarData, singleEditData, hasDecryptionError, isFreeUser });
                 }
             } catch (error) {
                 // if fetching fails, proceed as if there was no event in the database
@@ -164,10 +180,12 @@ const ExtraEvent = ({
                     invitationApi,
                     api,
                     calendarData,
+                    singleEditData,
                     isAddressDisabled,
                     message,
                     contactEmails,
                     ownAddresses,
+                    overwrite: !!hasDecryptionError,
                 });
                 const newInvitationApi = updatedInvitationApi || invitationApi;
                 const isOutdated =
@@ -183,6 +201,7 @@ const ExtraEvent = ({
                         timeStatus: getEventTimeStatus(newInvitationApi.vevent, Date.now()),
                         isOutdated,
                         updateAction,
+                        hasDecryptionError,
                     });
                 }
             } catch (e) {
@@ -240,14 +259,14 @@ const ExtraEvent = ({
     const interactiveWidget = FEATURE_FLAGS.includes('calendar-receive-invitations');
 
     return (
-        <div className="rounded bordered bg-white-dm mb1 pl1 pr1 pt0-5 pb0-5">
+        <div className="rounded bordered bg-white-dm mb1 pl1 pr1 pt0-5 pb0-5 scroll-if-needed">
             <header className="flex flex-nowrap flex-items-center">
                 <Icon name="calendar" className="mr0-5 flex-item-noshrink" />
                 <strong className="ellipsis flex-item-fluid" title={title}>
                     {title}
                 </strong>
             </header>
-            {!interactiveWidget && <div className="pt0-5 mt0-5 mb0-5 border-top" />}
+            {!interactiveWidget && <div className="mt0-5 mb0-5 border-top" />}
             {interactiveWidget && <ExtraEventSummary model={model} />}
             {interactiveWidget && <ExtraEventWarning model={model} />}
             {interactiveWidget && <ExtraEventButtons model={model} setModel={setModel} message={message} />}
