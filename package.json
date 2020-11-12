@@ -59,6 +59,7 @@
         "yetch": "^1.1.0"
     },
     "devDependencies": {
+        "@testing-library/dom": "^7.26.3",
         "@testing-library/jest-dom": "^4.2.4",
         "@testing-library/react": "^9.3.2",
         "@testing-library/react-hooks": "^3.2.1",
