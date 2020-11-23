@@ -81,7 +81,7 @@
         "proton-bundler": "github:ProtonMail/proton-bundler#semver:^2.0.0",
         "proton-i18n": "github:ProtonMail/proton-i18n#semver:^2.0.0",
         "react-test-renderer": "^16.12.0",
-        "typescript": "^4.0.3"
+        "typescript": "^4.1.2"
     },
     "config": {
         "publicPathFlag": "--publicPath=/"
