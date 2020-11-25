@@ -36,7 +36,7 @@ import { extractSearchParameters, keywordToString } from '../../helpers/mailboxU
 
 import './AdvancedSearchDropdown.scss';
 
-interface SearchModel {
+export interface SearchModel {
     keyword: string;
     labelID: string;
     from: Recipient[];
@@ -54,13 +54,13 @@ interface LabelInfo {
     group: string;
 }
 
-const UNDEFINED = undefined;
+export const UNDEFINED = undefined;
 const AUTO_WILDCARD = undefined;
 const ALL_ADDRESSES = 'all';
 const NO_ATTACHMENTS = 0;
-const WITH_ATTACHMENTS = 1;
+export const WITH_ATTACHMENTS = 1;
 const { INBOX, TRASH, SPAM, ARCHIVE, ALL_MAIL, ALL_SENT, SENT, ALL_DRAFTS, DRAFTS } = MAILBOX_LABEL_IDS;
-const DEFAULT_MODEL: SearchModel = {
+export const DEFAULT_MODEL: SearchModel = {
     keyword: '',
     labelID: ALL_MAIL,
     from: [],
@@ -70,12 +70,12 @@ const DEFAULT_MODEL: SearchModel = {
     wildcard: AUTO_WILDCARD,
 };
 
-const getRecipients = (value = '') =>
+export const getRecipients = (value = '') =>
     value
         .split(',')
         .filter(validateEmailAddress)
         .map((Address) => ({ Address, Name: '' }));
-const formatRecipients = (recipients: Recipient[] = []) => recipients.map(({ Address }) => Address).join(',');
+export const formatRecipients = (recipients: Recipient[] = []) => recipients.map(({ Address }) => Address).join(',');
 
 const folderReducer = (acc: LabelInfo[], folder: FolderWithSubFolders, level = 0) => {
     acc.push({
