@@ -9,13 +9,7 @@ import MailHeader from '../header/MailHeader';
 import { getHumanLabelID } from '../../helpers/labels';
 import { Breakpoints } from '../../models/utils';
 import { OnCompose } from '../../hooks/useCompose';
-import {
-    getRecipients,
-    formatRecipients,
-    DEFAULT_MODEL,
-    UNDEFINED,
-    WITH_ATTACHMENTS,
-} from '../header/AdvancedSearchDropdown';
+import { parseSearch, formatRecipients, UNDEFINED } from '../header/AdvancedSearchDropdown';
 
 interface Props {
     children: ReactNode;
@@ -41,37 +35,8 @@ const PrivateLayout = ({
     const [expanded, setExpand] = useState(false);
 
     const handleSearch = useCallback((search = '', labelID = MAILBOX_LABEL_IDS.ALL_MAIL as string) => {
-        const model = {
-            ...DEFAULT_MODEL,
-            keyword: search || '',
-            labelID,
-        };
-
-        const keywords = [];
-        search.split(' ').forEach((part) => {
-            const parsed = part.match(/^([^:]*):(.*)$/);
-            if (parsed && parsed[1]) {
-                switch (parsed[1]) {
-                    case 'from':
-                    case 'to':
-                        model[parsed[1]] = getRecipients(parsed[2]);
-                        return;
-                    case 'has':
-                        if (parsed[2]) {
-                            switch (parsed[2]) {
-                                case 'attachment':
-                                    model.attachments = WITH_ATTACHMENTS;
-                                    return;
-                                default:
-                            }
-                        }
-                        break;
-                    default:
-                }
-            }
-            keywords.push(part);
-        });
-        model.keyword = keywords.join(' ');
+        const model = parseSearch(search);
+        model.labelID = labelID;
 
         const { keyword, from, to, attachments } = model;
 

@@ -58,9 +58,9 @@ export const UNDEFINED = undefined;
 const AUTO_WILDCARD = undefined;
 const ALL_ADDRESSES = 'all';
 const NO_ATTACHMENTS = 0;
-export const WITH_ATTACHMENTS = 1;
+const WITH_ATTACHMENTS = 1;
 const { INBOX, TRASH, SPAM, ARCHIVE, ALL_MAIL, ALL_SENT, SENT, ALL_DRAFTS, DRAFTS } = MAILBOX_LABEL_IDS;
-export const DEFAULT_MODEL: SearchModel = {
+const DEFAULT_MODEL: SearchModel = {
     keyword: '',
     labelID: ALL_MAIL,
     from: [],
@@ -70,7 +70,7 @@ export const DEFAULT_MODEL: SearchModel = {
     wildcard: AUTO_WILDCARD,
 };
 
-export const getRecipients = (value = '') =>
+const getRecipients = (value = '') =>
     value
         .split(',')
         .filter(validateEmailAddress)
@@ -345,6 +345,59 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', location, hi
             </Dropdown>
         </>
     );
+};
+
+export const parseSearch = (search) => {
+    const model = {
+        ...DEFAULT_MODEL,
+        keyword: search || '',
+    };
+
+    const keywords = [];
+    search.split(' ').forEach((part) => {
+        const parsed = part.match(/^([^:]*):(.*)$/);
+        if (parsed && parsed[1]) {
+            switch (parsed[1]) {
+                case 'from':
+                case 'to':
+                    model[parsed[1]] = getRecipients(parsed[2]);
+                    return;
+                case 'has':
+                    if (parsed[2]) {
+                        switch (parsed[2]) {
+                            case 'attachment':
+                                model.attachments = WITH_ATTACHMENTS;
+                                return;
+                            default:
+                        }
+                    }
+                    break;
+                default:
+            }
+        }
+        keywords.push(part);
+    });
+    model.keyword = keywords.join(' ');
+    return model;
+};
+
+export const generateSearch = (location) => {
+    const { keyword = '', from = undefined, to = undefined, attachments = undefined } = extractSearchParameters(
+        location
+    );
+
+    const search = [keyword];
+    if (from) {
+        search.push(`from:${from}`);
+    }
+    if (to) {
+        search.push(`to:${to}`);
+    }
+    if (attachments) {
+        search.push('has:attachment');
+    }
+
+    return search.join(' ');
 };
 
 export default AdvancedSearchDropdown;

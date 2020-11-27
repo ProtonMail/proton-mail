@@ -12,8 +12,8 @@ import {
 } from 'react-components';
 import { MAILBOX_LABEL_IDS, APPS } from 'proton-shared/lib/constants';
 
-import AdvancedSearchDropdown from './AdvancedSearchDropdown';
-import { extractSearchParameters, setParamsInUrl } from '../../helpers/mailboxUrl';
+import AdvancedSearchDropdown, { generateSearch } from './AdvancedSearchDropdown';
+import { setParamsInUrl } from '../../helpers/mailboxUrl';
 import { Breakpoints } from '../../models/utils';
 import { getLabelName } from '../../helpers/labels';
 import { OnCompose } from '../../hooks/useCompose';
@@ -42,7 +42,7 @@ const MailHeader = ({
     onSearch,
     onCompose,
 }: Props) => {
-    const { keyword = '' } = extractSearchParameters(location);
+    const keyword = generateSearch(location);
     const [value, updateValue] = useState(keyword);
     const [oldLabelID, setOldLabelID] = useState<string>(MAILBOX_LABEL_IDS.INBOX);
     const [labels = []] = useLabels();
