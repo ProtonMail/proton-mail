@@ -8,7 +8,6 @@ import { c, msgid } from 'ttag';
 import { unique } from 'proton-shared/lib/helpers/array';
 import { sendMessage } from 'proton-shared/lib/api/messages';
 import {
-    useGetAddressKeys,
     useApi,
     useEventManager,
     useGetEncryptionPreferences,
@@ -34,6 +33,7 @@ import SendWithWarningsModal from '../components/composer/addresses/SendWithWarn
 import SendWithExpirationModal from '../components/composer/addresses/SendWithExpirationModal';
 import { useSaveDraft } from './message/useSaveDraft';
 import { getParamsFromPathname, setParamsInLocation } from '../helpers/mailboxUrl';
+import { useGetMessageKeys } from './message/useGetMessageKeys';
 
 export const useSendVerifications = () => {
     const { createModal } = useModals();
@@ -50,7 +50,7 @@ export const useSendVerifications = () => {
             await new Promise((resolve, reject) => {
                 createModal(
                     <ConfirmModal
-                        onConfirm={resolve}
+                        onConfirm={() => resolve(undefined)}
                         onClose={reject}
                         title={c('Title').t`Message without subject?`}
                         confirm={c('Action').t`Send anyway`}
@@ -109,7 +109,13 @@ export const useSendVerifications = () => {
         const emailsWithWarnings = Object.keys(emailWarnings);
         if (emailsWithWarnings.length > 0) {
             await new Promise((resolve, reject) => {
-                createModal(<SendWithWarningsModal mapWarnings={emailWarnings} onSubmit={resolve} onClose={reject} />);
+                createModal(
+                    <SendWithWarningsModal
+                        mapWarnings={emailWarnings}
+                        onSubmit={() => resolve(undefined)}
+                        onClose={reject}
+                    />
+                );
             });
         }
 
@@ -123,7 +129,7 @@ export const useSendVerifications = () => {
                         emails.splice(indexOfEmail, 1);
                         delete mapSendPrefs[email];
                     }
-                    resolve();
+                    resolve(undefined);
                 };
                 createModal(
                     <SendWithErrorsModal
@@ -140,7 +146,11 @@ export const useSendVerifications = () => {
         if (expiresNotEncrypted.length > 0) {
             await new Promise((resolve, reject) => {
                 createModal(
-                    <SendWithExpirationModal emails={expiresNotEncrypted} onSubmit={resolve} onClose={reject} />
+                    <SendWithExpirationModal
+                        emails={expiresNotEncrypted}
+                        onSubmit={() => resolve(undefined)}
+                        onClose={reject}
+                    />
                 );
             });
         }
@@ -164,7 +174,7 @@ export const useSendVerifications = () => {
 
 export const useSendMessage = () => {
     const api = useApi();
-    const getAddressKeys = useGetAddressKeys();
+    const getMessageKeys = useGetMessageKeys();
     const attachmentCache = useAttachmentCache();
     const { call } = useEventManager();
     const messageCache = useMessageCache();
@@ -184,10 +194,12 @@ export const useSendMessage = () => {
                 await saveDraft(inputMessage);
             }
 
+            const messageKeys = await getMessageKeys(inputMessage.data);
+
             // Add public key if selected
             if (isAttachPublicKey(inputMessage.data)) {
                 const savedMessage = messageCache.get(localID) as MessageExtendedWithData;
-                const Attachments: Attachment[] = await attachPublicKey(savedMessage, auth.UID);
+                const Attachments: Attachment[] = await attachPublicKey(savedMessage, messageKeys, auth.UID);
                 await saveDraft({
                     ...savedMessage,
                     data: { ...savedMessage.data, Attachments },
@@ -207,9 +219,15 @@ export const useSendMessage = () => {
 
             const emails = unique(getRecipientsAddresses(inputMessage.data));
 
-            let packages = await generateTopPackages(messageWithGoodFlags, mapSendPrefs, attachmentCache, api);
+            let packages = await generateTopPackages(
+                messageWithGoodFlags,
+                messageKeys,
+                mapSendPrefs,
+                attachmentCache,
+                api
+            );
             packages = await attachSubPackages(packages, messageWithGoodFlags, emails, mapSendPrefs, api);
-            packages = await encryptPackages(messageWithGoodFlags, packages, getAddressKeys);
+            packages = await encryptPackages(messageWithGoodFlags, messageKeys, packages);
 
             // TODO: Implement retry system
             // const suppress = retry ? [API_CUSTOM_ERROR_CODES.MESSAGE_VALIDATE_KEY_ID_NOT_ASSOCIATED] : [];

@@ -3,13 +3,13 @@ import { isPlainText } from 'proton-shared/lib/mail/messages';
 import { useCallback } from 'react';
 import { useApi, useMailSettings } from 'react-components';
 
-import { MessageExtended, MessageErrors, MessageExtendedWithData } from '../../models/message';
+import { MessageExtended, MessageErrors, MessageExtendedWithData, EmbeddedMap } from '../../models/message';
 import { loadMessage } from '../../helpers/message/messageRead';
-import { useMessageKeys } from './useMessageKeys';
+import { useGetMessageKeys } from './useGetMessageKeys';
 import { decryptMessage } from '../../helpers/message/messageDecrypt';
 import { useAttachmentCache } from '../../containers/AttachmentProvider';
 import { updateMessageCache, useMessageCache } from '../../containers/MessageProvider';
-import { prepareMailDocument } from '../../helpers/transforms/transforms';
+import { prepareHtml, preparePlainText } from '../../helpers/transforms/transforms';
 import { isApiError } from '../../helpers/errors';
 import { useBase64Cache } from '../useBase64Cache';
 import { useMarkAs, MARK_AS_STATUS } from '../useMarkAs';
@@ -18,11 +18,19 @@ import { hasShowEmbedded } from '../../helpers/settings';
 import { useLoadEmbeddedImages } from './useLoadImages';
 import { useVerifyMessage } from './useVerifyMessage';
 
+interface Preparation {
+    plainText?: string;
+    document?: Element;
+    showEmbeddedImages?: boolean;
+    showRemoteImages?: boolean;
+    embeddeds?: EmbeddedMap;
+}
+
 export const useInitializeMessage = (localID: string, labelID?: string) => {
     const api = useApi();
     const markAs = useMarkAs();
     const messageCache = useMessageCache();
-    const getMessageKeys = useMessageKeys();
+    const getMessageKeys = useGetMessageKeys();
     const attachmentsCache = useAttachmentCache();
     const base64Cache = useBase64Cache();
     const [mailSettings] = useMailSettings();
@@ -46,9 +54,8 @@ export const useInitializeMessage = (localID: string, labelID?: string) => {
 
         const errors: MessageErrors = {};
 
-        let userKeys;
         let decryption;
-        let preparation;
+        let preparation: Preparation | undefined;
         let dataChanges;
 
         try {
@@ -58,14 +65,9 @@ export const useInitializeMessage = (localID: string, labelID?: string) => {
 
             dataChanges = {} as Partial<Message>;
 
-            userKeys = await getMessageKeys(message);
-            const messageWithKeys = {
-                ...message,
-                publicKeys: [], // Signature verification are done later for performance
-                privateKeys: userKeys.privateKeys,
-            };
+            const messageKeys = await getMessageKeys(message.data);
 
-            decryption = await decryptMessage(getData(), userKeys.privateKeys, attachmentsCache);
+            decryption = await decryptMessage(getData(), messageKeys.privateKeys, attachmentsCache);
 
             if (decryption.mimetype) {
                 dataChanges = { ...dataChanges, MIMEType: decryption.mimetype };
@@ -89,9 +91,10 @@ export const useInitializeMessage = (localID: string, labelID?: string) => {
             const MIMEType = dataChanges.MIMEType || getData().MIMEType;
 
             preparation = isPlainText({ MIMEType })
-                ? ({ plainText: decryption.decryptedBody } as any)
-                : await prepareMailDocument(
-                      { ...messageWithKeys, decryptedBody: decryption.decryptedBody },
+                ? await preparePlainText(decryption.decryptedBody)
+                : await prepareHtml(
+                      { ...message, decryptedBody: decryption.decryptedBody },
+                      messageKeys,
                       base64Cache,
                       attachmentsCache,
                       api,
@@ -108,8 +111,6 @@ export const useInitializeMessage = (localID: string, labelID?: string) => {
                 data: dataChanges,
                 document: preparation?.document,
                 plainText: preparation?.plainText,
-                publicKeys: userKeys?.publicKeys,
-                privateKeys: userKeys?.privateKeys,
                 decryptedBody: decryption?.decryptedBody,
                 signature: decryption?.signature,
                 decryptedSubject: decryption?.decryptedSubject,

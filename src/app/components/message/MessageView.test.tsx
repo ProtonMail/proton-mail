@@ -21,7 +21,7 @@ import * as messageDecrypt from '../../helpers/message/messageDecrypt';
 import { constructMime } from '../../helpers/send/sendMimeBuilder';
 import { parseInDiv } from '../../helpers/dom';
 
-jest.setTimeout(10000);
+jest.setTimeout(20000);
 
 const localID = 'localID';
 const labelID = 'labelID';
@@ -142,6 +142,7 @@ describe('MessageView', () => {
 
             const mimeBody = await constructMime(
                 { localID, data: message, document: parseInDiv(body) },
+                toKeys,
                 attachmentsCache,
                 api,
                 false
@@ -173,6 +174,7 @@ describe('MessageView', () => {
 
             const mimeBody = await constructMime(
                 { localID, data: { ...message, MIMEType: MIME_TYPES.PLAINTEXT }, plainText: body },
+                toKeys,
                 attachmentsCache,
                 api,
                 false

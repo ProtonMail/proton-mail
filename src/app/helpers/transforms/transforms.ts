@@ -6,15 +6,17 @@ import { Base64Cache } from '../../hooks/useBase64Cache';
 import { transformBase } from './transformBase';
 import { transformLinks } from './transformLinks';
 import { transformEmbedded } from './transformEmbedded';
-import { MessageExtended } from '../../models/message';
+import { MessageExtended, MessageKeys } from '../../models/message';
 import { AttachmentsCache } from '../../containers/AttachmentProvider';
 import { transformWelcome } from './transformWelcome';
 import { transformStylesheet } from './transformStylesheet';
 import { transformRemote } from './transformRemote';
+import { transformLinkify } from './transformLinkify';
 import { inlineCss } from '../dom';
 
-export const prepareMailDocument = async (
+export const prepareHtml = async (
     message: MessageExtended,
+    messageKeys: MessageKeys,
     base64Cache: Base64Cache,
     attachmentsCache: AttachmentsCache,
     api: Api,
@@ -28,7 +30,12 @@ export const prepareMailDocument = async (
 
     transformLinks(document);
 
-    const { showEmbeddedImages, embeddeds } = await transformEmbedded({ ...message, document }, attachmentsCache, api);
+    const { showEmbeddedImages, embeddeds } = await transformEmbedded(
+        { ...message, document },
+        messageKeys,
+        attachmentsCache,
+        api
+    );
 
     transformWelcome(document);
 
@@ -39,4 +46,10 @@ export const prepareMailDocument = async (
     attachBase64(document, base64Cache);
 
     return { document, showRemoteImages, showEmbeddedImages, embeddeds };
+};
+
+export const preparePlainText = async (body: string) => {
+    const plainText = transformLinkify(body);
+
+    return { plainText };
 };

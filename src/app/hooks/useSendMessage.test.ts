@@ -31,7 +31,7 @@ import { arrayToBase64 } from '../helpers/base64';
 
 const { useSendVerifications, useSendMessage } = require('./useSendMessage');
 
-jest.setTimeout(10000);
+jest.setTimeout(20000);
 
 describe('useSendMessage', () => {
     const fromAddress = 'me@home.net';
@@ -489,7 +489,6 @@ describe('useSendMessage', () => {
             );
             const message = prepareMessage({
                 document: createDocument(content),
-                privateKeys: fromKeys.privateKeys,
                 data: { MIMEType: MIME_TYPES.DEFAULT, Attachments: [attachment] },
             });
 
@@ -536,7 +535,6 @@ describe('useSendMessage', () => {
             );
             const message = prepareMessage({
                 document: createDocument(content),
-                privateKeys: fromKeys.privateKeys,
                 data: { MIMEType: MIME_TYPES.DEFAULT, Attachments: [attachment] },
             });
 
@@ -598,7 +596,6 @@ describe('useSendMessage', () => {
             const message = prepareMessage({
                 document,
                 embeddeds,
-                privateKeys: fromKeys.privateKeys,
                 data: { MIMEType: MIME_TYPES.DEFAULT, Attachments: [attachment] },
             });
 

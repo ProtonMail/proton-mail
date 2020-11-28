@@ -51,15 +51,7 @@ const MailHeader = ({
     // Update the search input field when the keyword in the url is changed
     useEffect(() => updateValue(keyword), [keyword]);
 
-    const searchDropdown = (
-        <AdvancedSearchDropdown
-            labelID={labelID}
-            keyword={value}
-            location={location}
-            history={history}
-            isNarrow={breakpoints.isNarrow}
-        />
-    );
+    const searchDropdown = <AdvancedSearchDropdown labelID={labelID} keyword={value} isNarrow={breakpoints.isNarrow} />;
 
     const searchBox = (
         <Searchbox
@@ -87,7 +79,7 @@ const MailHeader = ({
             logo={logo}
             backUrl={showBackButton && backUrl ? backUrl : undefined}
             title={labelName}
-            settingsButton={<SettingsButton to="/" toApp={APPS.PROTONMAIL_SETTINGS} target="_self" />}
+            settingsButton={<SettingsButton to="/settings/overview" toApp={APPS.PROTONMAIL} target="_self" />}
             searchBox={searchBox}
             searchDropdown={searchDropdown}
             expanded={!!expanded}

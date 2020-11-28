@@ -10,11 +10,9 @@ import {
     useHandler,
 } from 'react-components';
 import { c } from 'ttag';
-import { Address } from 'proton-shared/lib/interfaces';
 import { noop } from 'proton-shared/lib/helpers/function';
 import { setBit, clearBit } from 'proton-shared/lib/helpers/bitset';
 import { COMPOSER_MODE } from 'proton-shared/lib/constants';
-
 import { MessageExtended, MessageExtendedWithData, PartialMessageExtended } from '../../models/message';
 import ComposerTitleBar from './ComposerTitleBar';
 import ComposerMeta from './ComposerMeta';
@@ -61,7 +59,6 @@ interface Props {
     count: number;
     focus: boolean;
     messageID: string;
-    addresses: Address[];
     windowSize: WindowSize;
     breakpoints: Breakpoints;
     onFocus: () => void;
@@ -73,7 +70,6 @@ const Composer = ({
     count,
     focus,
     messageID,
-    addresses,
     windowSize,
     breakpoints,
     onFocus,
@@ -242,7 +238,12 @@ const Composer = ({
         return addAction(() => saveDraft(message as MessageExtendedWithData));
     };
 
-    const [pendingSave, autoSave] = useDebouncedHandler(actualSave, 2000);
+    const {
+        pending: pendingSave,
+        pause: pauseAutoSave,
+        restart: restartAutoSave,
+        handler: autoSave,
+    } = useDebouncedHandler(actualSave, 2000);
 
     const handleChange: MessageChange = useHandler((update, shouldReloadSendInfo) => {
         setModelMessage((modelMessage) => {
@@ -300,6 +301,14 @@ const Composer = ({
         handleRemoveUpload,
     } = useAttachments(modelMessage, handleChange, handleSaveNow, editorActionsRef);
 
+    useEffect(() => {
+        if (uploadInProgress) {
+            pauseAutoSave();
+        } else {
+            restartAutoSave();
+        }
+    }, [uploadInProgress]);
+
     const promiseUploadInProgress = usePromiseFromState(!uploadInProgress);
 
     const handlePassword = () => {
@@ -312,8 +321,7 @@ const Composer = ({
         setInnerModal(ComposerInnerModal.None);
     };
 
-    const handleManualSave = async () => {
-        setManualSaving(true);
+    const handleManualSaveAfterUploads = useHandler(async () => {
         autoSave.abort?.();
         try {
             await actualSave(modelMessage);
@@ -321,6 +329,13 @@ const Composer = ({
         } finally {
             setManualSaving(false);
         }
+    });
+
+    const handleManualSave = async () => {
+        setManualSaving(true);
+        await promiseUploadInProgress.current;
+        // Split handlers to have the updated version of the message
+        await handleManualSaveAfterUploads();
     };
 
     const handleSendAfterUploads = useHandler(async () => {
@@ -382,8 +397,7 @@ const Composer = ({
     const handleClose = async () => {
         setClosing(true);
         try {
-            await promiseUploadInProgress.current;
-            if (pendingSave) {
+            if (pendingSave || uploadInProgress) {
                 await handleManualSave();
             }
         } finally {
@@ -447,8 +461,6 @@ const Composer = ({
                     >
                         <ComposerMeta
                             message={modelMessage}
-                            addresses={addresses}
-                            mailSettings={mailSettings}
                             messageSendInfo={messageSendInfo}
                             disabled={!editorReady}
                             onChange={handleChange}
