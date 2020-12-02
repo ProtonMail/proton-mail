@@ -57,8 +57,6 @@ const PrivateApp = ({ onLogout, locales }: Props) => {
                 OrganizationModel,
                 ContactsModel,
                 ContactEmailsModel,
-                UserModel,
-                MailSettingsModel,
                 DomainsModel,
                 FiltersModel,
                 MembersModel,
