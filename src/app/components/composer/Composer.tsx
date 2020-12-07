@@ -348,7 +348,7 @@ const Composer = ({
         }
 
         const { cleanMessage, mapSendPrefs, hasChanged } = verificationResults;
-        const alreadySaved = !!cleanMessage.data.ID && !pendingSave && !hasChanged;
+        const alreadySaved = !!cleanMessage.data.ID && !pendingSave.current && !hasChanged;
         autoSave.abort?.();
         await sendWithUndo(() =>
             addAction(async () => {
@@ -397,7 +397,7 @@ const Composer = ({
     const handleClose = async () => {
         setClosing(true);
         try {
-            if (pendingSave || uploadInProgress) {
+            if (pendingSave.current || uploadInProgress) {
                 await handleManualSave();
             }
         } finally {
