@@ -1,28 +1,25 @@
-import { hasAttachments, isDraft } from 'proton-shared/lib/mail/messages';
+import { hasAttachments, isDraft, isOutbox } from 'proton-shared/lib/mail/messages';
 import React, { MouseEvent } from 'react';
 import { c } from 'ttag';
-import { classnames, useContactEmails } from 'react-components';
-import { MailSettings } from 'proton-shared/lib/interfaces';
+import { classnames } from 'react-components';
 import { Label } from 'proton-shared/lib/interfaces/Label';
-
 import ItemStar from '../../list/ItemStar';
 import ItemDate from '../../list/ItemDate';
 import ItemLabels from '../../list/ItemLabels';
 import ItemLocation from '../../list/ItemLocation';
 import ItemAttachmentIcon from '../../list/ItemAttachmentIcon';
 import { MessageExtended } from '../../../models/message';
-import RecipientItem from '../recipients/RecipientItem';
 import ItemExpiration from '../../list/ItemExpiration';
 import { OnCompose } from '../../../hooks/useCompose';
 import ItemAction from '../../list/ItemAction';
 import { Breakpoints } from '../../../models/utils';
+import RecipientItem from '../recipients/RecipientItem';
 
 interface Props {
     labelID: string;
     labels?: Label[];
     message: MessageExtended;
     messageLoaded: boolean;
-    mailSettings: MailSettings;
     isSentMessage: boolean;
     isUnreadMessage: boolean;
     onExpand: () => void;
@@ -35,15 +32,12 @@ const HeaderCollapsed = ({
     labels,
     message,
     messageLoaded,
-    mailSettings,
     isSentMessage,
     isUnreadMessage,
     onExpand,
     onCompose,
     breakpoints,
 }: Props) => {
-    const [contacts = []] = useContactEmails();
-
     const handleClick = (event: MouseEvent) => {
         if ((event.target as HTMLElement).closest('.stop-propagation')) {
             event.stopPropagation();
@@ -54,6 +48,7 @@ const HeaderCollapsed = ({
     };
 
     const isDraftMessage = isDraft(message.data);
+    const isOutboxMessage = isOutbox(message.data);
 
     return (
         <div
@@ -70,7 +65,6 @@ const HeaderCollapsed = ({
                     recipientOrGroup={{ recipient: message.data?.Sender }}
                     showAddress={false}
                     onCompose={onCompose}
-                    contacts={contacts}
                     isLoading={!messageLoaded}
                 />
 
@@ -81,6 +75,10 @@ const HeaderCollapsed = ({
                 {messageLoaded && isDraftMessage && (
                     <span className="badgeLabel-success ml0-5 flex-item-noshrink is-appearing-content">{c('Info')
                         .t`Draft`}</span>
+                )}
+                {messageLoaded && isOutboxMessage && (
+                    <span className="badgeLabel-primary ml0-5 flex-item-noshrink is-appearing-content">{c('Info')
+                        .t`Sending`}</span>
                 )}
             </div>
             <div className="flex flex-items-center flex-nowrap flex-item-noshrink">
@@ -102,7 +100,7 @@ const HeaderCollapsed = ({
                         )}
 
                         <span className="ml0-5 flex is-appearing-content">
-                            <ItemLocation message={message.data} mailSettings={mailSettings} />
+                            <ItemLocation element={message.data} labelID={labelID} />
                         </span>
 
                         <ItemExpiration

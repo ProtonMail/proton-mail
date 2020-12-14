@@ -32,6 +32,7 @@ const getAppContainer = () => import('./MainContainer');
 const PrivateApp = ({ onLogout, locales }: Props) => {
     return (
         <StandardPrivateApp
+            noModals
             fallback={false}
             openpgpConfig={{}}
             onLogout={onLogout}
@@ -44,6 +45,7 @@ const PrivateApp = ({ onLogout, locales }: Props) => {
                 MailSettingsModel,
                 MessageCountsModel as Model<any>,
                 ConversationCountsModel as Model<any>,
+                ContactEmailsModel,
             ]}
             eventModels={[
                 UserModel,

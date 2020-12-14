@@ -1,6 +1,5 @@
 import React from 'react';
 import { c } from 'ttag';
-import { ContactEmail } from 'proton-shared/lib/interfaces/contacts';
 import { Recipient } from 'proton-shared/lib/interfaces';
 import { Tooltip } from 'react-components';
 import { OpenPGPKey } from 'pmcrypto';
@@ -19,7 +18,6 @@ interface Props {
     globalIcon?: StatusIcon;
     showAddress?: boolean;
     showLockIcon?: boolean;
-    contacts: ContactEmail[];
     onCompose: OnCompose;
     isLoading: boolean;
     signingPublicKey?: OpenPGPKey;
@@ -31,7 +29,6 @@ const RecipientItem = ({
     globalIcon,
     showAddress = true,
     showLockIcon = true,
-    contacts,
     onCompose,
     isLoading,
     signingPublicKey,
@@ -40,9 +37,7 @@ const RecipientItem = ({
         return (
             <RecipientItemLayout
                 isLoading
-                button={
-                    <span className="message-recipient-item-icon item-icon flex-item-noshrink rounded50 bl mr0-5" />
-                }
+                button={<span className="message-recipient-item-icon item-icon flex-item-noshrink rounded bl mr0-5" />}
                 showAddress={showAddress}
             />
         );
@@ -54,7 +49,6 @@ const RecipientItem = ({
                 group={recipientOrGroup.group}
                 mapStatusIcons={mapStatusIcons}
                 globalIcon={globalIcon}
-                contacts={contacts}
                 showAddress={showAddress}
                 onCompose={onCompose}
             />
@@ -69,7 +63,6 @@ const RecipientItem = ({
                 globalIcon={globalIcon}
                 showAddress={showAddress}
                 showLockIcon={showLockIcon}
-                contacts={contacts}
                 onCompose={onCompose}
                 signingPublicKey={signingPublicKey}
             />
@@ -81,7 +74,7 @@ const RecipientItem = ({
         <RecipientItemLayout
             button={
                 <Tooltip title={c('Title').t`All recipients were added to the BCC field and cannot be disclosed`}>
-                    <span className="message-recipient-item-icon item-icon flex-item-noshrink rounded50 bl mr0-5 flex flex-justify-center flex-items-center">
+                    <span className="message-recipient-item-icon item-icon flex-item-noshrink rounded bl mr0-5 flex flex-justify-center flex-items-center">
                         ?
                     </span>
                 </Tooltip>

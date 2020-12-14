@@ -25,7 +25,7 @@ import ComposerExpirationModal from './ComposerExpirationModal';
 import { useMessage } from '../../hooks/message/useMessage';
 import { useInitializeMessage } from '../../hooks/message/useInitializeMessage';
 import { useSaveDraft, useDeleteDraft } from '../../hooks/message/useSaveDraft';
-import { useSendMessage, useSendVerifications, useSendWithUndo } from '../../hooks/useSendMessage';
+import { useSendMessage, useSendVerifications } from '../../hooks/useSendMessage';
 import { isNewDraft } from '../../helpers/message/messageDraft';
 import { useAttachments } from '../../hooks/useAttachments';
 import { getDate } from '../../helpers/elements';
@@ -37,6 +37,7 @@ import { reloadSendInfo, useMessageSendInfo } from '../../hooks/useSendInfo';
 import { useDebouncedHandler } from '../../hooks/useDebouncedHandler';
 import { DRAG_ADDRESS_KEY } from '../../constants';
 import { usePromiseFromState } from '../../hooks/usePromiseFromState';
+import { OnCompose } from '../../hooks/useCompose';
 
 enum ComposerInnerModal {
     None,
@@ -63,6 +64,7 @@ interface Props {
     breakpoints: Breakpoints;
     onFocus: () => void;
     onClose: () => void;
+    onCompose: OnCompose;
 }
 
 const Composer = ({
@@ -74,12 +76,13 @@ const Composer = ({
     breakpoints,
     onFocus,
     onClose: inputOnClose,
+    onCompose,
 }: Props) => {
     const [mailSettings] = useMailSettings();
     const { createNotification } = useNotifications();
 
     const bodyRef = useRef<HTMLDivElement>(null);
-    const [hasVertialScroll] = useHasScroll(bodyRef);
+    const [hasVerticalScroll] = useHasScroll(bodyRef);
 
     // Minimized status of the composer
     const { state: minimized, toggle: toggleMinimized } = useToggle(false);
@@ -129,7 +132,6 @@ const Composer = ({
     const saveDraft = useSaveDraft();
     const sendVerifications = useSendVerifications();
     const sendMessage = useSendMessage();
-    const sendWithUndo = useSendWithUndo();
     const deleteDraft = useDeleteDraft(syncedMessage);
 
     // Computed composer status
@@ -350,21 +352,21 @@ const Composer = ({
         const { cleanMessage, mapSendPrefs, hasChanged } = verificationResults;
         const alreadySaved = !!cleanMessage.data.ID && !pendingSave.current && !hasChanged;
         autoSave.abort?.();
-        await sendWithUndo(() =>
-            addAction(async () => {
-                try {
-                    await sendMessage(cleanMessage, mapSendPrefs, alreadySaved);
-                } catch (error) {
-                    createNotification({
-                        text: c('Error').t`Error while sending the message. Message is not sent`,
-                        type: 'error',
-                    });
-                    console.error('Error while sending the message.', error);
-                    setSending(false);
-                    throw error;
-                }
-            })
-        );
+
+        // No await here to close the composer directly
+        void addAction(async () => {
+            try {
+                await sendMessage(cleanMessage, mapSendPrefs, onCompose, alreadySaved);
+            } catch (error) {
+                createNotification({
+                    text: c('Error').t`Error while sending the message. Message is not sent`,
+                    type: 'error',
+                });
+                console.error('Error while sending the message.', error);
+                setSending(false);
+                throw error;
+            }
+        });
         onClose();
     });
 
@@ -398,7 +400,7 @@ const Composer = ({
         setClosing(true);
         try {
             if (pendingSave.current || uploadInProgress) {
-                await handleManualSave();
+                void handleManualSave();
             }
         } finally {
             onClose();
@@ -418,6 +420,7 @@ const Composer = ({
                 'composer flex flex-column',
                 !focus && 'composer--is-blur',
                 minimized && 'composer--is-minimized',
+                maximized && 'composer--is-maximized',
             ])}
             style={style}
             onFocus={onFocus}
@@ -457,7 +460,7 @@ const Composer = ({
                 >
                     <div
                         ref={bodyRef}
-                        className="composer-body-container flex flex-column flex-nowrap flex-item-fluid mw100 scroll-if-needed mt0-5"
+                        className="composer-body-container flex flex-column flex-nowrap flex-item-fluid mw100 mt0-5"
                     >
                         <ComposerMeta
                             message={modelMessage}
@@ -489,7 +492,7 @@ const Composer = ({
                         />
                     </div>
                     <ComposerActions
-                        className={hasVertialScroll ? 'composer-actions--has-scroll' : undefined}
+                        className={hasVerticalScroll ? 'composer-actions--has-scroll' : undefined}
                         message={modelMessage}
                         date={getDate(syncedMessage.data, '')}
                         lock={lock}

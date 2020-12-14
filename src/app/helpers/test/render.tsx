@@ -4,14 +4,16 @@ import { MemoryRouter } from 'react-router';
 import { render as originalRender, RenderResult, act } from '@testing-library/react';
 import { renderHook as originalRenderHook } from '@testing-library/react-hooks';
 import ApiContext from 'react-components/containers/api/apiContext';
+import ConfigProvider from 'react-components/containers/config/Provider';
 import { wait } from 'proton-shared/lib/helpers/promise';
-
+import { ProtonConfig } from 'proton-shared/lib/interfaces';
 import AuthenticationProvider from 'react-components/containers/authentication/Provider';
 import MessageProvider from '../../containers/MessageProvider';
 import ConversationProvider from '../../containers/ConversationProvider';
-import { minimalCache, cache, messageCache, conversationCache, attachmentsCache } from './cache';
+import { minimalCache, cache, messageCache, conversationCache, attachmentsCache, contactCache } from './cache';
 import { api } from './api';
 import AttachmentProvider from '../../containers/AttachmentProvider';
+import ContactProvider from '../../containers/ContactProvider';
 
 export const authentication = ({
     getUID: jest.fn(),
@@ -23,25 +25,31 @@ interface Props {
     children: JSX.Element;
 }
 
+export const config = {} as ProtonConfig;
+
 const TestProvider = ({ children }: Props) => {
     return (
-        <ApiContext.Provider value={api}>
-            <NotificationsProvider>
-                <ModalsProvider>
-                    <AuthenticationProvider store={authentication}>
-                        <CacheProvider cache={cache}>
-                            <MessageProvider cache={messageCache}>
-                                <ConversationProvider cache={conversationCache}>
-                                    <AttachmentProvider cache={attachmentsCache}>
-                                        <MemoryRouter initialEntries={['/inbox']}>{children}</MemoryRouter>
-                                    </AttachmentProvider>
-                                </ConversationProvider>
-                            </MessageProvider>
-                        </CacheProvider>
-                    </AuthenticationProvider>
-                </ModalsProvider>
-            </NotificationsProvider>
-        </ApiContext.Provider>
+        <ConfigProvider config={config}>
+            <ApiContext.Provider value={api}>
+                <NotificationsProvider>
+                    <ModalsProvider>
+                        <AuthenticationProvider store={authentication}>
+                            <CacheProvider cache={cache}>
+                                <MessageProvider cache={messageCache}>
+                                    <ConversationProvider cache={conversationCache}>
+                                        <AttachmentProvider cache={attachmentsCache}>
+                                            <ContactProvider cache={contactCache}>
+                                                <MemoryRouter initialEntries={['/inbox']}>{children}</MemoryRouter>
+                                            </ContactProvider>
+                                        </AttachmentProvider>
+                                    </ConversationProvider>
+                                </MessageProvider>
+                            </CacheProvider>
+                        </AuthenticationProvider>
+                    </ModalsProvider>
+                </NotificationsProvider>
+            </ApiContext.Provider>
+        </ConfigProvider>
     );
 };
 
@@ -51,8 +59,10 @@ const TestProvider = ({ children }: Props) => {
  */
 export const tick = () => act(() => wait(0));
 
-export const render = async (component: JSX.Element): Promise<RenderResult> => {
-    minimalCache();
+export const render = async (component: JSX.Element, useMinimalCache = true): Promise<RenderResult> => {
+    if (useMinimalCache) {
+        minimalCache();
+    }
     const result = originalRender(<TestProvider>{component}</TestProvider>);
     await tick(); // Should not be necessary, would be better not to use it, but fails without
     return result;

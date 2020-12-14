@@ -41,7 +41,7 @@ interface Props {
     onChangeFlag: (changes: Map<number, boolean>) => void;
     onFocus: () => void;
     onAddAttachments: (files: File[]) => void;
-    onRemoveAttachment: (attachment: Attachment) => () => void;
+    onRemoveAttachment: (attachment: Attachment) => Promise<void>;
     contentFocusRef: MutableRefObject<() => void>;
     editorActionsRef: EditorActionsRef;
 }
@@ -148,7 +148,7 @@ const SquireEditorWrapper = ({
             removedCIDs.forEach((cid) => {
                 const info = message.embeddeds?.get(cid);
                 if (info) {
-                    onRemoveAttachment(info.attachment)();
+                    void onRemoveAttachment(info.attachment);
                 }
             });
             setCIDs(newCIDs);
@@ -186,7 +186,7 @@ const SquireEditorWrapper = ({
     };
     const switchToHTML = () => {
         const MIMEType = MIME_TYPES.DEFAULT;
-        const content = plainTextToHTML(message, mailSettings, addresses);
+        const content = plainTextToHTML(message.data, message.plainText, mailSettings, addresses);
         const document = setDocumentContent(message.document, content);
         onChange({ document, data: { MIMEType } });
     };

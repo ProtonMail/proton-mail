@@ -18,7 +18,7 @@ import { noop } from 'proton-shared/lib/helpers/function';
 
 import { formatSimpleDate } from '../../helpers/date';
 import { MessageExtended } from '../../models/message';
-import AttachmentsButton from './attachments/AttachmentsButton';
+import AttachmentsButton from '../attachment/AttachmentsButton';
 
 interface Props {
     className?: string;
@@ -168,6 +168,7 @@ const ComposerActions = ({
                     disabled={sendDisabled}
                     loading={sending}
                     onClick={onSend}
+                    data-testid="send-button"
                 >
                     <Icon name="sent" className="nodesktop notablet onmobile-flex" />
                     <span className="pl1 pr1 nomobile">{buttonSendLabel}</span>

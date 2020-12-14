@@ -1,4 +1,3 @@
-import { Message } from 'proton-shared/lib/interfaces/mail/Message';
 import React from 'react';
 import { c } from 'ttag';
 import { classnames } from 'react-components';
@@ -13,12 +12,12 @@ import ItemDate from './ItemDate';
 import NumMessages from '../conversation/NumMessages';
 import { Element } from '../../models/element';
 import ItemExpiration from './ItemExpiration';
+import ItemAction from './ItemAction';
 
 interface Props {
     labelID: string;
     labels?: Label[];
     element: Element;
-    mailSettings: any;
     conversationMode: boolean;
     showIcon: boolean;
     senders: string;
@@ -32,7 +31,6 @@ const ItemRowLayout = ({
     labelID,
     labels,
     element,
-    mailSettings = {},
     conversationMode,
     showIcon,
     senders,
@@ -50,16 +48,17 @@ const ItemRowLayout = ({
                 <ItemStar element={element} />
             </div>
 
-            <div className={classnames(['item-senders w20 flex mauto pr1', unread && 'bold'])}>
+            <div className={classnames(['item-senders w20 flex flex-nowrap mauto pr1', unread && 'bold'])}>
                 <span className="mw100 ellipsis" title={addresses}>
                     {!loading && displayRecipients && !senders ? c('Info').t`(No Recipient)` : senders}
                 </span>
+                <ItemAction element={element} className="ml0-5 flex-item-noshrink mtauto mbauto" />
             </div>
 
             <div className="item-subject flex-item-fluid flex flex-items-center flex-nowrap mauto">
                 {showIcon && (
                     <span className="mr0-25 inline-flex flex-item-noshrink">
-                        <ItemLocation message={element as Message} mailSettings={mailSettings} />
+                        <ItemLocation element={element} labelID={labelID} />
                     </span>
                 )}
                 {conversationMode && (
@@ -68,7 +67,12 @@ const ItemRowLayout = ({
                         conversation={element}
                     />
                 )}
-                <span className={classnames(['inbl mw100 ellipsis mr1', unread && 'bold'])} title={Subject}>
+                <span
+                    role="heading"
+                    aria-level={2}
+                    className={classnames(['inbl mw100 ellipsis mr1', unread && 'bold'])}
+                    title={Subject}
+                >
                     {Subject}
                 </span>
             </div>
