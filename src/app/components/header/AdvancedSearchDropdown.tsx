@@ -35,7 +35,7 @@ import { extractSearchParameters, keywordToString } from '../../helpers/mailboxU
 
 import './AdvancedSearchDropdown.scss';
 
-interface SearchModel {
+export interface SearchModel {
     keyword: string;
     labelID: string;
     from: Recipient[];
@@ -53,7 +53,7 @@ interface LabelInfo {
     group: string;
 }
 
-const UNDEFINED = undefined;
+export const UNDEFINED = undefined;
 const AUTO_WILDCARD = undefined;
 const ALL_ADDRESSES = 'all';
 const NO_ATTACHMENTS = 0;
@@ -74,7 +74,7 @@ const getRecipients = (value = '') =>
         .split(',')
         .filter(validateEmailAddress)
         .map((Address) => ({ Address, Name: '' }));
-const formatRecipients = (recipients: Recipient[] = []) => recipients.map(({ Address }) => Address).join(',');
+export const formatRecipients = (recipients: Recipient[] = []) => recipients.map(({ Address }) => Address).join(',');
 
 const folderReducer = (acc: LabelInfo[], folder: FolderWithSubFolders, level = 0) => {
     acc.push({
@@ -350,6 +350,59 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
             </Dropdown>
         </>
     );
+};
+
+export const parseSearch = (search) => {
+    const model = {
+        ...DEFAULT_MODEL,
+        keyword: search || '',
+    };
+
+    const keywords = [];
+    search.split(' ').forEach((part) => {
+        const parsed = part.match(/^([^:]*):(.*)$/);
+        if (parsed && parsed[1]) {
+            switch (parsed[1]) {
+                case 'from':
+                case 'to':
+                    model[parsed[1]] = getRecipients(parsed[2]);
+                    return;
+                case 'has':
+                    if (parsed[2]) {
+                        switch (parsed[2]) {
+                            case 'attachment':
+                                model.attachments = WITH_ATTACHMENTS;
+                                return;
+                            default:
+                        }
+                    }
+                    break;
+                default:
+            }
+        }
+        keywords.push(part);
+    });
+    model.keyword = keywords.join(' ');
+    return model;
+};
+
+export const generateSearch = (location) => {
+    const { keyword = '', from = undefined, to = undefined, attachments = undefined } = extractSearchParameters(
+        location
+    );
+
+    const search = [keyword];
+    if (from) {
+        search.push(`from:${from}`);
+    }
+    if (to) {
+        search.push(`to:${to}`);
+    }
+    if (attachments) {
+        search.push('has:attachment');
+    }
+
+    return search.join(' ');
 };
 
 export default AdvancedSearchDropdown;

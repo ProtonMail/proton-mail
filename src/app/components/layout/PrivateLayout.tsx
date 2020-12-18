@@ -1,14 +1,15 @@
 import React, { useState, useEffect, ReactNode, useCallback } from 'react';
 import { PrivateAppContainer } from 'react-components';
 import { MAILBOX_LABEL_IDS } from 'proton-shared/lib/constants';
+import { changeSearchParams } from 'proton-shared/lib/helpers/url';
 import { Location, History } from 'history';
 
-import MailHeader from '../header/MailHeader';
 import MailSidebar from '../sidebar/MailSidebar';
+import MailHeader from '../header/MailHeader';
 import { getHumanLabelID } from '../../helpers/labels';
-import { setKeywordInUrl } from '../../helpers/mailboxUrl';
 import { Breakpoints } from '../../models/utils';
 import { OnCompose } from '../../hooks/useCompose';
+import { parseSearch, formatRecipients, UNDEFINED } from '../header/AdvancedSearchDropdown';
 
 interface Props {
     children: ReactNode;
@@ -33,8 +34,20 @@ const PrivateLayout = ({
 }: Props) => {
     const [expanded, setExpand] = useState(false);
 
-    const handleSearch = useCallback((keyword = '', labelID = MAILBOX_LABEL_IDS.ALL_MAIL as string) => {
-        history.push(setKeywordInUrl({ ...location, pathname: `/${getHumanLabelID(labelID)}` }, keyword));
+    const handleSearch = useCallback((search = '', labelID = MAILBOX_LABEL_IDS.ALL_MAIL as string) => {
+        const model = parseSearch(search);
+        model.labelID = labelID;
+
+        const { keyword, from, to, attachments } = model;
+
+        history.push(
+            changeSearchParams(`/${getHumanLabelID(model.labelID)}`, location.search, {
+                keyword: keyword || UNDEFINED,
+                from: from.length ? formatRecipients(from) : UNDEFINED,
+                to: to.length ? formatRecipients(to) : UNDEFINED,
+                attachments: typeof attachments === 'number' ? String(attachments) : UNDEFINED,
+            })
+        );
     }, []);
 
     const handleToggleExpand = useCallback(() => setExpand((expanded) => !expanded), []);
