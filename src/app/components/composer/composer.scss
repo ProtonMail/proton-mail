@@ -1,4 +1,4 @@
-@import '~design-system/_sass/reusable-components/_design-system-config.scss';
+@import '~design-system/scss/config/';
 
 .composer {
     position: absolute;
@@ -164,6 +164,9 @@
 */
 .composer-addresses-addressIcon {
     top: -0.2rem;
+    &:empty {
+        margin-right: 0;
+    }
 }
 
 .composer-addresses-autocomplete {

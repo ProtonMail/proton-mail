@@ -32,16 +32,18 @@ import { attachPublicKey } from '../helpers/message/messageAttachPublicKey';
 import SendWithWarningsModal from '../components/composer/addresses/SendWithWarningsModal';
 import SendWithExpirationModal from '../components/composer/addresses/SendWithExpirationModal';
 import { useSaveDraft } from './message/useSaveDraft';
-import SendingMessageNotification from '../components/notifications/SendingMessageNotification';
+import { SendingMessageNotificationManager } from '../components/notifications/SendingMessageNotification';
 import { OnCompose } from './useCompose';
 import useDelaySendSeconds from './useDelaySendSeconds';
 import { useGetMessageKeys } from './message/useGetMessageKeys';
 import { getParamsFromPathname, setParamsInLocation } from '../helpers/mailboxUrl';
+import { useContactCache } from '../containers/ContactProvider';
 
 export const useSendVerifications = () => {
     const { createModal } = useModals();
     const { createNotification } = useNotifications();
     const getEncryptionPreferences = useGetEncryptionPreferences();
+    const { contactsMap } = useContactCache();
 
     return useCallback(async (message: MessageExtendedWithData): Promise<{
         cleanMessage: MessageExtendedWithData;
@@ -93,7 +95,7 @@ export const useSendVerifications = () => {
 
         await Promise.all(
             emails.map(async (email) => {
-                const encryptionPreferences = await getEncryptionPreferences(email);
+                const encryptionPreferences = await getEncryptionPreferences(email, 0, contactsMap);
                 if (encryptionPreferences.emailAddressWarnings?.length) {
                     emailWarnings[email] = encryptionPreferences.emailAddressWarnings as string[];
                 }
@@ -192,12 +194,16 @@ export const useSendMessage = () => {
             inputMessage: MessageExtendedWithData,
             mapSendPrefs: SimpleMap<SendPreferences>,
             onCompose: OnCompose,
-            alreadySaved = false
+            alreadySaved = false,
+            sendingMessageNotificationManager?: SendingMessageNotificationManager
         ) => {
             const { localID, data } = inputMessage;
             const hasUndo = !!delaySendSeconds;
 
             const handleUndo = async () => {
+                if (sendingMessageNotificationManager) {
+                    hideNotification(sendingMessageNotificationManager.ID);
+                }
                 const savedMessage = messageCache.get(localID) as MessageExtendedWithData;
                 await api(cancelSend(savedMessage.data.ID));
                 createNotification({ text: c('Message notification').t`Sending undone` });
@@ -266,26 +272,25 @@ export const useSendMessage = () => {
                 );
             };
 
-            const promise = prepareMessageToSend();
-
-            const notificationID = createNotification({
-                text: <SendingMessageNotification promise={promise} onUndo={hasUndo ? handleUndo : undefined} />,
-                expiration: -1,
+            const promise = prepareMessageToSend().then((result) => {
+                const delta = result.DeliveryTime * 1000 - Date.now();
+                const undoTimeout = delta > 0 ? delta : 0;
+                return { ...result, undoTimeout };
             });
 
+            sendingMessageNotificationManager?.setProperties(promise, handleUndo);
+
             try {
-                const { Sent, DeliveryTime } = await promise;
-                const delta = DeliveryTime * 1000 - Date.now();
-                const undoTimeout = delta > 0 ? delta : 0;
-                setTimeout(
-                    () => {
-                        hideNotification(notificationID);
-                        if (hasUndo) {
-                            call();
-                        }
-                    },
-                    hasUndo ? undoTimeout : 2500
-                );
+                const { Sent, undoTimeout } = await promise;
+                setTimeout(() => {
+                    if (sendingMessageNotificationManager) {
+                        hideNotification(sendingMessageNotificationManager.ID);
+                    }
+
+                    if (hasUndo) {
+                        void call();
+                    }
+                }, Math.max(undoTimeout, 2500));
 
                 updateMessageCache(messageCache, localID, {
                     data: Sent,
@@ -293,7 +298,7 @@ export const useSendMessage = () => {
                     showEmbeddedImages: undefined,
                 });
 
-                call();
+                void call();
 
                 // Navigation to the sent message
                 const {
@@ -319,7 +324,6 @@ export const useSendMessage = () => {
                 //     throw e;
                 // }
             } catch (error) {
-                hideNotification(notificationID);
                 onCompose({
                     existingDraft: {
                         localID,

@@ -57,7 +57,7 @@ const HeaderExpandedDetails = ({ labelID, labels, message, messageViewIcons, mai
         <div className="message-detailed-header-extra border-top pt0-5">
             {icon && (
                 <div className="mb0-5 flex flex-nowrap flex-items-center">
-                    <span className="container-to flex">
+                    <span className="container-to flex flex-justify-center">
                         <EncryptionStatusIcon useTooltip={false} {...icon} />
                     </span>
                     <span className="ellipsis" title={icon.text}>
@@ -76,7 +76,13 @@ const HeaderExpandedDetails = ({ labelID, labels, message, messageViewIcons, mai
             <div className="mb0-5 flex flex-nowrap">
                 <span className="container-to flex">
                     <span className="mauto flex">
-                        <ItemLocation element={message.data} labelID={labelID} shouldStack showTooltip={false} />
+                        <ItemLocation
+                            element={message.data}
+                            labelID={labelID}
+                            shouldStack
+                            showTooltip={false}
+                            withDefaultMargin={false}
+                        />
                     </span>
                 </span>
                 <span className="flex-self-vcenter mr0-5 ellipsis" title={locationText}>

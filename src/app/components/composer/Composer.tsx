@@ -1,15 +1,8 @@
 import { Message } from 'proton-shared/lib/interfaces/mail/Message';
 import { getRecipients } from 'proton-shared/lib/mail/messages';
 import React, { useState, useEffect, useRef, useCallback, DragEvent } from 'react';
-import {
-    classnames,
-    useToggle,
-    useNotifications,
-    useMailSettings,
-    useGetEncryptionPreferences,
-    useHandler,
-} from 'react-components';
 import { c } from 'ttag';
+import { classnames, useToggle, useNotifications, useMailSettings, useHandler } from 'react-components';
 import { noop } from 'proton-shared/lib/helpers/function';
 import { setBit, clearBit } from 'proton-shared/lib/helpers/bitset';
 import { COMPOSER_MODE } from 'proton-shared/lib/constants';
@@ -33,11 +26,14 @@ import { computeComposerStyle, shouldBeMaximized } from '../../helpers/composerP
 import { WindowSize, Breakpoints } from '../../models/utils';
 import { EditorActionsRef } from './editor/SquireEditorWrapper';
 import { useHasScroll } from '../../hooks/useHasScroll';
-import { reloadSendInfo, useMessageSendInfo } from '../../hooks/useSendInfo';
+import { useReloadSendInfo, useMessageSendInfo } from '../../hooks/useSendInfo';
 import { useDebouncedHandler } from '../../hooks/useDebouncedHandler';
 import { DRAG_ADDRESS_KEY } from '../../constants';
 import { usePromiseFromState } from '../../hooks/usePromiseFromState';
 import { OnCompose } from '../../hooks/useCompose';
+import SendingMessageNotification, {
+    createSendingMessageNotificationManager,
+} from '../notifications/SendingMessageNotification';
 
 enum ComposerInnerModal {
     None,
@@ -79,7 +75,7 @@ const Composer = ({
     onCompose,
 }: Props) => {
     const [mailSettings] = useMailSettings();
-    const { createNotification } = useNotifications();
+    const { createNotification, hideNotification } = useNotifications();
 
     const bodyRef = useRef<HTMLDivElement>(null);
     const [hasVerticalScroll] = useHasScroll(bodyRef);
@@ -104,10 +100,6 @@ const Composer = ({
     // Some behavior has to change, example, stop auto saving
     const [sending, setSending] = useState(false);
 
-    // Indicates that the composer is saving the message
-    // Not background auto-save, only user manually using the save button
-    const [manualSaving, setManualSaving] = useState(false);
-
     // Indicates that the composer is open but the edited message is not yet ready
     // Needed to prevent edition while data is not ready
     const [editorReady, setEditorReady] = useState(false);
@@ -122,7 +114,7 @@ const Composer = ({
 
     // Map of send preferences and send icons for each recipient
     const messageSendInfo = useMessageSendInfo(modelMessage);
-    const getEncryptionPreferences = useGetEncryptionPreferences();
+    const reloadSendInfo = useReloadSendInfo();
 
     // Synced with server version of the edited message
     const { message: syncedMessage, addAction } = useMessage(messageID);
@@ -189,7 +181,7 @@ const Composer = ({
                 embeddeds: syncedMessage.embeddeds,
             };
             setModelMessage(newModelMessage);
-            void reloadSendInfo(messageSendInfo, newModelMessage, getEncryptionPreferences);
+            void reloadSendInfo(messageSendInfo, newModelMessage);
         }
     }, [syncInProgress, syncedMessage.document, syncedMessage.data?.ID]);
 
@@ -252,7 +244,7 @@ const Composer = ({
             const messageChanges = update instanceof Function ? update(modelMessage) : update;
             const newModelMessage = mergeMessages(modelMessage, messageChanges);
             if (shouldReloadSendInfo) {
-                void reloadSendInfo(messageSendInfo, newModelMessage, getEncryptionPreferences);
+                void reloadSendInfo(messageSendInfo, newModelMessage);
             }
             void autoSave(newModelMessage);
             return newModelMessage;
@@ -325,16 +317,11 @@ const Composer = ({
 
     const handleManualSaveAfterUploads = useHandler(async () => {
         autoSave.abort?.();
-        try {
-            await actualSave(modelMessage);
-            createNotification({ text: c('Info').t`Message saved` });
-        } finally {
-            setManualSaving(false);
-        }
+        await actualSave(modelMessage);
+        createNotification({ text: c('Info').t`Message saved` });
     });
 
     const handleManualSave = async () => {
-        setManualSaving(true);
         await promiseUploadInProgress.current;
         // Split handlers to have the updated version of the message
         await handleManualSaveAfterUploads();
@@ -353,11 +340,20 @@ const Composer = ({
         const alreadySaved = !!cleanMessage.data.ID && !pendingSave.current && !hasChanged;
         autoSave.abort?.();
 
+        const manager = createSendingMessageNotificationManager();
+        // Display growler to receive direct feedback (UX) since sendMessage function is added to queue (and other async process could need to complete first)
+        manager.ID = createNotification({
+            text: <SendingMessageNotification manager={manager} />,
+            expiration: -1,
+            disableAutoClose: true,
+        });
+
         // No await here to close the composer directly
         void addAction(async () => {
             try {
-                await sendMessage(cleanMessage, mapSendPrefs, onCompose, alreadySaved);
+                await sendMessage(cleanMessage, mapSendPrefs, onCompose, alreadySaved, manager);
             } catch (error) {
+                hideNotification(manager.ID);
                 createNotification({
                     text: c('Error').t`Error while sending the message. Message is not sent`,
                     type: 'error',
@@ -498,12 +494,10 @@ const Composer = ({
                         lock={lock}
                         opening={opening}
                         sending={sending}
-                        manualSaving={manualSaving}
                         syncInProgress={syncInProgress}
                         onAddAttachments={handleAddAttachmentsStart}
                         onExpiration={handleExpiration}
                         onPassword={handlePassword}
-                        onSave={handleManualSave}
                         onSend={handleSend}
                         onDelete={handleDelete}
                         addressesBlurRef={addressesBlurRef}
