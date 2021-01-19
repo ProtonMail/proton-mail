@@ -1,11 +1,13 @@
 import { Message } from 'proton-shared/lib/interfaces/mail/Message';
 import { getRecipients } from 'proton-shared/lib/mail/messages';
 import React, { useState, useEffect, useRef, useCallback, DragEvent } from 'react';
-import { c } from 'ttag';
 import { classnames, useToggle, useNotifications, useMailSettings, useHandler } from 'react-components';
+import { c } from 'ttag';
 import { noop } from 'proton-shared/lib/helpers/function';
 import { setBit, clearBit } from 'proton-shared/lib/helpers/bitset';
 import { COMPOSER_MODE } from 'proton-shared/lib/constants';
+import { wait } from 'proton-shared/lib/helpers/promise';
+
 import { MessageExtended, MessageExtendedWithData, PartialMessageExtended } from '../../models/message';
 import ComposerTitleBar from './ComposerTitleBar';
 import ComposerMeta from './ComposerMeta';
@@ -18,9 +20,9 @@ import ComposerExpirationModal from './ComposerExpirationModal';
 import { useMessage } from '../../hooks/message/useMessage';
 import { useInitializeMessage } from '../../hooks/message/useInitializeMessage';
 import { useSaveDraft, useDeleteDraft } from '../../hooks/message/useSaveDraft';
-import { useSendMessage, useSendVerifications } from '../../hooks/useSendMessage';
+import { useSendMessage, useSendVerifications } from '../../hooks/composer/useSendMessage';
 import { isNewDraft } from '../../helpers/message/messageDraft';
-import { useAttachments } from '../../hooks/useAttachments';
+import { useAttachments } from '../../hooks/composer/useAttachments';
 import { getDate } from '../../helpers/elements';
 import { computeComposerStyle, shouldBeMaximized } from '../../helpers/composerPositioning';
 import { WindowSize, Breakpoints } from '../../models/utils';
@@ -30,10 +32,12 @@ import { useReloadSendInfo, useMessageSendInfo } from '../../hooks/useSendInfo';
 import { useDebouncedHandler } from '../../hooks/useDebouncedHandler';
 import { DRAG_ADDRESS_KEY } from '../../constants';
 import { usePromiseFromState } from '../../hooks/usePromiseFromState';
-import { OnCompose } from '../../hooks/useCompose';
+import { OnCompose } from '../../hooks/composer/useCompose';
+import { useComposerHotkeys } from '../../hooks/composer/useComposerHotkeys';
 import SendingMessageNotification, {
     createSendingMessageNotificationManager,
 } from '../notifications/SendingMessageNotification';
+import SavingDraftNotification from '../notifications/SavingDraftNotification';
 
 enum ComposerInnerModal {
     None,
@@ -128,6 +132,7 @@ const Composer = ({
 
     // Computed composer status
     const syncInProgress = !!syncedMessage.actionInProgress;
+    const hasRecipients = getRecipients(syncedMessage.data).length > 0;
     const lock = opening || sending || closing;
 
     // Manage focus from the container yet keeping logic in each component
@@ -330,10 +335,46 @@ const Composer = ({
         setInnerModal(ComposerInnerModal.None);
     };
 
-    const handleManualSaveAfterUploads = useHandler(async () => {
+    const handleDelete = async () => {
+        setClosing(true);
         autoSave.abort?.();
-        await actualSave(modelMessage);
-        createNotification({ text: c('Info').t`Message saved` });
+        try {
+            if (syncedMessage.data?.ID) {
+                await addAction(deleteDraft);
+            }
+            createNotification({ text: c('Info').t`Draft discarded` });
+        } finally {
+            onClose();
+        }
+    };
+
+    const handleManualSaveAfterUploads = useHandler(async () => {
+        let notificationID: number | undefined;
+        autoSave.abort?.();
+        try {
+            const promise = actualSave(modelMessage);
+            notificationID = createNotification({
+                text: (
+                    <SavingDraftNotification
+                        promise={promise}
+                        onDiscard={() => {
+                            if (notificationID) {
+                                hideNotification(notificationID);
+                            }
+                            void handleDelete();
+                        }}
+                    />
+                ),
+                expiration: -1,
+                disableAutoClose: true,
+            });
+            await promise;
+            await wait(3000);
+        } finally {
+            if (notificationID) {
+                hideNotification(notificationID);
+            }
+        }
     });
 
     const handleManualSave = async () => {
@@ -388,19 +429,6 @@ const Composer = ({
         await handleSendAfterUploads();
     });
 
-    const handleDelete = async () => {
-        setClosing(true);
-        autoSave.abort?.();
-        try {
-            if (syncedMessage.data?.ID) {
-                await addAction(deleteDraft);
-            }
-            createNotification({ text: c('Info').t`Message discarded` });
-        } finally {
-            onClose();
-        }
-    };
-
     const handleClick = async () => {
         if (minimized) {
             toggleMinimized();
@@ -411,7 +439,18 @@ const Composer = ({
         setClosing(true);
         try {
             if (pendingSave.current || uploadInProgress) {
-                void handleManualSave();
+                void handleManualSave().catch(() => {
+                    createNotification({
+                        text: c('Error').t`Draft could not be saved. Try again.`,
+                        type: 'error',
+                    });
+                    onCompose({
+                        existingDraft: {
+                            localID: syncedMessage.localID,
+                            data: syncedMessage.data,
+                        },
+                    });
+                });
             }
         } finally {
             onClose();
@@ -425,10 +464,22 @@ const Composer = ({
 
     const style = computeComposerStyle(index, count, focus, minimized, maximized, breakpoints.isNarrow, windowSize);
 
+    const { squireKeydownHandler, composerRef, attachmentTriggerRef } = useComposerHotkeys({
+        handleClose,
+        handleDelete,
+        handleExpiration,
+        handleManualSave,
+        handlePassword,
+        handleSend,
+        toggleMinimized,
+        toggleMaximized,
+        lock: lock || !hasRecipients,
+    });
+
     return (
         <div
             className={classnames([
-                'composer flex flex-column',
+                'composer flex flex-column no-outline',
                 !focus && 'composer--is-blur',
                 minimized && 'composer--is-minimized',
                 maximized && 'composer--is-maximized',
@@ -437,6 +488,8 @@ const Composer = ({
             onFocus={onFocus}
             onClick={handleClick}
             onDragEnter={handleDragEnter}
+            ref={composerRef}
+            tabIndex={-1}
         >
             <ComposerTitleBar
                 message={modelMessage}
@@ -500,6 +553,7 @@ const Composer = ({
                             onSelectEmbedded={handleAddAttachmentsUpload}
                             contentFocusRef={contentFocusRef}
                             editorActionsRef={editorActionsRef}
+                            squireKeydownHandler={squireKeydownHandler}
                         />
                     </div>
                     <ComposerActions
@@ -516,6 +570,7 @@ const Composer = ({
                         onSend={handleSend}
                         onDelete={handleDelete}
                         addressesBlurRef={addressesBlurRef}
+                        attachmentTriggerRef={attachmentTriggerRef}
                     />
                 </div>
             </div>

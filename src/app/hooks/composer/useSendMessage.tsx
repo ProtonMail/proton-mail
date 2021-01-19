@@ -1,6 +1,7 @@
 import { SendPreferences } from 'proton-shared/lib/interfaces/mail/crypto';
 import { Attachment, Message } from 'proton-shared/lib/interfaces/mail/Message';
 import { SimpleMap } from 'proton-shared/lib/interfaces/utils';
+import { EncryptionPreferencesError } from 'proton-shared/lib/mail/encryptionPreferences';
 import { getRecipientsAddresses, isAttachPublicKey } from 'proton-shared/lib/mail/messages';
 import React, { useCallback } from 'react';
 import { useHistory } from 'react-router';
@@ -19,25 +20,29 @@ import {
 } from 'react-components';
 import { validateEmailAddress } from 'proton-shared/lib/helpers/email';
 import getSendPreferences from 'proton-shared/lib/mail/send/getSendPreferences';
+import { wait } from 'proton-shared/lib/helpers/promise';
 
-import SendWithErrorsModal from '../components/composer/addresses/SendWithErrorsModal';
-import { removeMessageRecipients, uniqueMessageRecipients } from '../helpers/message/cleanMessage';
-import { MessageExtendedWithData } from '../models/message';
-import { generateTopPackages } from '../helpers/send/sendTopPackages';
-import { attachSubPackages } from '../helpers/send/sendSubPackages';
-import { encryptPackages } from '../helpers/send/sendEncrypt';
-import { useAttachmentCache } from '../containers/AttachmentProvider';
-import { updateMessageCache, useMessageCache } from '../containers/MessageProvider';
-import { attachPublicKey } from '../helpers/message/messageAttachPublicKey';
-import SendWithWarningsModal from '../components/composer/addresses/SendWithWarningsModal';
-import SendWithExpirationModal from '../components/composer/addresses/SendWithExpirationModal';
-import { useSaveDraft } from './message/useSaveDraft';
-import { SendingMessageNotificationManager } from '../components/notifications/SendingMessageNotification';
+import SendWithErrorsModal from '../../components/composer/addresses/SendWithErrorsModal';
+import { removeMessageRecipients, uniqueMessageRecipients } from '../../helpers/message/cleanMessage';
+import { MessageExtendedWithData } from '../../models/message';
+import { generateTopPackages } from '../../helpers/send/sendTopPackages';
+import { attachSubPackages } from '../../helpers/send/sendSubPackages';
+import { encryptPackages } from '../../helpers/send/sendEncrypt';
+import { useAttachmentCache } from '../../containers/AttachmentProvider';
+import { updateMessageCache, useMessageCache } from '../../containers/MessageProvider';
+import { attachPublicKey } from '../../helpers/message/messageAttachPublicKey';
+import SendWithWarningsModal from '../../components/composer/addresses/SendWithWarningsModal';
+import SendWithExpirationModal from '../../components/composer/addresses/SendWithExpirationModal';
+import { useSaveDraft } from '../message/useSaveDraft';
+import { SendingMessageNotificationManager } from '../../components/notifications/SendingMessageNotification';
 import { OnCompose } from './useCompose';
-import useDelaySendSeconds from './useDelaySendSeconds';
-import { useGetMessageKeys } from './message/useGetMessageKeys';
-import { getParamsFromPathname, setParamsInLocation } from '../helpers/mailboxUrl';
-import { useContactCache } from '../containers/ContactProvider';
+import useDelaySendSeconds from '../useDelaySendSeconds';
+import { useGetMessageKeys } from '../message/useGetMessageKeys';
+import { getParamsFromPathname, setParamsInLocation } from '../../helpers/mailboxUrl';
+import { useContactCache } from '../../containers/ContactProvider';
+
+const DELAY_SEND_PROCESSING = 5000;
+const MIN_DELAY_SENT_NOTIFICATION = 2500;
 
 export const useSendVerifications = () => {
     const { createModal } = useModals();
@@ -90,7 +95,7 @@ export const useSendVerifications = () => {
 
         const emailWarnings: { [email: string]: string[] } = {};
         const mapSendPrefs: SimpleMap<SendPreferences> = {};
-        const sendErrors: { [email: string]: Error } = {};
+        const sendErrors: { [email: string]: EncryptionPreferencesError } = {};
         const expiresNotEncrypted: string[] = [];
 
         await Promise.all(
@@ -101,8 +106,8 @@ export const useSendVerifications = () => {
                 }
                 const sendPreferences = getSendPreferences(encryptionPreferences, message.data);
                 mapSendPrefs[email] = sendPreferences;
-                if (sendPreferences.failure) {
-                    sendErrors[email] = sendPreferences.failure?.error;
+                if (sendPreferences.error) {
+                    sendErrors[email] = sendPreferences.error;
                 }
                 if (message.expiresIn && !sendPreferences.encrypt) {
                     expiresNotEncrypted.push(email);
@@ -185,7 +190,7 @@ export const useSendMessage = () => {
     const messageCache = useMessageCache();
     const auth = useAuthentication();
     const saveDraft = useSaveDraft();
-    const history = useHistory();
+    const history = useHistory<any>();
     const delaySendSeconds = useDelaySendSeconds();
     const { createNotification, hideNotification } = useNotifications();
 
@@ -281,24 +286,30 @@ export const useSendMessage = () => {
             sendingMessageNotificationManager?.setProperties(promise, handleUndo);
 
             try {
+                const currentMessage = messageCache.get(localID) as MessageExtendedWithData;
+                updateMessageCache(messageCache, localID, {
+                    ...currentMessage,
+                    sending: true,
+                });
                 const { Sent, undoTimeout } = await promise;
-                setTimeout(() => {
+                const endSending = async () => {
+                    await wait(Math.max(undoTimeout, MIN_DELAY_SENT_NOTIFICATION));
                     if (sendingMessageNotificationManager) {
                         hideNotification(sendingMessageNotificationManager.ID);
                     }
-
                     if (hasUndo) {
-                        void call();
+                        await wait(DELAY_SEND_PROCESSING);
+                        await call();
                     }
-                }, Math.max(undoTimeout, 2500));
+                };
+
+                endSending();
 
                 updateMessageCache(messageCache, localID, {
                     data: Sent,
                     initialized: undefined,
                     showEmbeddedImages: undefined,
                 });
-
-                void call();
 
                 // Navigation to the sent message
                 const {
@@ -331,6 +342,13 @@ export const useSendMessage = () => {
                     },
                 });
                 throw error;
+            } finally {
+                const currentMessage = messageCache.get(localID) as MessageExtendedWithData;
+                updateMessageCache(messageCache, localID, {
+                    ...currentMessage,
+                    sending: false,
+                });
+                void call();
             }
         },
         [delaySendSeconds, messageCache, attachmentCache, saveDraft]

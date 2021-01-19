@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import { classnames, usePopperAnchor, DropdownButton, Dropdown, generateUID, Tooltip } from 'react-components';
 
 interface LockableDropdownProps {
@@ -8,7 +8,7 @@ interface LockableDropdownProps {
 
 interface Props {
     autoClose?: boolean;
-    title?: string;
+    title?: ReactNode;
     className?: string;
     dropDownClassName?: string;
     content?: ReactNode;
@@ -16,6 +16,7 @@ interface Props {
     disabled?: boolean;
     noMaxSize?: boolean;
     [rest: string]: any;
+    externalToggleRef?: React.MutableRefObject<() => void>;
 }
 
 const ToolbarDropdown = ({
@@ -27,6 +28,7 @@ const ToolbarDropdown = ({
     autoClose = true,
     disabled = false,
     noMaxSize = false,
+    externalToggleRef,
     ...rest
 }: Props) => {
     const [uid] = useState(generateUID('dropdown'));
@@ -34,18 +36,26 @@ const ToolbarDropdown = ({
 
     const { anchorRef, isOpen, toggle, close } = usePopperAnchor<HTMLButtonElement>();
 
+    useEffect(() => {
+        if (externalToggleRef) {
+            externalToggleRef.current = toggle;
+        }
+    }, []);
+
     return (
         <>
             <Tooltip title={title} className="flex flex-item-noshrink">
                 <DropdownButton
-                    title={title}
                     buttonRef={anchorRef}
                     isOpen={isOpen}
                     onClick={toggle}
                     hasCaret
                     disabled={disabled}
                     caretClassName="toolbar-icon"
-                    className={classnames(['flex-item-noshrink toolbar-button toolbar-button--dropdown', className])}
+                    className={classnames([
+                        'flex-flex-children flex-flex-items-center toolbar-button toolbar-button--dropdown',
+                        className,
+                    ])}
                     {...rest}
                 >
                     {content}

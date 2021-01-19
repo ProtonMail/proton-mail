@@ -10,7 +10,7 @@ import { VERIFICATION_STATUS } from 'proton-shared/lib/mail/constants';
 import { SimpleMap } from 'proton-shared/lib/interfaces/utils';
 import AttachmentItem from './AttachmentItem';
 import { EmbeddedMap, MessageExtendedWithData } from '../../models/message';
-import { PendingUpload } from '../../hooks/useAttachments';
+import { PendingUpload } from '../../hooks/composer/useAttachments';
 import { useDownload, useDownloadAll } from '../../hooks/useDownload';
 import AttachmentPreview, { AttachmentPreviewControls } from './AttachmentPreview';
 
@@ -109,7 +109,7 @@ const AttachmentList = ({
     const handleDownloadAll = async () => {
         setShowLoader(true);
         try {
-            await downloadAll(message as MessageExtendedWithData);
+            await downloadAll(message);
         } catch (error) {
             // Notification is handled by the hook
             console.log('error', error);

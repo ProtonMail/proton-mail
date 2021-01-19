@@ -11,16 +11,19 @@ import {
     useModals,
     useFolders,
     ConfirmModal,
+    ErrorButton,
     Alert,
     Group,
     ButtonGroup,
     Tooltip,
     useLabels,
+    useMailSettings,
 } from 'react-components';
 import { MAILBOX_LABEL_IDS } from 'proton-shared/lib/constants';
 import { noop } from 'proton-shared/lib/helpers/function';
 import downloadFile from 'proton-shared/lib/helpers/downloadFile';
 import { reportPhishing } from 'proton-shared/lib/api/reports';
+import { deleteMessages } from 'proton-shared/lib/api/messages';
 
 import { MessageExtended, MessageExtendedWithData } from '../../../models/message';
 import MessageHeadersModal from '../modals/MessageHeadersModal';
@@ -39,6 +42,7 @@ import CustomFilterDropdown from '../../dropdown/CustomFilterDropdown';
 import MoveDropdown from '../../dropdown/MoveDropdown';
 import LabelDropdown from '../../dropdown/LabelDropdown';
 import { useGetMessageKeys } from '../../../hooks/message/useGetMessageKeys';
+import { getDeleteTitle, getModalText, getNotificationText } from '../../toolbar/DeleteButton';
 
 const { INBOX, TRASH, SPAM } = MAILBOX_LABEL_IDS;
 
@@ -74,6 +78,7 @@ const HeaderMoreDropdown = ({
     const [labels = []] = useLabels();
     const markAs = useMarkAs();
     const getMessageKeys = useGetMessageKeys();
+    const [{ Hotkeys } = { Hotkeys: 0 }] = useMailSettings();
 
     const handleMove = (folderID: string, fromFolderID: string) => async () => {
         closeDropdown.current?.();
@@ -110,6 +115,24 @@ const HeaderMoreDropdown = ({
                     .t`Reporting a message as a phishing attempt will send the message to us, so we can analyze it and improve our filters. This means that we will be able to see the contents of the message in full.`}</Alert>
             </ConfirmModal>
         );
+    };
+
+    const handleDelete = async () => {
+        await new Promise((resolve, reject) => {
+            createModal(
+                <ConfirmModal
+                    title={getDeleteTitle(false, false, 1)}
+                    confirm={<ErrorButton type="submit">{c('Action').t`Delete`}</ErrorButton>}
+                    onConfirm={() => resolve(undefined)}
+                    onClose={reject}
+                >
+                    <Alert type="error">{getModalText(false, false, 1)}</Alert>
+                </ConfirmModal>
+            );
+        });
+        await api(deleteMessages([message.data?.ID]));
+        await call();
+        createNotification({ text: getNotificationText(false, false, 1) });
     };
 
     const handleHeaders = () => {
@@ -163,6 +186,43 @@ const HeaderMoreDropdown = ({
           ]
         : undefined;
 
+    const titleMoveInboxNotSpam = Hotkeys ? (
+        <>
+            {c('Title').t`Move to inbox (not spam)`}
+            <br />
+            <kbd className="bg-global-altgrey noborder">I</kbd>
+        </>
+    ) : (
+        c('Title').t`Move to inbox (not spam)`
+    );
+    const titleUnread = Hotkeys ? (
+        <>
+            {c('Title').t`Mark as unread`}
+            <br />
+            <kbd className="bg-global-altgrey noborder">U</kbd>
+        </>
+    ) : (
+        c('Title').t`Mark as unread`
+    );
+    const titleMoveInbox = Hotkeys ? (
+        <>
+            {c('Title').t`Move to inbox`}
+            <br />
+            <kbd className="bg-global-altgrey noborder">I</kbd>
+        </>
+    ) : (
+        c('Title').t`Move to inbox`
+    );
+    const titleMoveTrash = Hotkeys ? (
+        <>
+            {c('Title').t`Move to trash`}
+            <br />
+            <kbd className="bg-global-altgrey noborder">T</kbd>
+        </>
+    ) : (
+        c('Title').t`Move to trash`
+    );
+
     return (
         <Group className="mr1 mb0-5">
             {isSpam ? (
@@ -171,13 +231,13 @@ const HeaderMoreDropdown = ({
                     onClick={handleMove(INBOX, SPAM)}
                     className="pm-button--for-icon relative"
                 >
-                    <Tooltip title={c('Title').t`Move to inbox (not spam)`} className="flex increase-surface-click">
+                    <Tooltip title={titleMoveInboxNotSpam} className="flex increase-surface-click">
                         <Icon name="nospam" alt={c('Title').t`Move to inbox (not spam)`} />
                     </Tooltip>
                 </ButtonGroup>
             ) : (
                 <ButtonGroup disabled={!messageLoaded} onClick={handleUnread} className="pm-button--for-icon relative">
-                    <Tooltip title={c('Title').t`Mark as unread`} className="flex increase-surface-click">
+                    <Tooltip title={titleUnread} className="flex increase-surface-click">
                         <Icon name="unread" alt={c('Title').t`Mark as unread`} />
                     </Tooltip>
                 </ButtonGroup>
@@ -188,7 +248,7 @@ const HeaderMoreDropdown = ({
                     onClick={handleMove(INBOX, TRASH)}
                     className="pm-button--for-icon relative"
                 >
-                    <Tooltip title={c('Title').t`Move to inbox`} className="flex increase-surface-click">
+                    <Tooltip title={titleMoveInbox} className="flex increase-surface-click">
                         <Icon name="inbox" alt={c('Title').t`Move to inbox`} />
                     </Tooltip>
                 </ButtonGroup>
@@ -198,7 +258,7 @@ const HeaderMoreDropdown = ({
                     onClick={handleMove(TRASH, fromFolderID)}
                     className="pm-button--for-icon relative"
                 >
-                    <Tooltip title={c('Title').t`Move to trash`} className="flex increase-surface-click">
+                    <Tooltip title={titleMoveTrash} className="flex increase-surface-click">
                         <Icon name="trash" alt={c('Title').t`Move to trash`} />
                     </Tooltip>
                 </ButtonGroup>
@@ -259,6 +319,12 @@ const HeaderMoreDropdown = ({
                                     <span className="flex-item-fluid mtauto mbauto">{c('Action').t`Move to spam`}</span>
                                 </DropdownMenuButton>
                             )}
+                            {isInTrash ? (
+                                <DropdownMenuButton className="alignleft flex flex-nowrap" onClick={handleDelete}>
+                                    <Icon name="delete" className="mr0-5 mt0-25" />
+                                    <span className="flex-item-fluid mtauto mbauto">{c('Action').t`Delete`}</span>
+                                </DropdownMenuButton>
+                            ) : null}
                             <DropdownMenuButton className="alignleft flex flex-nowrap" onClick={handlePhishing}>
                                 <Icon name="phishing" className="mr0-5 mt0-25" />
                                 <span className="flex-item-fluid mtauto mbauto">{c('Action').t`Report phishing`}</span>

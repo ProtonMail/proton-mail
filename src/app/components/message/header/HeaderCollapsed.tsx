@@ -10,7 +10,7 @@ import ItemLocation from '../../list/ItemLocation';
 import ItemAttachmentIcon from '../../list/ItemAttachmentIcon';
 import { MessageExtended } from '../../../models/message';
 import ItemExpiration from '../../list/ItemExpiration';
-import { OnCompose } from '../../../hooks/useCompose';
+import { OnCompose } from '../../../hooks/composer/useCompose';
 import ItemAction from '../../list/ItemAction';
 import { Breakpoints } from '../../../models/utils';
 import RecipientItem from '../recipients/RecipientItem';
@@ -47,8 +47,8 @@ const HeaderCollapsed = ({
         onExpand();
     };
 
-    const isDraftMessage = isDraft(message.data);
-    const isOutboxMessage = isOutbox(message.data);
+    const isDraftMessage = isDraft(message.data) && !message.sending;
+    const isOutboxMessage = isOutbox(message.data) || message.sending;
 
     return (
         <div
@@ -93,7 +93,7 @@ const HeaderCollapsed = ({
 
                         {!!hasAttachments(message.data) && (
                             <span className="ml0-5 flex">
-                                <ItemAttachmentIcon element={message.data} labelID={labelID} className="mauto" />
+                                <ItemAttachmentIcon element={message.data} className="mauto" />
                             </span>
                         )}
 

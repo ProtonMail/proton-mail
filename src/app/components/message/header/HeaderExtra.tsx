@@ -12,7 +12,7 @@ import ExtraAskResign from '../extras/ExtraAskResign';
 import { MessageExtended, MessageExtendedWithData } from '../../../models/message';
 import ExtraErrors from '../extras/ExtraErrors';
 import ExtraDecryptedSubject from '../extras/ExtraDecryptedSubject';
-import { OnCompose } from '../../../hooks/useCompose';
+import { OnCompose } from '../../../hooks/composer/useCompose';
 
 interface Props {
     message: MessageExtended;
@@ -21,12 +21,10 @@ interface Props {
     messageLoaded: boolean;
     onLoadRemoteImages: () => void;
     onLoadEmbeddedImages: () => void;
-    labelID: string;
     onCompose: OnCompose;
 }
 
 const HeaderExtra = ({
-    labelID,
     message,
     sourceMode,
     messageLoaded,
@@ -40,13 +38,17 @@ const HeaderExtra = ({
         <section className="message-header-extra border-top pt0-5">
             <ExtraExpirationTime message={message} />
             <ExtraDecryptedSubject message={message} />
-            <ExtraSpamScore message={message} labelID={labelID} />
+            <ExtraSpamScore message={message} />
             <ExtraErrors message={message} />
             <ExtraUnsubscribe message={message} onCompose={onCompose} />
             <ExtraReadReceipt message={message} />
             <ExtraAutoReply message={message} />
-            {messageLoaded && <ExtraPinKey message={message} />}
-            <ExtraAskResign message={message} onResignContact={onResignContact} />
+            {messageLoaded && <ExtraPinKey message={message.data} messageVerification={message.verification} />}
+            <ExtraAskResign
+                message={message.data}
+                messageVerification={message.verification}
+                onResignContact={onResignContact}
+            />
             {!sourceMode && <ExtraImages message={message} type="remote" onLoadImages={onLoadRemoteImages} />}
             {!sourceMode && <ExtraImages message={message} type="embedded" onLoadImages={onLoadEmbeddedImages} />}
             {messageLoaded && received ? <ExtraEvents message={message as MessageExtendedWithData} /> : null}
