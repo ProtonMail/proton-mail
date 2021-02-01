@@ -145,6 +145,8 @@ const List = (
 
     const handleDragStart = useCallback(
         (event: DragEvent, element: Element) => {
+            clearDragElement();
+
             const elementID = element.ID || '';
             const dragInSelection = checkedIDs.includes(elementID);
             const selection = dragInSelection ? checkedIDs : [elementID];
