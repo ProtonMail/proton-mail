@@ -77,6 +77,7 @@
         "husky": "^4.3.0",
         "jest": "^24.9.0",
         "lint-staged": "^10.4.2",
+        "loud-rejection": "^2.2.0",
         "prettier": "^2.0.5",
         "proton-bundler": "github:ProtonMail/proton-bundler#semver:^2.0.0",
         "proton-i18n": "github:ProtonMail/proton-i18n#semver:^2.0.0",
