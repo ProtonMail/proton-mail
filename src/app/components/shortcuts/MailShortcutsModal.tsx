@@ -3,7 +3,7 @@ import { Alert, ShortcutsModal, ShortcutsSectionView, useMailSettings, classname
 import { APPS } from 'proton-shared/lib/constants';
 import { getAppName } from 'proton-shared/lib/apps/helper';
 import { c } from 'ttag';
-import mailShortcuts from './shortcuts';
+import { getShortcuts } from './shortcuts';
 
 interface Props {
     onClose?: () => void;
@@ -15,6 +15,7 @@ const MailShortCutsModal = ({ ...rest }: Props) => {
 
     const [{ Shortcuts } = { Shortcuts: 0 }] = useMailSettings();
 
+    const mailShortcuts = getShortcuts();
     const alwaysOnSections = mailShortcuts.filter((section) => section.alwaysActive);
     const shortcutEnabledSections = mailShortcuts.filter((section) => !section.alwaysActive);
 
@@ -30,7 +31,7 @@ const MailShortCutsModal = ({ ...rest }: Props) => {
                 {c('Info')
                     .t`Basic navigation and actions remain available regardless of keyboard shortcuts being active or not in the settings.`}
             </Alert>
-            <div className="list-2columns onmobile-list-1column mr-2e onmobile-mr0">
+            <div className="list-2columns on-mobile-list-1column mr-2e on-mobile-mr0">
                 {alwaysOnSections.map((section) => {
                     return <ShortcutsSectionView key={section.name} {...section} />;
                 })}
@@ -45,7 +46,7 @@ const MailShortCutsModal = ({ ...rest }: Props) => {
             </Alert>
             <div
                 className={classnames([
-                    'list-2columns onmobile-list-1column mr-2e onmobile-mr0',
+                    'list-2columns on-mobile-list-1column mr-2e on-mobile-mr0',
                     !Shortcuts && 'opacity-50',
                 ])}
             >

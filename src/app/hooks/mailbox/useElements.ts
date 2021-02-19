@@ -7,7 +7,6 @@ import { toMap } from 'proton-shared/lib/helpers/object';
 import { ConversationCountsModel, MessageCountsModel } from 'proton-shared/lib/models';
 import { LabelCount } from 'proton-shared/lib/interfaces/Label';
 import { noop } from 'proton-shared/lib/helpers/function';
-
 import isTruthy from 'proton-shared/lib/helpers/isTruthy';
 import {
     sort as sortElements,
@@ -67,7 +66,7 @@ const emptyCache = (
         invalidated: false,
         pendingRequest: false,
         params,
-        page: { page: pageFromUrl, total, size: PAGE_SIZE, limit: PAGE_SIZE },
+        page: { page: pageFromUrl, total, size: PAGE_SIZE },
         elements: {},
         pages: [],
         updatedElements: [],
@@ -176,9 +175,14 @@ export const useElements: UseElements = ({ conversationMode, labelID, search, pa
 
     const shouldResetCache = () => paramsChanged() || !pageIsConsecutive() || lastHasBeenUpdated();
 
+    // When there is less than a page of elements, we want to prevents calling the API
+    // And we should be able to rely on elements updated from the event manager
+    // So it's ok to ignore length mismatch in that case
+    const shouldLoadBasedOnExpectedLength = () => expectedLengthMismatch !== 0 && cache.page.total > PAGE_SIZE;
+
     const shouldSendRequest = () =>
         shouldResetCache() ||
-        (!cache.pendingRequest && (cache.invalidated || expectedLengthMismatch > 0 || !pageCached()));
+        (!cache.pendingRequest && (cache.invalidated || shouldLoadBasedOnExpectedLength() || !pageCached()));
 
     const shouldUpdatePage = () => pageChanged() && pageCached();
 

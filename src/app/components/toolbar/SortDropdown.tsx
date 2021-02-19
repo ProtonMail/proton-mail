@@ -32,7 +32,7 @@ const SortDropdown = ({ loading, conversationMode, sort: { sort, desc }, onSort 
     return (
         <ToolbarDropdown
             content={
-                <span className="flex flex-items-center">
+                <span className="flex flex-align-items-center" data-test-id="toolbar:sort-dropdown">
                     <Icon className="toolbar-icon" name={ICONS[sort][desc ? DESC : ASC]} />
                 </span>
             }
@@ -41,8 +41,9 @@ const SortDropdown = ({ loading, conversationMode, sort: { sort, desc }, onSort 
             {() => (
                 <DropdownMenu>
                     <DropdownMenuButton
+                        data-test-id="toolbar:sort-asc"
                         disabled={sort === SIZE && !desc}
-                        className="alignleft"
+                        className="text-left"
                         loading={loading}
                         onClick={() => onSort({ sort: SIZE, desc: false })}
                     >
@@ -50,8 +51,9 @@ const SortDropdown = ({ loading, conversationMode, sort: { sort, desc }, onSort 
                         {c('Action').t`Size: small to large`}
                     </DropdownMenuButton>
                     <DropdownMenuButton
+                        data-test-id="toolbar:sort-desc"
                         disabled={sort === SIZE && desc}
-                        className="alignleft"
+                        className="text-left"
                         loading={loading}
                         onClick={() => onSort({ sort: SIZE, desc: true })}
                     >
@@ -59,8 +61,9 @@ const SortDropdown = ({ loading, conversationMode, sort: { sort, desc }, onSort 
                         {c('Action').t`Size: large to small`}
                     </DropdownMenuButton>
                     <DropdownMenuButton
+                        data-test-id="toolbar:sort-new-to-old"
                         disabled={sort === TIME && desc}
-                        className="alignleft"
+                        className="text-left"
                         loading={loading}
                         onClick={() => onSort({ sort: TIME, desc: true })}
                     >
@@ -68,8 +71,9 @@ const SortDropdown = ({ loading, conversationMode, sort: { sort, desc }, onSort 
                         {c('Action').t`Date: new to old`}
                     </DropdownMenuButton>
                     <DropdownMenuButton
+                        data-test-id="toolbar:sort-old-to-new"
                         disabled={sort === TIME && !desc}
-                        className="alignleft"
+                        className="text-left"
                         loading={loading}
                         onClick={() => onSort({ sort: TIME, desc: false })}
                     >

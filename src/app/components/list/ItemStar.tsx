@@ -41,7 +41,7 @@ const ItemStar = ({ element = {} }: Props) => {
                     <>
                         {title}
                         <br />
-                        <kbd className="bg-global-altgrey noborder">*</kbd>
+                        <kbd className="bg-global-altgrey no-border">*</kbd>
                     </>
                 ) : (
                     title
@@ -49,6 +49,7 @@ const ItemStar = ({ element = {} }: Props) => {
             }
         >
             <button
+                data-test-id="message-list:star-button"
                 type="button"
                 className={classnames([
                     'starbutton relative item-star flex stop-propagation',

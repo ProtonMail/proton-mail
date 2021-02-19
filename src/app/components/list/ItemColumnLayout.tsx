@@ -44,10 +44,17 @@ const ItemColumnLayout = ({
     const { Subject } = element;
 
     return (
-        <div className="flex-item-fluid flex flex-nowrap flex-column flex-justify-center item-titlesender">
-            <div className="flex flex-items-center item-firstline">
+        <div
+            className="flex-item-fluid flex flex-nowrap flex-column flex-justify-center item-titlesender"
+            data-test-id="message-list:message"
+        >
+            <div className="flex flex-align-items-center item-firstline">
                 <div className="item-senders flex-item-fluid flex flex-nowrap pr1">
-                    <span className={classnames(['inbl mw100 ellipsis', unread && 'bold'])} title={addresses}>
+                    <span
+                        className={classnames(['inline-block max-w100 text-ellipsis', unread && 'text-bold'])}
+                        title={addresses}
+                        data-test-id="message-list:sender-address"
+                    >
                         {!loading && displayRecipients && !senders ? c('Info').t`(No Recipient)` : senders}
                     </span>
                     <ItemAction element={element} className="ml0-5 flex-item-noshrink mtauto mbauto" />
@@ -62,7 +69,7 @@ const ItemColumnLayout = ({
                 <ItemDate
                     element={element}
                     labelID={labelID}
-                    className={classnames([unread && 'bold', 'item-senddate-col'])}
+                    className={classnames([unread && 'text-bold', 'item-senddate-col'])}
                 />
 
                 <span className="ml0-5 flex-flex-children">
@@ -70,8 +77,8 @@ const ItemColumnLayout = ({
                 </span>
             </div>
 
-            <div className="flex flex-nowrap flex-items-center item-secondline mw100 no-scroll">
-                <div className="item-subject flex-item-fluid flex flex-nowrap flex-items-center">
+            <div className="flex flex-nowrap flex-align-items-center item-secondline max-w100 no-scroll">
+                <div className="item-subject flex-item-fluid flex flex-nowrap flex-align-items-center">
                     {showIcon && (
                         <span className="flex flex-item-noshrink">
                             <ItemLocation element={element} labelID={labelID} />
@@ -80,7 +87,7 @@ const ItemColumnLayout = ({
 
                     {conversationMode && (
                         <NumMessages
-                            className={classnames(['mr0-25 flex-item-noshrink', unread && 'bold'])}
+                            className={classnames(['mr0-25 flex-item-noshrink', unread && 'text-bold'])}
                             conversation={element}
                         />
                     )}
@@ -88,8 +95,9 @@ const ItemColumnLayout = ({
                     <span
                         role="heading"
                         aria-level={2}
-                        className={classnames(['inbl mw100 ellipsis', unread && 'bold'])}
+                        className={classnames(['inline-block max-w100 text-ellipsis', unread && 'text-bold'])}
                         title={Subject}
+                        data-test-id="message-list:subject"
                     >
                         {Subject}
                     </span>
@@ -103,7 +111,7 @@ const ItemColumnLayout = ({
                         labelID={labelID}
                         maxNumber={breakpoints.isNarrow ? 1 : 5}
                     />
-                    <ItemAttachmentIcon element={element} className="ml0-25 flex-self-vcenter" />
+                    <ItemAttachmentIcon element={element} className="ml0-25 flex-align-self-center" />
                 </div>
             </div>
         </div>

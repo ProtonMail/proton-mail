@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 import { c } from 'ttag';
 import { Icon, Tooltip, classnames, useMailSettings } from 'react-components';
-import { metaKey, shiftKey } from 'proton-shared/lib/helpers/browser';
+import { metaKey, shiftKey, isSafari as checkIsSafari } from 'proton-shared/lib/helpers/browser';
 import { MessageExtended } from '../../models/message';
 
 interface ButtonProps {
@@ -20,6 +20,7 @@ const TitleBarButton = ({ onClick, iconName, className = '', title, disabled = f
                 className={classnames(['composer-title-bar-button flex p0-5', className])}
                 onClick={onClick}
                 disabled={disabled}
+                data-test-id="composer:close-composer"
             >
                 <Icon className="mauto" name={iconName} />
                 <span className="sr-only">{title}</span>
@@ -47,6 +48,8 @@ const ComposerTitleBar = ({
     toggleMaximized,
     onClose,
 }: Props) => {
+    const isSafari = checkIsSafari();
+
     const title = message.data?.Subject || c('Title').t`New message`;
     const [{ Shortcuts } = { Shortcuts: 0 }] = useMailSettings();
 
@@ -58,38 +61,40 @@ const ComposerTitleBar = ({
         toggleMaximized();
     };
 
-    const titleMinimize = Shortcuts ? (
-        <>
-            {minimized ? c('Action').t`Maximize composer` : c('Action').t`Minimize composer`}
-            <br />
-            <kbd className="bg-global-altgrey noborder">{metaKey}</kbd> +{' '}
-            <kbd className="bg-global-altgrey noborder">M</kbd>
-        </>
-    ) : minimized ? (
-        c('Action').t`Maximize composer`
-    ) : (
-        c('Action').t`Minimize composer`
-    );
+    const titleMinimize =
+        Shortcuts && !isSafari ? (
+            <>
+                {minimized ? c('Action').t`Maximize composer` : c('Action').t`Minimize composer`}
+                <br />
+                <kbd className="bg-global-altgrey no-border">{metaKey}</kbd> +{' '}
+                <kbd className="bg-global-altgrey no-border">M</kbd>
+            </>
+        ) : minimized ? (
+            c('Action').t`Maximize composer`
+        ) : (
+            c('Action').t`Minimize composer`
+        );
 
-    const titleMaximize = Shortcuts ? (
-        <>
-            {maximized ? c('Action').t`Contract composer` : c('Action').t`Expand composer`}
-            <br />
-            <kbd className="bg-global-altgrey noborder">{metaKey}</kbd> +{' '}
-            <kbd className="bg-global-altgrey noborder">{shiftKey}</kbd> +{' '}
-            <kbd className="bg-global-altgrey noborder">M</kbd>
-        </>
-    ) : maximized ? (
-        c('Action').t`Contract composer`
-    ) : (
-        c('Action').t`Expand composer`
-    );
+    const titleMaximize =
+        Shortcuts && !isSafari ? (
+            <>
+                {maximized ? c('Action').t`Contract composer` : c('Action').t`Expand composer`}
+                <br />
+                <kbd className="bg-global-altgrey no-border">{metaKey}</kbd> +{' '}
+                <kbd className="bg-global-altgrey no-border">{shiftKey}</kbd> +{' '}
+                <kbd className="bg-global-altgrey no-border">M</kbd>
+            </>
+        ) : maximized ? (
+            c('Action').t`Contract composer`
+        ) : (
+            c('Action').t`Expand composer`
+        );
 
     const titleClose = Shortcuts ? (
         <>
             {c('Action').t`Close composer`}
             <br />
-            <kbd className="bg-global-altgrey noborder">Escape</kbd>
+            <kbd className="bg-global-altgrey no-border">Escape</kbd>
         </>
     ) : (
         c('Action').t`Close composer`
@@ -97,20 +102,20 @@ const ComposerTitleBar = ({
 
     return (
         <header
-            className="composer-title-bar flex flex-row flex-items-center flex-nowrap pl0-5 pr0-5 w100 color-global-light"
+            className="composer-title-bar flex flex-row flex-align-items-center flex-nowrap pl0-5 pr0-5 w100 color-global-light"
             onDoubleClick={handleDoubleClick}
         >
-            <span className="flex-item-fluid p0-5 pr1 ellipsis">{title}</span>
+            <span className="flex-item-fluid p0-5 pr1 text-ellipsis">{title}</span>
             <TitleBarButton
                 iconName="minimize"
-                className={classnames(['nomobile', minimized && 'rotateX-180'])}
+                className={classnames(['no-mobile', minimized && 'rotateX-180'])}
                 title={titleMinimize}
                 onClick={toggleMinimized}
             />
             <TitleBarButton
                 iconName={maximized ? 'contract-window' : 'expand'}
                 title={titleMaximize}
-                className="nomobile"
+                className="no-mobile"
                 onClick={toggleMaximized}
             />
             <TitleBarButton iconName="close" title={titleClose} onClick={onClose} disabled={closing} />

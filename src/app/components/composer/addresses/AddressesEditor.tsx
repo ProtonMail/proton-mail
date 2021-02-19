@@ -23,10 +23,13 @@ interface Props {
     onChange: MessageChange;
     expanded: boolean;
     toggleExpanded: (e: MouseEvent<HTMLButtonElement>) => void;
-    inputFocusRef: MutableRefObject<() => void>;
+    inputFocusRefs: {
+        to: MutableRefObject<() => void>;
+        cc: MutableRefObject<() => void>;
+    };
 }
 
-const AddressesEditor = ({ message, messageSendInfo, onChange, expanded, toggleExpanded, inputFocusRef }: Props) => {
+const AddressesEditor = ({ message, messageSendInfo, onChange, expanded, toggleExpanded, inputFocusRefs }: Props) => {
     const [uid] = useState(generateUID('composer'));
     const { createModal } = useModals();
 
@@ -47,9 +50,9 @@ const AddressesEditor = ({ message, messageSendInfo, onChange, expanded, toggleE
     };
 
     return (
-        <div className="flex flex-column flex-nowrap flex-items-start m0-5 pl0-5 pr0-5">
+        <div className="flex flex-column flex-nowrap flex-align-items-start m0-5 pl0-5 pr0-5">
             <div className={classnames(['flex flex-row w100 relative', expanded && 'mb0-5'])}>
-                <Label htmlFor={`to-${uid}`} className="composer-meta-label bold">
+                <Label htmlFor={`to-${uid}`} className="composer-meta-label text-bold">
                     <Tooltip title={c('Title').t`Add contacts`}>
                         <InlineLinkButton onClick={handleContactModal('ToList')}>{c('Title').t`To`}</InlineLinkButton>
                     </Tooltip>
@@ -59,14 +62,14 @@ const AddressesEditor = ({ message, messageSendInfo, onChange, expanded, toggleE
                     recipients={message.data?.ToList}
                     messageSendInfo={messageSendInfo}
                     onChange={handleChange('ToList')}
-                    inputFocusRef={inputFocusRef}
+                    inputFocusRef={inputFocusRefs.to}
                     placeholder={c('Placeholder').t`Email address`}
                     data-test-id="composer:to"
                     expanded={expanded}
                 />
                 {!expanded && (
                     <LinkButton
-                        className="composer-addresses-ccbcc nodecoration strong"
+                        className="composer-addresses-ccbcc text-no-decoration text-strong"
                         title={c('Action').t`Carbon Copy, Blind Carbon Copy`}
                         onClick={toggleExpanded}
                     >
@@ -79,7 +82,7 @@ const AddressesEditor = ({ message, messageSendInfo, onChange, expanded, toggleE
                     <div className="flex flex-row w100 mb0-5">
                         <Label
                             htmlFor={`cc-${uid}`}
-                            className="composer-meta-label bold"
+                            className="composer-meta-label text-bold"
                             title={c('Label').t`Carbon Copy`}
                         >
                             <Tooltip title={c('Title').t`Add contacts`}>
@@ -95,12 +98,13 @@ const AddressesEditor = ({ message, messageSendInfo, onChange, expanded, toggleE
                             onChange={handleChange('CCList')}
                             placeholder={c('Placeholder').t`Email address`}
                             data-test-id="composer:cc"
+                            inputFocusRef={inputFocusRefs.cc}
                         />
                     </div>
                     <div className="flex flex-row w100">
                         <Label
                             htmlFor={`bcc-${uid}`}
-                            className="composer-meta-label bold"
+                            className="composer-meta-label text-bold"
                             title={c('Label').t`Blind Carbon Copy`}
                         >
                             <Tooltip title={c('Title').t`Add contacts`}>

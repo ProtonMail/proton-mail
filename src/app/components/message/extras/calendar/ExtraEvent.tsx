@@ -26,6 +26,7 @@ import {
     getHasInvitation,
     getInitialInvitationModel,
     getInvitationHasEventID,
+    getIsInvitationFromFuture,
     getIsInvitationOutdated,
     InvitationModel,
     UPDATE_ACTION,
@@ -54,6 +55,7 @@ interface Props {
     invitationOrError: RequireSome<EventInvitation, 'method'> | EventInvitationError;
     calendars: Calendar[];
     canCreateCalendar: boolean;
+    maxUserCalendarsDisabled: boolean;
     defaultCalendar?: Calendar;
     contactEmails: ContactEmail[];
     ownAddresses: Address[];
@@ -66,6 +68,7 @@ const ExtraEvent = ({
     calendars,
     defaultCalendar,
     canCreateCalendar,
+    maxUserCalendarsDisabled,
     contactEmails,
     ownAddresses,
     user,
@@ -81,6 +84,7 @@ const ExtraEvent = ({
             calendar: defaultCalendar,
             hasNoCalendars: calendars.length === 0,
             canCreateCalendar,
+            maxUserCalendarsDisabled,
             isFreeUser,
         })
     );
@@ -104,6 +108,7 @@ const ExtraEvent = ({
                 isFreeUser,
                 hasNoCalendars: calendars.length === 0,
                 canCreateCalendar,
+                maxUserCalendarsDisabled,
             })
         );
     };
@@ -154,6 +159,7 @@ const ExtraEvent = ({
                 singleEditData = singleData;
                 hasDecryptionError = hasDecryptError;
                 const isOutdated = getIsInvitationOutdated({ invitationIcs, invitationApi, isOrganizerMode });
+                const isFromFuture = getIsInvitationFromFuture({ invitationIcs, invitationApi, isOrganizerMode });
                 if (parentInvitation) {
                     parentInvitationApi = parentInvitation;
                 }
@@ -163,7 +169,10 @@ const ExtraEvent = ({
                 if (!unmounted) {
                     setModel({
                         ...model,
+                        invitationApi,
+                        parentInvitationApi,
                         isOutdated,
+                        isFromFuture,
                         calendarData,
                         singleEditData,
                         hasDecryptionError,
@@ -205,6 +214,11 @@ const ExtraEvent = ({
                     updateAction !== UPDATE_ACTION.NONE
                         ? false
                         : getIsInvitationOutdated({ invitationIcs, invitationApi: newInvitationApi, isOrganizerMode });
+                const isFromFuture = getIsInvitationFromFuture({
+                    invitationIcs,
+                    invitationApi: newInvitationApi,
+                    isOrganizerMode,
+                });
                 if (!unmounted) {
                     setModel({
                         ...model,
@@ -213,6 +227,7 @@ const ExtraEvent = ({
                         calendarData,
                         timeStatus: getEventTimeStatus(newInvitationApi.vevent, Date.now()),
                         isOutdated,
+                        isFromFuture,
                         updateAction,
                         hasDecryptionError,
                         isFreeUser,
@@ -258,7 +273,7 @@ const ExtraEvent = ({
                 <span className="pl0-5 pr0-5 flex-item-fluid">{message}</span>
                 {canTryAgain && (
                     <span className="flex-item-noshrink flex">
-                        <InlineLinkButton onClick={handleRetry} className="underline color-currentColor">
+                        <InlineLinkButton onClick={handleRetry} className="text-underline color-currentColor">
                             {c('Action').t`Try again`}
                         </InlineLinkButton>
                     </span>
@@ -273,9 +288,9 @@ const ExtraEvent = ({
 
     return (
         <div className="rounded bordered bg-white-dm mb1 pl1 pr1 pt0-5 pb0-5 scroll-if-needed">
-            <header className="flex flex-nowrap flex-items-center">
+            <header className="flex flex-nowrap flex-align-items-center">
                 <Icon name="calendar" className="mr0-5 flex-item-noshrink" />
-                <strong className="ellipsis flex-item-fluid" title={title}>
+                <strong className="text-ellipsis flex-item-fluid" title={title}>
                     {title}
                 </strong>
             </header>

@@ -91,12 +91,11 @@ const folderReducer = (acc: LabelInfo[], folder: FolderWithSubFolders, level = 0
 };
 
 interface Props {
-    labelID: string;
     keyword?: string;
     isNarrow: boolean;
 }
 
-const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: Props) => {
+const AdvancedSearchDropdown = ({ keyword: fullInput = '', isNarrow }: Props) => {
     const history = useHistory();
     const [uid] = useState(generateUID('advanced-search-dropdown'));
     const [mailSettings, loadingMailSettings] = useMailSettings();
@@ -111,7 +110,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
         if (reset) {
             return UNDEFINED;
         }
-        const value = isNarrow ? keyword : keywordToString(fullInput);
+        const value = isNarrow ? keyword : keywordToString(keyword);
         if (value) {
             return value;
         }
@@ -152,9 +151,8 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
                 );
 
                 return {
-                    ...DEFAULT_MODEL,
-                    keyword: keyword || '',
-                    labelID,
+                    ...DEFAULT_MODEL, // labelID re-initialized to ALL_MAIL
+                    keyword: keyword || fullInput || '',
                     address,
                     attachments,
                     wildcard,
@@ -226,7 +224,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
                 noMaxSize
                 anchorRef={anchorRef}
                 onClose={close}
-                className="dropDown-content--wide"
+                className="dropdown-content--wide"
             >
                 <form
                     name="advanced-search"
@@ -234,7 +232,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
                     onSubmit={handleSubmit}
                     onReset={handleReset}
                 >
-                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                    <div className="mb1 flex flex-nowrap on-mobile-flex-column">
                         <Label className="advancedSearch-label" htmlFor="search-keyword">{c('Label').t`Keyword`}</Label>
                         <Input
                             id="search-keyword"
@@ -243,7 +241,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
                             onChange={({ target }) => updateModel({ ...model, keyword: target.value })}
                         />
                     </div>
-                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                    <div className="mb1 flex flex-nowrap on-mobile-flex-column">
                         <Label className="advancedSearch-label" htmlFor="labelID">{c('Label').t`Location`}</Label>
                         <Select
                             id="labelID"
@@ -252,7 +250,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
                             onChange={({ target }) => updateModel({ ...model, labelID: target.value })}
                         />
                     </div>
-                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                    <div className="mb1 flex flex-nowrap on-mobile-flex-column">
                         <Label className="advancedSearch-label" htmlFor="address">{c('Label').t`Address`}</Label>
                         <Select
                             id="address"
@@ -261,7 +259,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
                             onChange={({ target }) => updateModel({ ...model, address: target.value })}
                         />
                     </div>
-                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                    <div className="mb1 flex flex-nowrap on-mobile-flex-column">
                         <Label title={c('Label').t`Sender`} className="advancedSearch-label" htmlFor="from">{c('Label')
                             .t`From`}</Label>
                         <div className="flex-item-fluid">
@@ -273,7 +271,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
                             />
                         </div>
                     </div>
-                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                    <div className="mb1 flex flex-nowrap on-mobile-flex-column">
                         <Label title={c('Label').t`Recipient`} className="advancedSearch-label" htmlFor="to">{c('Label')
                             .t`To`}</Label>
                         <div className="flex-item-fluid">
@@ -285,7 +283,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
                             />
                         </div>
                     </div>
-                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                    <div className="mb1 flex flex-nowrap on-mobile-flex-column">
                         <Label className="advancedSearch-label" htmlFor="begin-date">{c('Label').t`Between`}</Label>
                         <div className="flex-item-fluid">
                             <DateInput
@@ -299,7 +297,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
                             />
                         </div>
                     </div>
-                    <div className="mb1 flex flex-nowrap onmobile-flex-column">
+                    <div className="mb1 flex flex-nowrap on-mobile-flex-column">
                         <Label className="advancedSearch-label" htmlFor="end-date">{c('Label').t`And`}</Label>
                         <div className="flex-item-fluid">
                             <DateInput
@@ -313,7 +311,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
                             />
                         </div>
                     </div>
-                    <div className="mb2 flex flex-nowrap onmobile-flex-column">
+                    <div className="mb2 flex flex-nowrap on-mobile-flex-column">
                         <Label className="advancedSearch-label" id="advanced-search-attachments-label">{c('Label')
                             .t`Attachments`}</Label>
                         <div className="flex-item-fluid pt0-25">
@@ -342,7 +340,7 @@ const AdvancedSearchDropdown = ({ labelID, keyword: fullInput = '', isNarrow }: 
                             >{c('Attachment radio advanced search').t`No`}</Radio>
                         </div>
                     </div>
-                    <div className="flex flex-spacebetween">
+                    <div className="flex flex-justify-space-between">
                         <Button disabled={!Object.keys(model).length} type="reset">{c('Action').t`Clear`}</Button>
                         <PrimaryButton type="submit">{c('Action').t`Search`}</PrimaryButton>
                     </div>

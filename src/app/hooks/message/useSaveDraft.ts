@@ -1,8 +1,7 @@
 import { Message } from 'proton-shared/lib/interfaces/mail/Message';
 import { useCallback } from 'react';
-import { useApi, useEventManager } from 'react-components';
+import { useApi, useEventManager, useMailSettings } from 'react-components';
 import { deleteMessages } from 'proton-shared/lib/api/messages';
-
 import { MessageExtended, MessageExtendedWithData } from '../../models/message';
 import { useGetMessageKeys } from './useGetMessageKeys';
 import { mergeMessages } from '../../helpers/message/messages';
@@ -85,12 +84,22 @@ export const useSaveDraft = () => {
 
 export const useDeleteDraft = () => {
     const api = useApi();
+    const [mailSettings] = useMailSettings();
     const messageCache = useMessageCache();
     const { call } = useEventManager();
 
-    return useCallback(async (message: MessageExtended) => {
-        await api(deleteMessages([message.data?.ID]));
-        messageCache.delete(message.localID || '');
-        await call();
-    }, []);
+    return useCallback(
+        async (message: MessageExtended) => {
+            await api(
+                deleteMessages(
+                    [message.data?.ID]
+                    // There is an issue in the API, restore that line when fixed
+                    // hasBit(mailSettings?.ShowMoved || 0, SHOW_MOVED.DRAFTS) ? ALL_DRAFTS : DRAFTS
+                )
+            );
+            messageCache.delete(message.localID || '');
+            await call();
+        },
+        [api, messageCache, mailSettings]
+    );
 };

@@ -14,7 +14,7 @@ import {
 } from 'react-components';
 import { OpenPGPKey } from 'pmcrypto';
 import { ContactWithBePinnedPublicKey } from 'proton-shared/lib/interfaces/contacts';
-import { getInitial } from 'proton-shared/lib/helpers/string';
+import { getInitials } from 'proton-shared/lib/helpers/string';
 import { textToClipboard } from 'proton-shared/lib/helpers/browser';
 import { Recipient } from 'proton-shared/lib/interfaces';
 import { MapStatusIcons, StatusIcon } from '../../../models/crypto';
@@ -56,7 +56,7 @@ const RecipientItemSingle = ({
     const { ContactID } = getContactEmail(contactsMap, recipient.Address) || {};
     const icon = globalIcon || (mapStatusIcons ? mapStatusIcons[recipient.Address as string] : undefined);
     const label = getRecipientLabel(recipient, true);
-    const initial = getInitial(label);
+    const initial = getInitials(label);
     const showTrustPublicKey = !!signingPublicKey;
 
     const handleCompose = (event: MouseEvent) => {
@@ -128,29 +128,29 @@ const RecipientItemSingle = ({
                     </button>
                     <Dropdown id={uid} originalPlacement="bottom" isOpen={isOpen} anchorRef={anchorRef} onClose={close}>
                         <DropdownMenu>
-                            <DropdownMenuButton className="alignleft flex flex-nowrap" onClick={handleCompose}>
+                            <DropdownMenuButton className="text-left flex flex-nowrap" onClick={handleCompose}>
                                 <Icon name="email" className="mr0-5 mt0-25" />
                                 <span className="flex-item-fluid mtauto mbauto">{c('Action').t`New message`}</span>
                             </DropdownMenuButton>
-                            <DropdownMenuButton className="alignleft flex flex-nowrap" onClick={handleCopy}>
+                            <DropdownMenuButton className="text-left flex flex-nowrap" onClick={handleCopy}>
                                 <Icon name="copy" className="mr0-5 mt0-25" />
                                 <span className="flex-item-fluid mtauto mbauto">{c('Action').t`Copy address`}</span>
                             </DropdownMenuButton>
                             {ContactID ? (
-                                <DropdownMenuButton className="alignleft flex flex-nowrap" onClick={handleClickContact}>
+                                <DropdownMenuButton className="text-left flex flex-nowrap" onClick={handleClickContact}>
                                     <Icon name="contact" className="mr0-5 mt0-25" />
                                     <span className="flex-item-fluid mtauto mbauto">{c('Action')
                                         .t`View contact details`}</span>
                                 </DropdownMenuButton>
                             ) : (
-                                <DropdownMenuButton className="alignleft flex flex-nowrap" onClick={handleClickContact}>
+                                <DropdownMenuButton className="text-left flex flex-nowrap" onClick={handleClickContact}>
                                     <Icon name="contact-add" className="mr0-5 mt0-25" />
                                     <span className="flex-item-fluid mtauto mbauto">{c('Action')
                                         .t`Create new contact`}</span>
                                 </DropdownMenuButton>
                             )}
                             {showTrustPublicKey && (
-                                <DropdownMenuButton className="alignleft flex flex-nowrap" onClick={handleClickTrust}>
+                                <DropdownMenuButton className="text-left flex flex-nowrap" onClick={handleClickTrust}>
                                     <Icon name="contact" className="mr0-5 mt0-25" />
                                     <span className="flex-item-fluid mtauto mbauto">{c('Action')
                                         .t`Trust Public Key`}</span>

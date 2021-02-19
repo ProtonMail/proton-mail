@@ -1,5 +1,9 @@
 import { ICAL_ATTENDEE_STATUS, ICAL_METHOD } from 'proton-shared/lib/calendar/constants';
-import { createInviteIcs, getParticipantHasAddressID } from 'proton-shared/lib/calendar/integration/invite';
+import {
+    createInviteIcs,
+    generateEmailBody,
+    getParticipantHasAddressID,
+} from 'proton-shared/lib/calendar/integration/invite';
 import { getProdId } from 'proton-shared/lib/calendar/vcalHelper';
 import { wait } from 'proton-shared/lib/helpers/promise';
 import {
@@ -23,6 +27,7 @@ interface Args {
     attendee?: Participant;
     organizer?: Participant;
     subject: string;
+    messageID?: string;
     calendarData?: CalendarWidgetData;
     calendarEvent?: CalendarEvent;
     onEmailSuccess: () => void;
@@ -42,6 +47,7 @@ const useInviteButtons = ({
     attendee,
     organizer,
     subject,
+    messageID,
     calendarData,
     calendarEvent,
     onEmailSuccess,
@@ -88,9 +94,16 @@ const useInviteButtons = ({
                     method: ICAL_METHOD.REPLY,
                     ics,
                     addressID: attendee.addressID,
+                    parentID: messageID,
                     from: { Address: attendee.emailAddress, Name: attendee.name || attendee.emailAddress },
                     to: [{ Address: organizer.emailAddress, Name: organizer.name }],
                     subject,
+                    plainTextBody: generateEmailBody({
+                        method: ICAL_METHOD.REPLY,
+                        vevent,
+                        emailAddress: attendee.emailAddress,
+                        partstat,
+                    }),
                     contactEmailsMap,
                 });
                 onEmailSuccess();

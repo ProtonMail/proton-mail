@@ -105,6 +105,9 @@ const Composer = ({
     // Some behavior has to change, example, stop auto saving
     const [sending, setSending] = useState(false);
 
+    // Indicates that the composer is saving a draft
+    const [saving, setSaving] = useState(false);
+
     // Indicates that the composer is open but the edited message is not yet ready
     // Needed to prevent edition while data is not ready
     const [editorReady, setEditorReady] = useState(false);
@@ -261,6 +264,11 @@ const Composer = ({
     } = useDebouncedHandler(actualSave, 2000);
 
     const handleChange: MessageChange = useHandler((update, shouldReloadSendInfo) => {
+        // On rare occasion, composer can trigger events after sending or closing
+        // We should absolutely avoid calling auto save and can forget about these events
+        if (closing || sending) {
+            return;
+        }
         setModelMessage((modelMessage) => {
             const messageChanges = update instanceof Function ? update(modelMessage) : update;
             const newModelMessage = mergeMessages(modelMessage, messageChanges);
@@ -272,17 +280,26 @@ const Composer = ({
         });
     });
 
-    const handleChangeContent = useHandler((content: string, refreshEditor: boolean = false) => {
-        setModelMessage((modelMessage) => {
-            setContent(modelMessage, content);
-            const newModelMessage = { ...modelMessage };
-            void autoSave(newModelMessage);
-            if (refreshEditor) {
-                editorActionsRef.current?.setContent(newModelMessage);
+    const handleChangeContent = useHandler(
+        (content: string, refreshEditor: boolean = false, silent: boolean = false) => {
+            // On rare occasion, composer can trigger events after sending or closing
+            // We should absolutely avoid calling auto save and can forget about these events
+            if (closing || sending) {
+                return;
             }
-            return newModelMessage;
-        });
-    });
+            setModelMessage((modelMessage) => {
+                setContent(modelMessage, content);
+                const newModelMessage = { ...modelMessage };
+                if (!silent) {
+                    void autoSave(newModelMessage);
+                }
+                if (refreshEditor) {
+                    editorActionsRef.current?.setContent(newModelMessage);
+                }
+                return newModelMessage;
+            });
+        }
+    );
 
     const handleChangeFlag = useHandler((changes: Map<number, boolean>, shouldReloadSendInfo: boolean = false) => {
         handleChange((message) => {
@@ -309,7 +326,7 @@ const Composer = ({
         const actualContent = editorActionsRef.current.getContent();
         const modelContent = getContent(modelMessage);
 
-        if (actualContent !== modelContent) {
+        if (actualContent.trim() !== modelContent.trim()) {
             handleChangeContent(actualContent);
         }
     };
@@ -399,10 +416,12 @@ const Composer = ({
             if (notificationID) {
                 hideNotification(notificationID);
             }
+            setSaving(false);
         }
     });
 
     const handleManualSave = async () => {
+        setSaving(true);
         ensureMessageContent();
         await promiseUploadInProgress.current;
         // Split handlers to have the updated version of the message
@@ -502,6 +521,7 @@ const Composer = ({
         toggleMinimized,
         toggleMaximized,
         lock: lock || !hasRecipients,
+        saving,
     });
 
     return (
@@ -545,14 +565,14 @@ const Composer = ({
                 )}
                 <div
                     className={classnames([
-                        'composer-blur-container flex flex-column flex-item-fluid mw100',
+                        'composer-blur-container flex flex-column flex-item-fluid max-w100',
                         // Only hide the editor not to unload it each time a modal is on top
                         innerModal === ComposerInnerModal.None ? 'flex' : 'hidden',
                     ])}
                 >
                     <div
                         ref={bodyRef}
-                        className="composer-body-container flex flex-column flex-nowrap flex-item-fluid mw100 mt0-5"
+                        className="composer-body-container flex flex-column flex-nowrap flex-item-fluid max-w100 mt0-5"
                     >
                         <ComposerMeta
                             message={modelMessage}

@@ -1,5 +1,5 @@
 import { updatePromptPin } from 'proton-shared/lib/api/mailSettings';
-import { normalizeInternalEmail } from 'proton-shared/lib/helpers/email';
+import { canonizeInternalEmail } from 'proton-shared/lib/helpers/email';
 import { Address, MailSettings } from 'proton-shared/lib/interfaces';
 import { ContactWithBePinnedPublicKey } from 'proton-shared/lib/interfaces/contacts';
 import { Message } from 'proton-shared/lib/interfaces/mail/Message';
@@ -47,7 +47,7 @@ const getPromptKeyPinningType = ({
     addresses,
     senderAddress,
 }: Params): PROMPT_KEY_PINNING_TYPE | undefined => {
-    if (addresses.find(({ Email }) => normalizeInternalEmail(Email) === normalizeInternalEmail(senderAddress))) {
+    if (addresses.find(({ Email }) => canonizeInternalEmail(Email) === canonizeInternalEmail(senderAddress))) {
         // Do not pin keys for own addresses
         return undefined;
     }
@@ -174,7 +174,7 @@ const ExtraPinKey = ({ message, messageVerification }: Props) => {
     return (
         <div
             className={classnames([
-                'rounded bordered-container p0-5 mb0-5 flex flex-nowrap flex-items-center flex-spacebetween',
+                'rounded bordered-container p0-5 mb0-5 flex flex-nowrap flex-align-items-center flex-justify-space-between',
                 bannerColorClassName,
             ])}
         >
@@ -184,7 +184,7 @@ const ExtraPinKey = ({ message, messageVerification }: Props) => {
                     <span className="mr0-5">{getBannerMessage(promptKeyPinningType)}</span>
                     {promptKeyPinningType === PROMPT_KEY_PINNING_TYPE.AUTOPROMPT ? (
                         <InlineLinkButton
-                            className="color-currentColor underline"
+                            className="color-currentColor text-underline"
                             disabled={loadingDisablePromptPin}
                             onClick={() => withLoadingDisablePromptPin(handleDisablePromptPin())}
                         >
@@ -198,7 +198,7 @@ const ExtraPinKey = ({ message, messageVerification }: Props) => {
                     )}
                 </div>
             </div>
-            <span className="flex-items-center flex-item-noshrink">
+            <span className="flex-align-items-center flex-item-noshrink">
                 <Button onClick={handleTrustKey} disabled={loading}>
                     {c('Action').t`Trust key`}
                 </Button>

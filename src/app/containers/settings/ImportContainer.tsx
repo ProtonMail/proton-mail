@@ -1,6 +1,5 @@
 import React from 'react';
 import { c } from 'ttag';
-
 import {
     StartImportSection,
     CurrentImportsSection,
@@ -11,9 +10,11 @@ import {
     AppLink,
 } from 'react-components';
 import { APPS, PERMISSIONS } from 'proton-shared/lib/constants';
+import { getAppName } from 'proton-shared/lib/apps/helper';
 
 import PrivateMainSettingsAreaWithPermissions from '../../components/settings/PrivateMainSettingsAreaWithPermissions';
 
+const calendarAppName = getAppName(APPS.PROTONCALENDAR);
 const { PAID_MAIL } = PERMISSIONS;
 
 export const getImportPage = () => {
@@ -65,19 +66,19 @@ const ImportContainer = ({ setActiveSection, location }: SettingsPropsShared) =>
                         icon: 'contacts',
                         text: c('Info').t`Import your address book or individual contacts into ProtonContacts.`,
                         link: (
-                            <AppLink to="/" toApp={APPS.PROTONCONTACTS} className="pm-button--primary mtauto">
+                            <AppLink to="/" toApp={APPS.PROTONCONTACTS} className="button--primary mtauto">
                                 {c('Action').t`Import contacts`}
                             </AppLink>
                         ),
                     },
                     {
                         icon: 'calendar',
-                        text: c('Info').t`Import your entire calendar or individual events into ProtonCalendar.`,
+                        text: c('Info').t`Import your entire calendar or individual events into ${calendarAppName}.`,
                         link: (
                             <AppLink
                                 to="/settings/calendars"
                                 toApp={APPS.PROTONCALENDAR}
-                                className="pm-button--primary mtauto"
+                                className="button--primary mtauto"
                             >
                                 {c('Action').t`Import calendar`}
                             </AppLink>

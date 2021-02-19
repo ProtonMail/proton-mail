@@ -11,6 +11,7 @@ import {
     DropdownMenu,
     useNotifications,
     ContactModal,
+    useDragOver,
 } from 'react-components';
 import { c } from 'ttag';
 import { noop } from 'proton-shared/lib/helpers/function';
@@ -23,7 +24,6 @@ import { STATUS_ICONS_FILLS } from '../../../models/crypto';
 import EncryptionStatusIcon from '../../message/EncryptionStatusIcon';
 import { useUpdateRecipientSendInfo, MessageSendInfo } from '../../../hooks/useSendInfo';
 import { DRAG_ADDRESS_KEY } from '../../../constants';
-import { useDragOver } from '../../../hooks/useDragOver';
 import { useContactCache } from '../../../containers/ContactProvider';
 
 interface Props {
@@ -160,7 +160,7 @@ const AddressesRecipientItem = ({
         <>
             <div
                 className={classnames([
-                    'composer-addresses-item bordered-container mt0-25 mb0-25 mr0-5 flex flex-nowrap flex-row mw100 stop-propagation',
+                    'composer-addresses-item bordered-container mt0-25 mb0-25 mr0-5 flex flex-nowrap flex-row max-w100 stop-propagation',
                     !valid && 'invalid',
                     cannotSend && 'color-global-warning invalid',
                     dragged && 'composer-addresses-item-dragged',
@@ -183,7 +183,7 @@ const AddressesRecipientItem = ({
                 <Tooltip className="flex" title={title}>
                     <span
                         className={classnames([
-                            'composer-addresses-item-label mtauto mbauto ellipsis pr0-5',
+                            'composer-addresses-item-label mtauto mbauto text-ellipsis pr0-5',
                             icon || loading || !valid ? 'pl0-25' : 'pl0-5',
                         ])}
                         contentEditable={editableMode}
@@ -212,28 +212,28 @@ const AddressesRecipientItem = ({
                 anchorRef={itemRef}
             >
                 <DropdownMenu>
-                    <DropdownMenuButton className="alignleft flex flex-nowrap" onClick={handleCopy}>
+                    <DropdownMenuButton className="text-left flex flex-nowrap" onClick={handleCopy}>
                         <Icon name="copy" className="mr0-5 mt0-25" />
                         <span className="flex-item-fluid mtauto mbauto">{c('Action').t`Copy address`}</span>
                     </DropdownMenuButton>
-                    <DropdownMenuButton className="alignleft flex flex-nowrap" onClick={handleDoubleClick}>
+                    <DropdownMenuButton className="text-left flex flex-nowrap" onClick={handleDoubleClick}>
                         <Icon name="compose" className="mr0-5 mt0-25" />
                         <span className="flex-item-fluid mtauto mbauto">{c('Action').t`Edit address`}</span>
                     </DropdownMenuButton>
                     {ContactID ? (
-                        <DropdownMenuButton className="alignleft flex flex-nowrap" onClick={handleClickContact}>
+                        <DropdownMenuButton className="text-left flex flex-nowrap" onClick={handleClickContact}>
                             <Icon name="contact" className="mr0-5 mt0-25" />
                             <span className="flex-item-fluid mtauto mbauto">{c('Action').t`View contact details`}</span>
                         </DropdownMenuButton>
                     ) : (
-                        <DropdownMenuButton className="alignleft flex flex-nowrap" onClick={handleClickContact}>
+                        <DropdownMenuButton className="text-left flex flex-nowrap" onClick={handleClickContact}>
                             <Icon name="contact-add" className="mr0-5 mt0-25" />
                             <span className="flex-item-fluid mtauto mbauto">{c('Action').t`Create new contact`}</span>
                         </DropdownMenuButton>
                     )}
                     <DropdownMenuButton
-                        className="alignleft flex flex-nowrap"
-                        liClassName="dropDown-item--delete"
+                        className="text-left flex flex-nowrap"
+                        liClassName="dropdown-item--delete"
                         onClick={handleRemove}
                     >
                         <Icon name="delete" className="mr0-5 mt0-25" />

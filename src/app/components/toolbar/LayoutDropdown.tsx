@@ -27,7 +27,7 @@ const LayoutDropdown = ({ mailSettings = {} }: Props) => {
         <ToolbarDropdown
             title={c('Action').t`Change layout`}
             content={
-                <span className="flex flex-items-center">
+                <span className="flex flex-align-items-center" data-test-id="toolbar:layout-dropdown">
                     <Icon className="toolbar-icon" name={currentLayoutIcon} />
                 </span>
             }
@@ -35,18 +35,20 @@ const LayoutDropdown = ({ mailSettings = {} }: Props) => {
             {() => (
                 <DropdownMenu>
                     <DropdownMenuButton
+                        data-test-id="toolbar-layout:column-layout"
                         disabled={ViewLayout === VIEW_LAYOUT.COLUMN}
                         loading={loading}
-                        className="alignleft"
+                        className="text-left"
                         onClick={() => withLoading(updateLayout(VIEW_LAYOUT.COLUMN))}
                     >
                         <Icon name="layout-columns" className="mr0-5" />
                         {c('Action').t`Column layout`}
                     </DropdownMenuButton>
                     <DropdownMenuButton
+                        data-test-id="toolbar-layout:row-layout"
                         disabled={ViewLayout === VIEW_LAYOUT.ROW}
                         loading={loading}
-                        className="alignleft"
+                        className="text-left"
                         onClick={() => withLoading(updateLayout(VIEW_LAYOUT.ROW))}
                     >
                         <Icon name="layout-rows" className="mr0-5" />
