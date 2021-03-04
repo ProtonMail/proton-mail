@@ -30,14 +30,11 @@ export const useVerifyMessage = (localID: string) => {
             let verification;
             let signingPublicKey;
             let attachedPublicKeys;
-            let verificationStatus;
 
             try {
-                encryptionPreferences = await getEncryptionPreferences(
-                    getData().Sender.Address as string,
-                    0,
-                    contactsMap
-                );
+                const senderAddress = getData().Sender.Address;
+
+                encryptionPreferences = await getEncryptionPreferences(senderAddress, 0, contactsMap);
 
                 const messageKeys = await getMessageKeys(getData());
 
@@ -48,18 +45,18 @@ export const useVerifyMessage = (localID: string) => {
                     encryptionPreferences.pinnedKeys
                 );
 
-                const attachedKeys = await extractKeysFromAttachments(
+                attachedPublicKeys = await extractKeysFromAttachments(
                     getData().Attachments,
                     messageKeys,
                     attachmentsCache,
                     api
                 );
-                const autocryptKeys = await extractKeysFromAutocrypt(getData().ParsedHeaders);
+                const autocryptKeys = await extractKeysFromAutocrypt(getData().ParsedHeaders, senderAddress);
 
                 const allSenderPublicKeys = [
                     ...encryptionPreferences.pinnedKeys,
                     ...encryptionPreferences.apiKeys,
-                    ...attachedKeys,
+                    ...attachedPublicKeys,
                     ...autocryptKeys,
                 ];
 
@@ -68,7 +65,6 @@ export const useVerifyMessage = (localID: string) => {
                     signed && verification.signature
                         ? await getMatchingKey(verification.signature, allSenderPublicKeys)
                         : undefined;
-                verificationStatus = verification.verified;
             } catch (error) {
                 errors.signature = [error];
             } finally {
@@ -78,7 +74,7 @@ export const useVerifyMessage = (localID: string) => {
                         signingPublicKey,
                         attachedPublicKeys,
                         senderVerified: encryptionPreferences?.isContactSignatureVerified,
-                        verificationStatus,
+                        verificationStatus: verification?.verified,
                         verificationErrors: verification?.verificationErrors,
                     },
                     errors,

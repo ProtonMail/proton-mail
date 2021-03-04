@@ -104,6 +104,7 @@ export interface MessageExtended {
 
     /**
      * Message signature obtained after decryption, if any
+     * Warning, there could also be a signature in the mime content which is different
      */
     signature?: OpenPGPSignature;
 
@@ -193,6 +194,12 @@ export interface MessageExtended {
      * true when sending message
      */
     sending?: boolean;
+
+    /**
+     * Attachments prepared during the creation of a draft to upload
+     * when the draft will be created
+     */
+    initialAttachments?: File[];
 }
 
 /**
