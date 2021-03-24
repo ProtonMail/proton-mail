@@ -15,7 +15,7 @@
         "i18n:upgrade": "proton-i18n extract --verbose && proton-i18n crowdin -u --verbose",
         "deploy": "proton-bundler --git",
         "deploy:standalone": "proton-bundler --git --appMode=standalone",
-        "test": "jest --runInBand",
+        "test": "jest --runInBand --ci",
         "build": "cross-env NODE_ENV=production proton-pack compile $npm_package_config_publicPathFlag",
         "build:sso": "cross-env NODE_ENV=production proton-pack compile --appMode=sso",
         "build:standalone": "cross-env NODE_ENV=production proton-pack compile --appMode=standalone",

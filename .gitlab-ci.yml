@@ -2,29 +2,3 @@ include:
   - project: 'deploy-app/fe-scripts'
     ref: master
     file: '/jobs/webapp/open-source.gitlab-ci.yaml'
-
-test:
-  script:
-    - 'npm test -- --ci --coverage'
-    - 'cp -r test-report.xml  "${CI_PROJECT_DIR}/test-report.xml"'
-    - 'cp -r coverage  "${CI_PROJECT_DIR}/coverage"'
-  artifacts:
-    when: always
-    paths:
-      - coverage
-    reports:
-      junit: 'test-report.xml'
-      cobertura: 'coverage/cobertura-coverage.xml'
-
-pages:
-  stage: bot
-  needs: 
-    - job: test
-      artifacts: true
-  script:
-    - mv coverage public
-  artifacts:
-    paths:
-      - public
-  only:
-    - develop
