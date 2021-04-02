@@ -4,9 +4,11 @@ import { Element } from '../../../models/element';
 import { Sort } from '../../../models/tools';
 import { clearAll, api, addApiMock } from '../../../helpers/test/helper';
 import { ELEMENTS_CACHE_REQUEST_SIZE, PAGE_SIZE } from '../../../constants';
-import { getElements, labelID, setup } from './Mailbox.test.helpers';
+import { getElements, props, setup } from './Mailbox.test.helpers';
 
 describe('Mailbox element list', () => {
+    const { labelID } = props;
+
     const element1 = {
         ID: 'id1',
         Labels: [{ ID: labelID, ContextTime: 1 }],
@@ -44,7 +46,7 @@ describe('Mailbox element list', () => {
         it('should filter message with the right label', async () => {
             const { getAllByTestId } = await setup({
                 page: 0,
-                total: 2,
+                totalConversations: 2,
                 conversations: [element1, element2, element3],
             });
             const items = getAllByTestId('item');
@@ -54,7 +56,11 @@ describe('Mailbox element list', () => {
 
         it('should limit to the page size', async () => {
             const total = PAGE_SIZE + 5;
-            const { getAllByTestId } = await setup({ conversations: getElements(total), page: 0, total });
+            const { getAllByTestId } = await setup({
+                conversations: getElements(total),
+                page: 0,
+                totalConversations: total,
+            });
             const items = getAllByTestId('item');
 
             expect(items.length).toBe(PAGE_SIZE);
@@ -66,7 +72,7 @@ describe('Mailbox element list', () => {
             const total = PAGE_SIZE + 2;
             const conversations = getElements(total);
 
-            const { rerender, getAllByTestId } = await setup({ conversations, total, page: page1 });
+            const { rerender, getAllByTestId } = await setup({ conversations, totalConversations: total, page: page1 });
             let items = getAllByTestId('item');
             expect(items.length).toBe(PAGE_SIZE);
 
@@ -110,7 +116,11 @@ describe('Mailbox element list', () => {
                 signal: new AbortController().signal,
             };
 
-            const { getAllByTestId } = await setup({ conversations: getElements(PAGE_SIZE), page, total });
+            const { getAllByTestId } = await setup({
+                conversations: getElements(PAGE_SIZE),
+                page,
+                totalConversations: total,
+            });
 
             expect(api).toHaveBeenCalledWith(expectedRequest);
 
@@ -123,7 +133,7 @@ describe('Mailbox element list', () => {
         it('should only show unread conversations if filter is on', async () => {
             const conversations = [element1, element2, element3];
 
-            const { getAllByTestId } = await setup({ conversations, filter: { Unread: 1 } });
+            const { getAllByTestId } = await setup({ conversations, filter: { Unread: 1 }, totalConversations: 2 });
             const items = getAllByTestId('item');
 
             expect(items.length).toBe(2);
@@ -138,7 +148,11 @@ describe('Mailbox element list', () => {
                 LabelIDs: [labelID],
             };
 
-            const { rerender, getAllByTestId } = await setup({ conversations, filter: { Unread: 1 } });
+            const { rerender, getAllByTestId } = await setup({
+                conversations,
+                filter: { Unread: 1 },
+                totalConversations: 2,
+            });
 
             // A bit complex but the point is to simulate opening the conversation
             addApiMock(`mail/v4/conversations/${element1.ID}`, () => ({

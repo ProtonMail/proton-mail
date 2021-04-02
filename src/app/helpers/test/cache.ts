@@ -5,7 +5,8 @@ import { Address, DecryptedKey, Key } from 'proton-shared/lib/interfaces';
 import { ADDRESS_STATUS } from 'proton-shared/lib/constants';
 import { MessageExtended } from '../../models/message';
 import { ConversationResult } from '../../hooks/conversation/useConversation';
-import { ELEMENTS_CACHE_KEY } from '../../hooks/mailbox/useElementsCache';
+import { ElementsCache, ELEMENTS_CACHE_KEY } from '../../hooks/mailbox/useElementsCache';
+import { Base64Cache } from '../../hooks/useBase64Cache';
 
 export interface ResolvedRequest<T> {
     status: STATUS;
@@ -25,15 +26,22 @@ export const messageCache = createCache<string, MessageExtended>();
 export const conversationCache = createCache<string, ConversationResult>();
 export const attachmentsCache = createCache<string, DecryptResultPmcrypto>();
 export const addressKeysCache = createCache<string, { status: number; value: Partial<DecryptedKey>[] }>();
+export const base64Cache = createCache<string, string>() as Base64Cache;
 
-export const elementsCache = {
+export const elementsCache: ElementsCache = {
+    beforeFirstLoad: true,
+    invalidated: false,
+    pendingRequest: false,
     elements: {},
-    params: { sort: {} },
+    params: { labelID: '', sort: { sort: 'Time', desc: true }, filter: {} },
     pages: [],
-    page: {},
+    page: 0,
+    total: 0,
     updatedElements: [],
     bypassFilter: [],
+    retry: { payload: undefined, count: 0, error: undefined },
 };
+
 export const contactCache = {
     contactsMap: {} as { [email: string]: any },
     contactsMapWithDuplicates: {} as { [email: string]: any[] },

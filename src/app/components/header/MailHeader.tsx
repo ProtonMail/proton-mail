@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useRef, useState, useEffect, memo } from 'react';
 import { c } from 'ttag';
 import { Location, History } from 'history';
 import {
@@ -8,9 +8,10 @@ import {
     PrivateHeader,
     FloatingButton,
     MainLogo,
-    SettingsButton,
-    SupportDropdown,
-    ContactsWidget,
+    TopNavbarListItemSettingsButton,
+    TopNavbarListItemHelpDropdown,
+    TopNavbarListItemContactsDropdown,
+    Icon,
 } from 'react-components';
 import { MAILBOX_LABEL_IDS, APPS } from 'proton-shared/lib/constants';
 import { Recipient } from 'proton-shared/lib/interfaces';
@@ -48,7 +49,7 @@ const MailHeader = ({
 }: Props) => {
     const { keyword = '' } = extractSearchParameters(location);
     const [value, updateValue] = useState(keyword);
-    const [oldLabelID, setOldLabelID] = useState<string>(MAILBOX_LABEL_IDS.INBOX);
+    const oldLabelIDRef = useRef<string>(MAILBOX_LABEL_IDS.INBOX);
     const [labels = []] = useLabels();
     const [folders = []] = useFolders();
 
@@ -63,9 +64,9 @@ const MailHeader = ({
             placeholder={c('Placeholder').t`Search messages`}
             onSearch={(keyword) => {
                 if (keyword) {
-                    setOldLabelID(labelID);
+                    oldLabelIDRef.current = labelID;
                 }
-                onSearch(keyword, keyword ? undefined : oldLabelID);
+                onSearch(keyword, keyword ? undefined : oldLabelIDRef.current);
             }}
             onChange={updateValue}
             value={value}
@@ -90,16 +91,20 @@ const MailHeader = ({
             logo={logo}
             backUrl={showBackButton && backUrl ? backUrl : undefined}
             title={labelName}
-            settingsButton={<SettingsButton to="/settings/overview" toApp={APPS.PROTONMAIL} target="_self" />}
-            contactsButton={<ContactsWidget onCompose={handleContactsCompose} />}
+            settingsButton={
+                <TopNavbarListItemSettingsButton to="/settings/overview" toApp={APPS.PROTONMAIL} target="_self" />
+            }
+            contactsButton={<TopNavbarListItemContactsDropdown onCompose={handleContactsCompose} />}
             searchBox={searchBox}
             searchDropdown={searchDropdown}
             expanded={!!expanded}
             onToggleExpand={onToggleExpand}
             isNarrow={breakpoints.isNarrow}
-            supportDropdown={<SupportDropdown onOpenShortcutsModal={onOpenShortcutsModal} />}
+            helpDropdown={<TopNavbarListItemHelpDropdown onOpenShortcutsModal={onOpenShortcutsModal} />}
             floatingButton={
-                <FloatingButton onClick={() => onCompose({ action: MESSAGE_ACTIONS.NEW })} icon="compose" />
+                <FloatingButton onClick={() => onCompose({ action: MESSAGE_ACTIONS.NEW })}>
+                    <Icon size={24} name="compose" className="mauto" />
+                </FloatingButton>
             }
         />
     );

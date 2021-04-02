@@ -3,15 +3,15 @@ import { c } from 'ttag';
 import {
     LabelModal,
     SearchInput,
-    Icon,
     useFolders,
     useModals,
-    PrimaryButton,
     Mark,
     Tooltip,
     useLoading,
     generateUID,
     FolderIcon,
+    Icon,
+    Button,
 } from 'react-components';
 import { MAILBOX_LABEL_IDS, LABEL_COLORS, ROOT_FOLDER, LABEL_TYPE } from 'proton-shared/lib/constants';
 import { normalize } from 'proton-shared/lib/helpers/string';
@@ -125,6 +125,7 @@ const MoveDropdown = ({ selectedIDs, labelID, conversationMode, onClose, onLock,
 
     // The dropdown is several times in the view, native html ids has to be different each time
     const searchInputID = `${uid}-search`;
+    const folderButtonID = (ID: string) => `${uid}-${ID}`;
     const autoFocusSearch = !breakpoints.isNarrow;
 
     return (
@@ -134,9 +135,15 @@ const MoveDropdown = ({ selectedIDs, labelID, conversationMode, onClose, onLock,
                     {c('Label').t`Move to`}
                 </span>
                 <Tooltip title={c('Title').t`Create folder`}>
-                    <PrimaryButton className="button--small button--for-smallicon" onClick={handleCreate}>
-                        <Icon name="folder" className="flex-item-noshrink mr0-25" />+
-                    </PrimaryButton>
+                    <Button
+                        icon
+                        color="norm"
+                        size="small"
+                        onClick={handleCreate}
+                        className="flex flex-align-items-center"
+                    >
+                        <Icon name="folder" /> +
+                    </Button>
                 </Tooltip>
             </div>
             <div className="m1 mb0">
@@ -148,12 +155,16 @@ const MoveDropdown = ({ selectedIDs, labelID, conversationMode, onClose, onLock,
                     autoFocus={autoFocusSearch}
                 />
             </div>
-            <div className="scroll-if-needed customScrollBar-container scroll-smooth-touch mt1 move-dropdown-list-container">
+            <div
+                className="scroll-if-needed customScrollBar-container scroll-smooth-touch mt1 move-dropdown-list-container"
+                data-testid="move-dropdown-list"
+            >
                 <ul className="unstyled mt0 mb0">
                     {list.map((folder: FolderItem) => {
                         return (
                             <li key={folder.ID} className="dropdown-item">
                                 <button
+                                    id={folderButtonID(folder.ID)}
                                     data-level={folder.level}
                                     type="button"
                                     disabled={loading}

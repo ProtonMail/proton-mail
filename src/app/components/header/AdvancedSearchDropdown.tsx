@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent, RefObject } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 import { useHistory } from 'react-router-dom';
 import { c } from 'ttag';
 import { getUnixTime, fromUnixTime, isBefore, isAfter } from 'date-fns';
@@ -7,6 +7,7 @@ import {
     generateUID,
     usePopperAnchor,
     DropdownButton,
+    TopNavbarListItemSearchButton,
     Dropdown,
     Icon,
     DateInput,
@@ -58,7 +59,7 @@ const AUTO_WILDCARD = undefined;
 const ALL_ADDRESSES = 'all';
 const NO_ATTACHMENTS = 0;
 const WITH_ATTACHMENTS = 1;
-const { INBOX, TRASH, SPAM, ARCHIVE, ALL_MAIL, ALL_SENT, SENT, ALL_DRAFTS, DRAFTS } = MAILBOX_LABEL_IDS;
+const { INBOX, TRASH, SPAM, STARRED, ARCHIVE, ALL_MAIL, ALL_SENT, SENT, ALL_DRAFTS, DRAFTS } = MAILBOX_LABEL_IDS;
 const DEFAULT_MODEL: SearchModel = {
     keyword: '',
     labelID: ALL_MAIL,
@@ -99,7 +100,7 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', isNarrow }: Props) =>
     const history = useHistory();
     const [uid] = useState(generateUID('advanced-search-dropdown'));
     const [mailSettings, loadingMailSettings] = useMailSettings();
-    const { anchorRef, isOpen, toggle, close } = usePopperAnchor();
+    const { anchorRef, isOpen, toggle, close } = usePopperAnchor<HTMLButtonElement>();
     const [labels = [], loadingLabels] = useLabels();
     const [folders, loadingFolders] = useFolders();
     const [addresses, loadingAddresses] = useAddresses();
@@ -182,6 +183,7 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', isNarrow }: Props) =>
             text: c('Mailbox').t`Sent`,
             group: c('Group').t`Default folders`,
         },
+        { value: STARRED, text: c('Mailbox').t`Starred`, group: c('Group').t`Default folders` },
         { value: ARCHIVE, text: c('Mailbox').t`Archive`, group: c('Group').t`Default folders` },
         { value: SPAM, text: c('Mailbox').t`Spam`, group: c('Group').t`Default folders` },
         { value: TRASH, text: c('Mailbox').t`Trash`, group: c('Group').t`Default folders` },
@@ -196,23 +198,21 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', isNarrow }: Props) =>
     return (
         <>
             <DropdownButton
-                className={classnames([isNarrow ? 'topnav-link' : 'searchbox-advanced-search-button color-white'])}
-                buttonRef={anchorRef as RefObject<HTMLButtonElement>}
+                as={isNarrow ? TopNavbarListItemSearchButton : 'button'}
+                type="button"
+                className={classnames([isNarrow ? undefined : 'searchbox-advanced-search-button flex'])}
+                ref={anchorRef}
                 isOpen={isOpen}
                 onClick={toggle}
                 hasCaret={false}
                 disabled={loading}
             >
-                {isNarrow ? (
-                    <Icon name="search" className={classnames(['topnav-icon'])} />
-                ) : (
-                    <>
-                        <Icon
-                            name="caret"
-                            className={classnames(['searchbox-advanced-search-icon', isOpen && 'rotateX-180'])}
-                        />
-                        <span className="sr-only">{c('Action').t`Advanced search`}</span>
-                    </>
+                {isNarrow ? undefined : (
+                    <Icon
+                        name="caret"
+                        className={classnames(['searchbox-advanced-search-icon mauto', isOpen && 'rotateX-180'])}
+                        alt={c('Action').t`Advanced search`}
+                    />
                 )}
             </DropdownButton>
             <Dropdown
@@ -314,14 +314,14 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', isNarrow }: Props) =>
                     <div className="mb2 flex flex-nowrap on-mobile-flex-column">
                         <Label className="advancedSearch-label" id="advanced-search-attachments-label">{c('Label')
                             .t`Attachments`}</Label>
-                        <div className="flex-item-fluid pt0-25">
+                        <div className="flex-item-fluid pt0-5">
                             <Radio
                                 id="advanced-search-attachments-all"
                                 onChange={() => updateModel({ ...model, attachments: UNDEFINED })}
                                 checked={model.attachments === UNDEFINED}
                                 name="advanced-search-attachments"
                                 aria-describedby="advanced-search-attachments-label"
-                                className="mr1"
+                                className="inline-flex mr1"
                             >{c('Attachment radio advanced search').t`All`}</Radio>
                             <Radio
                                 id="advanced-search-attachments-yes"
@@ -329,7 +329,7 @@ const AdvancedSearchDropdown = ({ keyword: fullInput = '', isNarrow }: Props) =>
                                 checked={model.attachments === WITH_ATTACHMENTS}
                                 name="advanced-search-attachments"
                                 aria-describedby="advanced-search-attachments-label"
-                                className="mr1"
+                                className="inline-flex mr1"
                             >{c('Attachment radio advanced search').t`Yes`}</Radio>
                             <Radio
                                 id="advanced-search-attachments-no"

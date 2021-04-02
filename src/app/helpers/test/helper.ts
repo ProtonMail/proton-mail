@@ -1,11 +1,21 @@
 import { act } from '@testing-library/react';
 import { waitFor } from '@testing-library/dom';
 import { ELEMENTS_CACHE_KEY } from '../../hooks/mailbox/useElementsCache';
-import { clearCache, messageCache, conversationCache, cache, attachmentsCache, addressKeysCache } from './cache';
+import {
+    clearCache,
+    messageCache,
+    conversationCache,
+    cache,
+    attachmentsCache,
+    addressKeysCache,
+    base64Cache,
+} from './cache';
 import { api, clearApiMocks } from './api';
 import { eventManagerListeners } from './event-manager';
 import { clearApiKeys } from './crypto';
 import { clearApiContacts } from './contact';
+
+window.HTMLElement.prototype.scrollIntoView = jest.fn();
 
 export * from './cache';
 export * from './crypto';
@@ -25,6 +35,7 @@ export const clearAll = () => {
     conversationCache.clear();
     attachmentsCache.clear();
     addressKeysCache.clear();
+    base64Cache.clear();
     cache.delete(ELEMENTS_CACHE_KEY);
     eventManagerListeners.splice(0, eventManagerListeners.length);
 };

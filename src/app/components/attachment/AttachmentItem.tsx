@@ -1,7 +1,7 @@
 import { Attachment } from 'proton-shared/lib/interfaces/mail/Message';
 import React, { useState, useEffect } from 'react';
 import { c } from 'ttag';
-import { Icon, classnames, useLoading, FileIcon, useIsMounted } from 'react-components';
+import { Icon, classnames, useLoading, FileIcon, useIsMounted, CircleLoader } from 'react-components';
 import humanSize from 'proton-shared/lib/helpers/humanSize';
 import { VERIFICATION_STATUS } from 'proton-shared/lib/mail/constants';
 import { PendingUpload } from '../../hooks/composer/useAttachments';
@@ -82,11 +82,12 @@ const AttachmentItem = ({
     }, []);
 
     const name = attachment ? attachment.Name || '' : pendingUpload?.file.name || '';
-    const blue = '#657ee4';
     const value = Math.round(progression * 100);
     const progressionHappening = progression !== 0;
     const backgroundImage =
-        progression === 0 ? 'none' : `linear-gradient(to right, ${blue} 0%,  ${blue} ${value}%, transparent ${value}%)`;
+        progression === 0
+            ? 'none'
+            : `linear-gradient(to right, var(--signal-info) 0%, var(--signal-info) ${value}%, transparent ${value}%)`;
     const humanAttachmentSize = progressionHappening === false ? `(${humanSize(attachment?.Size)})` : ``;
 
     const primaryTitle = `${name} ${humanAttachmentSize}${getSenderVerificationString(attachmentVerified)}`;
@@ -117,12 +118,12 @@ const AttachmentItem = ({
             <div
                 style={{ backgroundImage }}
                 className={classnames([
-                    'message-attachmentList-item flex bordered-container flex-nowrap pm_button p0',
+                    'message-attachmentList-item flex bordered flex-nowrap pm_button p0',
                     progressionHappening && 'message-attachmentList-item--uploadInProgress',
                     loading && 'message-attachmentList-item--loading',
                 ])}
             >
-                <span className="relative flex flex-item-fluid message-attachmentPrimaryAction">
+                <span className="relative flex flex-item-fluid message-attachmentPrimaryAction interactive">
                     <button
                         className="pl0-5 pt0-5 pb0-5 flex flex-item-noshrink message-attachmentTypeIcon"
                         type="button"
@@ -148,13 +149,20 @@ const AttachmentItem = ({
                 {showSecondaryAction && (
                     <button
                         type="button"
-                        className="inline-flex p0-5 no-pointer-events-children flex-item-noshrink border-left message-attachmentSecondaryAction"
+                        className="inline-flex p0-5 no-pointer-events-children flex-item-noshrink border-left message-attachmentSecondaryAction interactive"
                         onClick={handleAction(false)}
                         title={secondaryActionTitle}
                         disabled={loading}
+                        aria-busy={loading}
                     >
-                        <Icon name={secondaryActionIcon} aria-busy={loading} className="mauto" />
-                        <span className="sr-only">{secondaryActionTitle}</span>
+                        {loading ? (
+                            <CircleLoader className="icon-16p mauto" />
+                        ) : (
+                            <>
+                                <Icon name={secondaryActionIcon} className="mauto" />
+                                <span className="sr-only">{secondaryActionTitle}</span>
+                            </>
+                        )}
                     </button>
                 )}
             </div>

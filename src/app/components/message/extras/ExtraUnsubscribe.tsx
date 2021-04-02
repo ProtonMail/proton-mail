@@ -25,9 +25,10 @@ import { oneClickUnsubscribe, markAsUnsubscribed } from 'proton-shared/lib/api/m
 
 import { MessageExtended, PartialMessageExtended, MessageExtendedWithData } from '../../../models/message';
 import { useMessage } from '../../../hooks/message/useMessage';
-import { useSendMessage, useSendVerifications } from '../../../hooks/composer/useSendMessage';
+import { useSendMessage } from '../../../hooks/composer/useSendMessage';
 import { findSender } from '../../../helpers/addresses';
 import { OnCompose } from '../../../hooks/composer/useCompose';
+import { useSendVerifications } from '../../../hooks/composer/useSendVerifications';
 
 interface Props {
     message: MessageExtended;
@@ -106,7 +107,7 @@ const ExtraUnsubscribe = ({ message, onCompose }: Props) => {
                             <Label className="cursor-default">
                                 <span className="mr0-5">{c('Info').t`Recipient: `}</span>
                             </Label>
-                            <Field className="bordered-container bg-global-muted-dm">
+                            <Field className="bordered bg-weak">
                                 <div className="pl1 pr1 pt0-5 pb0-5 text-ellipsis" title={toEmails}>
                                     {toEmails}
                                 </div>
@@ -116,7 +117,7 @@ const ExtraUnsubscribe = ({ message, onCompose }: Props) => {
                             <Label className="cursor-default">
                                 <span className="mr0-5">{c('Info').t`Subject: `}</span>
                             </Label>
-                            <Field className="bordered-container bg-global-muted-dm">
+                            <Field className="bordered bg-weak">
                                 <div className="pl1 pr1 pt0-5 pb0-5 text-ellipsis" title={Subject}>
                                     {Subject}
                                 </div>
@@ -126,7 +127,7 @@ const ExtraUnsubscribe = ({ message, onCompose }: Props) => {
                             <Label className="cursor-default">
                                 <span className="mr0-5">{c('Info').t`Body: `}</span>
                             </Label>
-                            <Field className="bordered-container bg-global-muted-dm">
+                            <Field className="bordered bg-weak">
                                 <div className="pl1 pr1 pt0-5 pb0-5 text-ellipsis" title={Body}>
                                     {Body}
                                 </div>
@@ -176,7 +177,7 @@ const ExtraUnsubscribe = ({ message, onCompose }: Props) => {
                             <Label className="cursor-default">
                                 <span className="mr0-5">{c('Info').t`URL: `}</span>
                             </Label>
-                            <Field className="bordered-container bg-global-muted-dm">
+                            <Field className="bordered bg-weak">
                                 <div
                                     className="pl1 pr1 pt0-5 pb0-5 text-ellipsis"
                                     title={unsubscribeMethods.HttpClient}
@@ -196,7 +197,7 @@ const ExtraUnsubscribe = ({ message, onCompose }: Props) => {
     };
 
     return (
-        <div className="bg-white-dm rounded bordered-container p0-5 mb0-5 flex flex-nowrap">
+        <div className="bg-norm rounded bordered p0-5 mb0-5 flex flex-nowrap">
             <Icon name="email" className="flex-item-noshrink mtauto mbauto" />
             <span className="pl0-5 pr0-5 flex-item-fluid">
                 <span className="mr0-25">{c('Info').t`This message is from a mailing list.`}</span>

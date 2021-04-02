@@ -1,6 +1,6 @@
 import { ICAL_METHOD } from 'proton-shared/lib/calendar/constants';
 import { getDisplayTitle } from 'proton-shared/lib/calendar/helper';
-import { Address, UserModel, UserSettings } from 'proton-shared/lib/interfaces';
+import { Address, UserSettings } from 'proton-shared/lib/interfaces';
 import { Calendar } from 'proton-shared/lib/interfaces/calendar';
 import { ContactEmail } from 'proton-shared/lib/interfaces/contacts';
 import { RequireSome } from 'proton-shared/lib/interfaces/utils';
@@ -56,10 +56,10 @@ interface Props {
     calendars: Calendar[];
     canCreateCalendar: boolean;
     maxUserCalendarsDisabled: boolean;
+    mustReactivateCalendars: boolean;
     defaultCalendar?: Calendar;
     contactEmails: ContactEmail[];
     ownAddresses: Address[];
-    user: UserModel;
     userSettings: UserSettings;
 }
 const ExtraEvent = ({
@@ -69,12 +69,11 @@ const ExtraEvent = ({
     defaultCalendar,
     canCreateCalendar,
     maxUserCalendarsDisabled,
+    mustReactivateCalendars,
     contactEmails,
     ownAddresses,
-    user,
     userSettings,
 }: Props) => {
-    const isFreeUser = user.isFree;
     const [model, setModel] = useState<InvitationModel>(() =>
         getInitialInvitationModel({
             invitationOrError,
@@ -85,7 +84,7 @@ const ExtraEvent = ({
             hasNoCalendars: calendars.length === 0,
             canCreateCalendar,
             maxUserCalendarsDisabled,
-            isFreeUser,
+            mustReactivateCalendars,
         })
     );
     const [loading, withLoading] = useLoading(true);
@@ -105,15 +104,15 @@ const ExtraEvent = ({
                 contactEmails,
                 ownAddresses,
                 calendar: defaultCalendar,
-                isFreeUser,
                 hasNoCalendars: calendars.length === 0,
                 canCreateCalendar,
                 maxUserCalendarsDisabled,
+                mustReactivateCalendars,
             })
         );
     };
 
-    const { isOrganizerMode, invitationIcs, isPartyCrasher: isPartyCrasherIcs } = model;
+    const { isOrganizerMode, invitationIcs, isPartyCrasher: isPartyCrasherIcs, pmData } = model;
     const method = model.invitationIcs?.method;
     const displayVevent =
         method && [DECLINECOUNTER, REPLY].includes(method) && model.invitationApi?.vevent
@@ -152,7 +151,6 @@ const ExtraEvent = ({
                     message,
                     contactEmails,
                     ownAddresses,
-                    isFreeUser,
                 });
                 invitationApi = invitation;
                 calendarData = calData;
@@ -176,7 +174,6 @@ const ExtraEvent = ({
                         calendarData,
                         singleEditData,
                         hasDecryptionError,
-                        isFreeUser,
                         isPartyCrasher,
                     });
                 }
@@ -204,6 +201,7 @@ const ExtraEvent = ({
                     getCanonicalEmails,
                     calendarData,
                     singleEditData,
+                    pmData,
                     message,
                     contactEmails,
                     ownAddresses,
@@ -225,12 +223,12 @@ const ExtraEvent = ({
                         invitationApi: newInvitationApi,
                         parentInvitationApi,
                         calendarData,
+                        singleEditData,
                         timeStatus: getEventTimeStatus(newInvitationApi.vevent, Date.now()),
                         isOutdated,
                         isFromFuture,
                         updateAction,
                         hasDecryptionError,
-                        isFreeUser,
                         isPartyCrasher,
                     });
                 }
@@ -255,7 +253,7 @@ const ExtraEvent = ({
 
     if (loading) {
         return (
-            <div className="rounded bordered bg-white-dm mb1 pl1 pr1 pt0-5 pb0-5">
+            <div className="rounded bordered bg-norm mb1 pl1 pr1 pt0-5 pb0-5">
                 <Loader />
             </div>
         );
@@ -268,12 +266,12 @@ const ExtraEvent = ({
         );
 
         return (
-            <div className="bg-global-warning color-white rounded p0-5 mb0-5 flex flex-nowrap">
+            <div className="bg-danger rounded p0-5 mb0-5 flex flex-nowrap">
                 <Icon name="attention" className="flex-item-noshrink mtauto mbauto" />
                 <span className="pl0-5 pr0-5 flex-item-fluid">{message}</span>
                 {canTryAgain && (
                     <span className="flex-item-noshrink flex">
-                        <InlineLinkButton onClick={handleRetry} className="text-underline color-currentColor">
+                        <InlineLinkButton onClick={handleRetry} className="text-underline color-inherit">
                             {c('Action').t`Try again`}
                         </InlineLinkButton>
                     </span>
@@ -287,7 +285,7 @@ const ExtraEvent = ({
     }
 
     return (
-        <div className="rounded bordered bg-white-dm mb1 pl1 pr1 pt0-5 pb0-5 scroll-if-needed">
+        <div className="rounded bordered bg-norm mb1 pl1 pr1 pt0-5 pb0-5 scroll-if-needed">
             <header className="flex flex-nowrap flex-align-items-center">
                 <Icon name="calendar" className="mr0-5 flex-item-noshrink" />
                 <strong className="text-ellipsis flex-item-fluid" title={title}>

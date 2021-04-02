@@ -41,6 +41,8 @@ import {
     getIsTimezoneComponent,
     getIsValidMethod,
     getIsXOrIanaComponent,
+    getPmSharedEventID,
+    getPmSharedSessionKey,
     getPropertyTzid,
     getSequence,
 } from 'proton-shared/lib/calendar/vcalHelper';
@@ -56,9 +58,10 @@ import { Address } from 'proton-shared/lib/interfaces';
 import {
     Calendar,
     CalendarEvent,
+    CalendarEventWithMetadata,
     CalendarWidgetData,
     Participant,
-    SingleEditWidgetData,
+    PmInviteData,
 } from 'proton-shared/lib/interfaces/calendar';
 import {
     VcalDateOrDateTimeProperty,
@@ -110,11 +113,11 @@ export enum UPDATE_ACTION {
 export interface InvitationModel {
     isOrganizerMode: boolean;
     timeStatus: EVENT_TIME_STATUS;
-    isFreeUser: boolean;
     isPartyCrasher?: boolean;
     isAddressDisabled: boolean;
     canCreateCalendar: boolean;
     maxUserCalendarsDisabled: boolean;
+    mustReactivateCalendars: boolean;
     hasNoCalendars: boolean;
     isOutdated?: boolean;
     isFromFuture?: boolean;
@@ -122,7 +125,8 @@ export interface InvitationModel {
     hideSummary?: boolean;
     hideLink?: boolean;
     calendarData?: CalendarWidgetData;
-    singleEditData?: SingleEditWidgetData;
+    singleEditData?: CalendarEventWithMetadata[];
+    pmData?: PmInviteData;
     invitationIcs?: RequireSome<EventInvitation, 'method'>;
     invitationApi?: RequireSome<EventInvitation, 'calendarEvent'>;
     parentInvitationApi?: RequireSome<EventInvitation, 'calendarEvent'>;
@@ -192,10 +196,7 @@ export const getSingleEditWidgetData = ({
     otherEvents,
     otherParentEvents,
 }: Unwrap<ReturnType<FetchAllEventsByUID>>) => {
-    const singleEdits = (otherParentEvents || otherEvents).filter(({ RecurrenceID }) => !!RecurrenceID);
-    return {
-        ids: singleEdits.map(({ ID }) => ID),
-    };
+    return (otherParentEvents || otherEvents).filter(({ RecurrenceID }) => !!RecurrenceID);
 };
 
 export const getIsInvitationOutdated = ({
@@ -405,10 +406,10 @@ interface GetInitialInvitationModelArgs {
     contactEmails: ContactEmail[];
     ownAddresses: Address[];
     calendar?: Calendar;
-    isFreeUser: boolean;
     hasNoCalendars: boolean;
     canCreateCalendar: boolean;
     maxUserCalendarsDisabled: boolean;
+    mustReactivateCalendars: boolean;
 }
 export const getInitialInvitationModel = ({
     invitationOrError,
@@ -416,18 +417,18 @@ export const getInitialInvitationModel = ({
     contactEmails,
     ownAddresses,
     calendar,
-    isFreeUser,
     hasNoCalendars,
     canCreateCalendar,
     maxUserCalendarsDisabled,
+    mustReactivateCalendars,
 }: GetInitialInvitationModelArgs) => {
     if (invitationOrError instanceof EventInvitationError) {
         return {
             isOrganizerMode: false,
             isAddressDisabled: false,
-            isFreeUser,
             canCreateCalendar,
             maxUserCalendarsDisabled,
+            mustReactivateCalendars,
             hasNoCalendars,
             timeStatus: EVENT_TIME_STATUS.FUTURE,
             error: invitationOrError,
@@ -442,10 +443,10 @@ export const getInitialInvitationModel = ({
     const result: InvitationModel = {
         isOrganizerMode,
         timeStatus,
-        isFreeUser,
         isAddressDisabled,
         canCreateCalendar,
         maxUserCalendarsDisabled,
+        mustReactivateCalendars,
         hasNoCalendars,
         invitationIcs: invitation,
         isPartyCrasher: isOrganizerMode ? false : !invitation.attendee,
@@ -463,6 +464,11 @@ export const getInitialInvitationModel = ({
         result.error = new EventInvitationError(EVENT_INVITATION_ERROR_TYPE.INVALID_METHOD, {
             method: invitation.method,
         });
+    }
+    const sharedEventID = getPmSharedEventID(invitation.vevent);
+    const sharedSessionKey = getPmSharedSessionKey(invitation.vevent);
+    if (sharedEventID && sharedSessionKey) {
+        result.pmData = { sharedEventID, sharedSessionKey };
     }
     return result;
 };
@@ -581,6 +587,8 @@ export const getSupportedEventInvitation = (
             organizer,
             attendee,
             duration,
+            'x-pm-session-key': sharedSessionKey,
+            'x-pm-shared-event-id': sharedEventID,
         } = event;
         const trimmedSummaryValue = summary?.value.trim();
         const trimmedDescriptionValue = description?.value.trim();
@@ -595,6 +603,12 @@ export const getSupportedEventInvitation = (
         };
         let ignoreRrule = false;
 
+        if (sharedSessionKey) {
+            validated['x-pm-session-key'] = { ...sharedSessionKey };
+        }
+        if (sharedEventID) {
+            validated['x-pm-shared-event-id'] = { ...sharedEventID };
+        }
         if (organizer) {
             validated.organizer = { ...organizer };
         } else {
@@ -783,12 +797,13 @@ export const getCalendarEventLink = (model: RequireSome<InvitationModel, 'invita
         hideLink,
         isPartyCrasher,
         isOutdated,
+        isAddressDisabled,
         calendarData,
         invitationIcs: { method, attendee: attendeeIcs },
         invitationApi,
-        isFreeUser,
-        canCreateCalendar,
         hasNoCalendars,
+        canCreateCalendar,
+        mustReactivateCalendars,
         hasDecryptionError,
     } = model;
 
@@ -801,33 +816,16 @@ export const getCalendarEventLink = (model: RequireSome<InvitationModel, 'invita
         [ICAL_ATTENDEE_STATUS.ACCEPTED, ICAL_ATTENDEE_STATUS.TENTATIVE, ICAL_ATTENDEE_STATUS.DECLINED].includes(
             attendeeIcs?.partstat
         );
-    const canBeAnswered = !isOrganizerMode && method === ICAL_METHOD.REQUEST && !isOutdated;
+    const canBeAnswered = !isOrganizerMode && method === ICAL_METHOD.REQUEST && !isOutdated && !isAddressDisabled;
     const canBeManaged =
         isOrganizerMode && (method === ICAL_METHOD.REPLY || (method === ICAL_METHOD.COUNTER && hasAlsoReplied));
     const canBeSeenUpdated =
         [ICAL_METHOD.CANCEL, ICAL_METHOD.COUNTER, ICAL_METHOD.REFRESH].includes(method) ||
         (!isOrganizerMode && method === ICAL_METHOD.REQUEST && isOutdated);
 
-    if (isFreeUser && !isPartyCrasher) {
-        if (canBeAnswered) {
-            // must return a non-empty to given how AppLink works
-            return {
-                to: '',
-                text: c('Link').t`Create a new calendar to answer this invitation`,
-            };
-        }
-        if (canBeManaged) {
-            return {
-                to: '',
-                text: c('Link').t`Create a new calendar to manage your invitations`,
-            };
-        }
-    }
-
     const safeCalendarNeedsUserAction = calendarData?.calendarNeedsUserAction && !isPartyCrasher;
-    const noCalendarIsActiveYet = !hasNoCalendars && !calendarData;
     // the calendar needs a user action to be active
-    if (safeCalendarNeedsUserAction || noCalendarIsActiveYet) {
+    if (safeCalendarNeedsUserAction || mustReactivateCalendars) {
         if (canBeManaged) {
             return {
                 to: '',
@@ -869,11 +867,19 @@ export const getCalendarEventLink = (model: RequireSome<InvitationModel, 'invita
                 return { to, toApp, text };
             }
         }
-        if (!calendarData && canCreateCalendar && canBeAnswered && !isPartyCrasher) {
-            return {
-                to: '',
-                text: c('Link').t`Create a new calendar to answer this invitation`,
-            };
+        if (hasNoCalendars && canCreateCalendar && !isPartyCrasher) {
+            if (canBeAnswered) {
+                return {
+                    to: '',
+                    text: c('Link').t`Create a new calendar to answer this invitation`,
+                };
+            }
+            if (canBeManaged) {
+                return {
+                    to: '',
+                    text: c('Link').t`Create a new calendar to manage your invitations`,
+                };
+            }
         }
         return {};
     }
@@ -909,7 +915,6 @@ export const getDoNotDisplayButtons = (model: RequireSome<InvitationModel, 'invi
         invitationIcs: { method },
         calendarData,
         isOutdated,
-        isFreeUser,
         isAddressDisabled,
     } = model;
 
@@ -921,7 +926,6 @@ export const getDoNotDisplayButtons = (model: RequireSome<InvitationModel, 'invi
         !!isOutdated ||
         isAddressDisabled ||
         !!calendarData?.isCalendarDisabled ||
-        isFreeUser ||
         isPartyCrasher
     );
 };
