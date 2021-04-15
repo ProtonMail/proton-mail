@@ -16,9 +16,14 @@ import { AttachmentsCache } from '../../containers/AttachmentProvider';
 import { GetMessageKeys } from '../../hooks/message/useGetMessageKeys';
 import { insertActualRemoteImages } from '../transforms/transformRemote';
 
+const removePasswordFromRequests: Pick<Message, 'Password' | 'PasswordHint'> = {
+    Password: undefined,
+    PasswordHint: undefined,
+};
+
 export const prepareExport = (message: MessageExtended) => {
     if (!message.document) {
-        return;
+        return '';
     }
 
     const document = message.document.cloneNode(true) as Element;
@@ -27,10 +32,12 @@ export const prepareExport = (message: MessageExtended) => {
     const embeddeds = find(message, document);
     mutateHTMLCid(embeddeds, document);
 
-    // Remote images
-    insertActualRemoteImages(document);
+    let content = getDocumentContent(document);
 
-    return document;
+    // Remote images
+    content = insertActualRemoteImages(content);
+
+    return content;
 };
 
 const encryptBody = async (content: string, messageKeys: MessageKeys) => {
@@ -49,10 +56,9 @@ const encryptBody = async (content: string, messageKeys: MessageKeys) => {
 
 export const prepareAndEncryptBody = async (message: MessageExtended, messageKeys: MessageKeys) => {
     const plainText = isPlainText(message.data);
-    const document = plainText ? undefined : prepareExport(message);
-    const content = plainText ? getPlainTextContent(message) : getDocumentContent(document);
-    const encrypted = await encryptBody(content, messageKeys);
-    return { document, content, encrypted };
+    // const document = plainText ? undefined : prepareExport(message);
+    const content = plainText ? getPlainTextContent(message) : prepareExport(message);
+    return encryptBody(content, messageKeys);
 };
 
 export const encryptAttachmentKeyPackets = async (
@@ -86,7 +92,7 @@ export const createMessage = async (
     getMessageKeys: GetMessageKeys
 ): Promise<Message> => {
     const messageKeys = await getMessageKeys(message.data);
-    const { encrypted: Body } = await prepareAndEncryptBody(message, messageKeys);
+    const Body = await prepareAndEncryptBody(message, messageKeys);
     const attachments = getAttachments(message.data);
 
     let AttachmentKeyPackets;
@@ -104,7 +110,7 @@ export const createMessage = async (
     const { Message: updatedMessage } = await api(
         createDraft({
             Action: message.action !== MESSAGE_ACTIONS.NEW ? message.action : undefined,
-            Message: { ...message.data, Body },
+            Message: { ...message.data, Body, ...removePasswordFromRequests },
             ParentID: message.ParentID,
             AttachmentKeyPackets,
         })
@@ -126,7 +132,7 @@ export const updateMessage = async (
     getMessageKeys: GetMessageKeys
 ): Promise<Message> => {
     const messageKeys = await getMessageKeys(message.data);
-    const { encrypted: Body } = await prepareAndEncryptBody(message, messageKeys);
+    const Body = await prepareAndEncryptBody(message, messageKeys);
     const attachments = getAttachments(message.data);
     let AttachmentKeyPackets;
     if (attachments?.length && previousAddressID !== message.data.AddressID) {
@@ -138,7 +144,7 @@ export const updateMessage = async (
         );
     }
     const { Message: updatedMessage } = await api(
-        updateDraft(message.data?.ID, { ...message.data, Body }, AttachmentKeyPackets)
+        updateDraft(message.data?.ID, { ...message.data, Body, ...removePasswordFromRequests }, AttachmentKeyPackets)
     );
     return updatedMessage;
 };

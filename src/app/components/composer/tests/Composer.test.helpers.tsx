@@ -8,7 +8,7 @@ import { messageCache } from '../../../helpers/test/cache';
 import { addApiKeys, apiKeys } from '../../../helpers/test/crypto';
 import { MessageExtended, MessageExtendedWithData, PartialMessageExtended } from '../../../models/message';
 import Composer from '../Composer';
-import { render } from '../../../helpers/test/render';
+import { render, tick } from '../../../helpers/test/render';
 import { Breakpoints } from '../../../models/utils';
 import { addApiMock } from '../../../helpers/test/api';
 import { waitForSpyCall } from '../../../helpers/test/helper';
@@ -31,6 +31,7 @@ export const props = {
     toggleMinimized: jest.fn(),
     toggleMaximized: jest.fn(),
     onSubject: jest.fn(),
+    isFocused: true,
 };
 
 export const prepareMessage = (message: PartialMessageExtended) => {
@@ -67,7 +68,7 @@ export const clickSend = async (renderResult: RenderResult) => {
     addApiMock(`mail/v4/messages/${ID}`, sendSpy, 'post');
     addApiMock(`mail/v4/messages/${ID}`, () => {}, 'get');
 
-    const sendButton = renderResult.getByTestId('send-button');
+    const sendButton = await renderResult.findByTestId('send-button');
     fireEvent.click(sendButton);
 
     // Wait for the event manager to be called as it's the last step of the sendMessage hook
@@ -83,6 +84,10 @@ export const clickSend = async (renderResult: RenderResult) => {
     const sendRequest = (sendSpy.mock.calls[0] as any[])[0];
 
     expect(sendRequest.method).toBe('post');
+
+    // Blind attempt to solve sending test instabilities
+    jest.useRealTimers();
+    await tick();
 
     return sendRequest;
 };

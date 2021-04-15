@@ -82,6 +82,7 @@ interface Props {
     onClose: () => void;
     onSubject: (subject: string) => void;
     onCompose: OnCompose;
+    isFocused: boolean;
 }
 
 const Composer = (
@@ -95,6 +96,7 @@ const Composer = (
         onClose: inputOnClose,
         onCompose,
         onSubject,
+        isFocused,
     }: Props,
     ref: Ref<ComposerAction>
 ) => {
@@ -174,14 +176,19 @@ const Composer = (
             (modelMessage.document === undefined && modelMessage.plainText === undefined) ||
             modelMessage.data?.ID !== syncedMessage.data?.ID
         ) {
+            const isOpenFromUndo = syncedMessage.openDraftFromUndo === true;
+            const password = isOpenFromUndo
+                ? // Keep password on undo
+                  {}
+                : // Forget previously setted password if kept in the cache
+                  { Password: undefined, PasswordHint: undefined };
+
             const newModelMessage = {
                 ...syncedMessage,
                 ...modelMessage,
                 data: {
                     ...syncedMessage.data,
-                    // Forget previously setted password if kept in the cache
-                    Password: undefined,
-                    PasswordHint: undefined,
+                    ...password,
                     ...modelMessage.data,
                     // Attachments are updated by the draft creation request
                     Attachments: syncedMessage.data?.Attachments,
@@ -214,7 +221,7 @@ const Composer = (
 
     // Manage focus at opening
     useEffect(() => {
-        if (!opening) {
+        if (!opening && isFocused) {
             timeoutRef.current = window.setTimeout(() => {
                 if (getRecipients(syncedMessage.data).length === 0) {
                     addressesFocusRef.current();
@@ -229,7 +236,7 @@ const Composer = (
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, [opening]);
+    }, [opening, isFocused]);
 
     // Update subject on ComposerFrame
     useEffect(() => {

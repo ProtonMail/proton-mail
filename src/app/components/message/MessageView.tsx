@@ -1,12 +1,9 @@
-import React, { useImperativeHandle, useEffect, useMemo, useRef, useState, memo, forwardRef, Ref } from 'react';
-
+import React, { useEffect, useMemo, useRef, useState, memo, forwardRef, Ref, useImperativeHandle } from 'react';
 import { hasAttachments, isDraft, isSent, isOutbox } from 'proton-shared/lib/mail/messages';
 import { Message } from 'proton-shared/lib/interfaces/mail/Message';
+import { classnames } from 'react-components';
 import { Label } from 'proton-shared/lib/interfaces/Label';
 import { noop } from 'proton-shared/lib/helpers/function';
-
-import { classnames } from 'react-components';
-
 import { getSentStatusIconInfo, getReceivedStatusIcon, MessageViewIcons } from '../../helpers/message/icon';
 import MessageBody from './MessageBody';
 import HeaderCollapsed from './header/HeaderCollapsed';
@@ -43,7 +40,7 @@ interface Props {
 }
 
 export interface MessageViewRef {
-    expand: (callback?: () => void) => void;
+    expand: () => void;
 }
 
 const MessageView = (
@@ -86,7 +83,7 @@ const MessageView = (
     const markAs = useMarkAs();
 
     const draft = !loading && isDraft(message.data);
-    const outbox = !loading && isOutbox(message.data);
+    const outbox = !loading && (isOutbox(message.data) || message.sending);
     const sent = isSent(message.data);
     const unread = isUnread(message.data, labelID);
     // It can be attachments but not yet loaded
@@ -113,14 +110,8 @@ const MessageView = (
     };
 
     const handleToggle = (value: boolean) => () => {
-        if (message.sending) {
-            return;
-        }
-        if (outbox) {
-            return;
-        }
-        if (draft) {
-            onCompose({ existingDraft: message });
+        if (draft && !outbox) {
+            onCompose({ existingDraft: message, fromUndo: false });
             return;
         }
 
@@ -131,12 +122,11 @@ const MessageView = (
 
     // Setup ref to allow opening the message from outside, typically the ConversationView
     useImperativeHandle(ref, () => ({
-        expand: (callback) => {
+        expand: () => {
             // Should be prevented before, but as an extra security...
             if (!isDraft(message.data)) {
                 setExpanded(true);
                 elementRef.current?.focus();
-                callback?.();
             }
         },
     }));

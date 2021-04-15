@@ -147,7 +147,10 @@ const MailboxContainer = ({
             const [element] = getElementsFromIDs([elementID || '']);
 
             if (isMessage(element) && isDraft(element)) {
-                onCompose({ existingDraft: { localID: element.ID as string, data: element as Message } });
+                onCompose({
+                    existingDraft: { localID: element.ID as string, data: element as Message },
+                    fromUndo: false,
+                });
             }
             if (isConversationContentView && isMessage(element)) {
                 history.push(
@@ -171,7 +174,6 @@ const MailboxContainer = ({
     );
     const handleSort = useCallback((sort: Sort) => history.push(setSortInUrl(history.location, sort)), []);
     const handleFilter = useCallback((filter: Filter) => history.push(setFilterInUrl(history.location, filter)), []);
-    const handleNavigate = useCallback((labelID: string) => history.push(`/${labelID}`), []);
 
     // Move to the previous page if the current one becomes empty
     useEffect(() => {
@@ -205,6 +207,7 @@ const MailboxContainer = ({
                     labelID={labelID}
                     elementID={elementID}
                     selectedIDs={selectedIDs}
+                    checkedIDs={checkedIDs}
                     elementIDs={elementIDs}
                     mailSettings={mailSettings}
                     columnMode={columnMode}
@@ -245,7 +248,6 @@ const MailboxContainer = ({
                         onSort={handleSort}
                         filter={filter}
                         onFilter={handleFilter}
-                        onNavigate={handleNavigate}
                     />
                 )}
                 {showContentPanel && (

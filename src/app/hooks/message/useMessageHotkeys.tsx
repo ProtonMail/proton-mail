@@ -61,7 +61,7 @@ export const useMessageHotkeys = (
         handleLoadEmbeddedImages,
     }: MessageHotkeysHandlers
 ) => {
-    const [mailSettings] = useMailSettings();
+    const [{ Shortcuts = 1 } = {}] = useMailSettings();
     const [folders] = useFolders();
     const folderNavigationHotkeys = useFolderNavigationHotkeys();
 
@@ -72,8 +72,6 @@ export const useMessageHotkeys = (
     const markAs = useMarkAs();
     const moveToFolder = useMoveToFolder();
     const star = useStar();
-
-    const { Shortcuts = 0 } = mailSettings || {};
 
     const [hasFocus, setHasFocus] = useState(false);
 
@@ -134,7 +132,7 @@ export const useMessageHotkeys = (
                 if (draft) {
                     e.stopPropagation();
                     e.preventDefault();
-                    onCompose({ existingDraft: message });
+                    onCompose({ existingDraft: message, fromUndo: false });
                 }
             },
         ],
