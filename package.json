@@ -16,6 +16,7 @@
         "deploy": "proton-bundler --git",
         "deploy:standalone": "proton-bundler --git --appMode=standalone",
         "test": "jest --runInBand --ci",
+        "test:dev": "jest --watch --coverage=false",
         "build": "cross-env NODE_ENV=production proton-pack compile $npm_package_config_publicPathFlag",
         "build:sso": "cross-env NODE_ENV=production proton-pack compile --appMode=sso",
         "build:standalone": "cross-env NODE_ENV=production proton-pack compile --appMode=standalone",
