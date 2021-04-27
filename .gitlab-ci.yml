@@ -2,3 +2,13 @@ include:
   - project: 'deploy-app/fe-scripts'
     ref: master
     file: '/jobs/webapp/open-source.gitlab-ci.yaml'
+
+  - project: 'qa/protonmailweb'
+    ref: develop
+    file: '.smoke-tests.gitlab-ci.yml'
+
+smoke-test:
+  stage: test-slow
+  extends: .smoke_ui_test
+  only:
+    - merge_requests
