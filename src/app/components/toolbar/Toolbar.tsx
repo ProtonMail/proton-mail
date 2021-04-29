@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { c } from 'ttag';
+import { Location } from 'history';
 import { Icon, useMailSettings, useLabels, useFolders, ToolbarButton, ToolbarSeparator } from 'react-components';
 import { MailSettings } from 'proton-shared/lib/interfaces';
 
@@ -23,6 +24,7 @@ interface Props {
     onCheck: (IDs: string[], checked: boolean, replace: boolean) => void;
     labelID: string;
     elementID?: string;
+    messageID?: string;
     selectedIDs: string[];
     checkedIDs: string[];
     elementIDs: string[];
@@ -36,10 +38,12 @@ interface Props {
     onElement: (elementID: string | undefined) => void;
     labelDropdownToggleRef: React.MutableRefObject<() => void>;
     moveDropdownToggleRef: React.MutableRefObject<() => void>;
+    location: Location;
 }
 
 const Toolbar = ({
     labelID = '',
+    messageID,
     elementID,
     onCheck,
     mailSettings,
@@ -56,6 +60,7 @@ const Toolbar = ({
     onElement,
     labelDropdownToggleRef,
     moveDropdownToggleRef,
+    location,
 }: Props) => {
     const [labels] = useLabels();
     const [folders] = useFolders();
@@ -84,7 +89,7 @@ const Toolbar = ({
     );
 
     return (
-        <nav className="toolbar toolbar--heavy ui-prominent flex no-print flex-justify-space-between">
+        <nav className="toolbar toolbar--heavy flex no-print flex-justify-space-between">
             <div className="flex">
                 {listInView ? (
                     <SelectAll
@@ -95,7 +100,11 @@ const Toolbar = ({
                         loading={loading}
                     />
                 ) : (
-                    <ToolbarButton icon={<Icon name="arrow-left" alt={c('Action').t`Back`} />} onClick={onBack} />
+                    <ToolbarButton
+                        icon={<Icon name="arrow-left" alt={c('Action').t`Back`} />}
+                        onClick={onBack}
+                        data-testid="toolbar:back-button"
+                    />
                 )}
                 <ToolbarSeparator />
                 <ReadUnreadButtons
@@ -123,8 +132,7 @@ const Toolbar = ({
                     dropDownClassName="move-dropdown"
                     className="move-dropdown-button"
                     title={titleMove}
-                    data-test-id="toolbar:moveto"
-                    data-testid="toolbar-move"
+                    data-testid="toolbar:moveto"
                     externalToggleRef={moveDropdownToggleRef}
                 >
                     {({ onClose, onLock }) => (
@@ -147,8 +155,7 @@ const Toolbar = ({
                     dropDownClassName="label-dropdown"
                     className="label-dropdown-button"
                     title={titleLabel}
-                    data-test-id="toolbar:labelas"
-                    data-testid="toolbar-label"
+                    data-testid="toolbar:labelas"
                     externalToggleRef={labelDropdownToggleRef}
                 >
                     {({ onClose, onLock }) => (
@@ -178,8 +185,12 @@ const Toolbar = ({
                         loading={loading}
                         conversationMode={conversationMode}
                         elementID={elementID}
+                        messageID={messageID}
                         elementIDs={elementIDs}
                         onElement={onElement}
+                        labelID={labelID}
+                        mailSettings={mailSettings}
+                        location={location}
                     />
                 )}
             </div>

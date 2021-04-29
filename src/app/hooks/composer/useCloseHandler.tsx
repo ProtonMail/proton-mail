@@ -11,6 +11,7 @@ import { OnCompose } from './useCompose';
 
 export interface UseCloseHandlerParameters {
     modelMessage: MessageExtended;
+    lock: boolean;
     ensureMessageContent: () => void;
     uploadInProgress: boolean;
     promiseUpload: Promise<void>;
@@ -24,6 +25,7 @@ export interface UseCloseHandlerParameters {
 
 export const useCloseHandler = ({
     modelMessage,
+    lock,
     ensureMessageContent,
     autoSave,
     actualSave,
@@ -96,6 +98,15 @@ export const useCloseHandler = ({
     const handleClose = useHandler(async () => {
         // Closing the composer instantly, all the save process will be in background
         onClose();
+
+        if (lock) {
+            // If the composer was locked, either it could have
+            // - failed at loading
+            // - still being created
+            // - still being loaded
+            // In all of those situation we don't need to save something, we can safely skip all the rest
+            return;
+        }
 
         ensureMessageContent();
 

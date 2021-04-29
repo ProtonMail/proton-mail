@@ -128,7 +128,7 @@ const ComposerActions = ({
                     className="composer-send-button"
                     disabled={sendDisabled}
                     onClick={onSend}
-                    data-testid="send-button"
+                    data-testid="composer:send-button"
                 >
                     <Icon name="sent" className="no-desktop no-tablet on-mobile-flex" />
                     <span className="pl1 pr1 no-mobile">{c('Action').t`Send`}</span>
@@ -137,23 +137,23 @@ const ComposerActions = ({
             <div className="flex flex-item-fluid">
                 <div className="flex">
                     <Tooltip title={titleAttachment}>
-                        <span>
-                            <AttachmentsButton
-                                isAttachments={isAttachments}
-                                disabled={lock}
-                                onAddAttachments={onAddAttachments}
-                                attachmentTriggerRef={attachmentTriggerRef}
-                            />
-                        </span>
+                        <AttachmentsButton
+                            isAttachments={isAttachments}
+                            disabled={lock}
+                            onAddAttachments={onAddAttachments}
+                            attachmentTriggerRef={attachmentTriggerRef}
+                            data-testid="composer:attachment-button"
+                        />
                     </Tooltip>
                     <Tooltip title={titleExpiration}>
                         <Button
                             icon
-                            shape="outline"
                             color={isExpiration ? 'norm' : undefined}
+                            shape="outline"
                             onClick={onExpiration}
                             disabled={lock}
                             className="ml0-5"
+                            data-testid="composer:expiration-button"
                         >
                             <Icon name="expiration" alt={c('Action').t`Expiration time`} />
                         </Button>
@@ -161,9 +161,9 @@ const ComposerActions = ({
                     <Tooltip title={titleEncryption}>
                         <Button
                             icon
-                            data-test-id="composer:encryption-lock"
                             color={isPassword ? 'norm' : undefined}
                             shape="outline"
+                            data-testid="composer:password-button"
                             onClick={onPassword}
                             disabled={lock}
                             className="ml0-5"
@@ -175,7 +175,14 @@ const ComposerActions = ({
                 <div className="flex mlauto">
                     <span className="mr0-5 mtauto mbauto no-mobile">{dateMessage}</span>
                     <Tooltip title={titleDeleteDraft}>
-                        <Button icon disabled={lock} onClick={onDelete} shape="outline" className="mr0-5">
+                        <Button
+                            icon
+                            disabled={lock}
+                            onClick={onDelete}
+                            shape="outline"
+                            className="mr0-5"
+                            data-testid="composer:delete-draft-button"
+                        >
                             <Icon name="trash" alt={c('Action').t`Delete draft`} />
                         </Button>
                     </Tooltip>

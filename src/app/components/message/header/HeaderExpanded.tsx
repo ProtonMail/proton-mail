@@ -1,5 +1,5 @@
-import { Message } from 'proton-shared/lib/interfaces/mail/Message';
 import React, { MouseEvent } from 'react';
+import { Message } from 'proton-shared/lib/interfaces/mail/Message';
 import { c } from 'ttag';
 import {
     classnames,
@@ -18,6 +18,7 @@ import { MailSettings } from 'proton-shared/lib/interfaces';
 import { isInternal, isOutbox } from 'proton-shared/lib/mail/messages';
 import { VERIFICATION_STATUS } from 'proton-shared/lib/mail/constants';
 import { shiftKey } from 'proton-shared/lib/helpers/browser';
+
 import ItemStar from '../../list/ItemStar';
 import ItemDate from '../../list/ItemDate';
 import { MESSAGE_ACTIONS } from '../../../constants';
@@ -96,8 +97,9 @@ const HeaderExpanded = ({
     const { state: showDetails, toggle: toggleDetails } = useToggle();
     const selectedIDs = [message.data?.ID || ''];
     const currentFolderID = getCurrentFolderID(message.data?.LabelIDs, folders);
-    const [{ Shortcuts = 1 } = {}] = useMailSettings();
-    const isOutboxMessage = isOutbox(message.data) || message.sending;
+    const isSendingMessage = message.sending;
+    const isOutboxMessage = isOutbox(message.data);
+    const [{ Shortcuts } = { Shortcuts: 0 }] = useMailSettings();
 
     const handleClick = (event: MouseEvent) => {
         if (
@@ -111,7 +113,7 @@ const HeaderExpanded = ({
         onToggle();
     };
 
-    const handleCompose = (action: MESSAGE_ACTIONS) => () => {
+    const handleCompose = (action: MESSAGE_ACTIONS) => async () => {
         onCompose({
             action,
             referenceMessage: message,
@@ -198,6 +200,7 @@ const HeaderExpanded = ({
                 isSentMessage ? 'is-outbound' : 'is-inbound',
                 !messageLoaded && 'is-loading',
             ])}
+            data-testid={`message-header-expanded:${message.data?.Subject}`}
         >
             <div className="flex flex-nowrap flex-align-items-center cursor-pointer" onClick={handleClick}>
                 <span className="flex flex-item-fluid flex-nowrap mr0-5">
@@ -223,7 +226,7 @@ const HeaderExpanded = ({
                         isNarrow && 'flex-align-self-start',
                     ])}
                 >
-                    {messageLoaded && isOutboxMessage && (
+                    {messageLoaded && (isOutboxMessage || isSendingMessage) && (
                         <span className="badge-label-primary mr0-5 flex-item-noshrink">{c('Info').t`Sending`}</span>
                     )}
                     {messageLoaded && !showDetails && (
@@ -275,6 +278,7 @@ const HeaderExpanded = ({
                                 onClick={toggleDetails}
                                 className="message-show-hide-link"
                                 disabled={!messageLoaded}
+                                data-testid="message-show-details"
                             >
                                 {showDetails
                                     ? c('Action').t`Hide details`
@@ -358,13 +362,13 @@ const HeaderExpanded = ({
                         onToggle={onToggle}
                         onSourceMode={onSourceMode}
                         breakpoints={breakpoints}
+                        data-testid="message-header-expanded:more-dropdown"
                     />
 
                     {!isNarrow && (
                         <ButtonGroup className="mr1 mb0-5">
                             <HeaderDropdown
                                 icon
-                                group
                                 autoClose={false}
                                 content={<Icon name="filter" alt={c('Action').t`Custom filter`} />}
                                 className="messageFilterDropdownButton"
@@ -372,6 +376,7 @@ const HeaderExpanded = ({
                                 title={titleFilterOn}
                                 loading={!messageLoaded}
                                 externalToggleRef={filterDropdownToggleRef}
+                                data-testid="message-header-expanded:filter-dropdown"
                             >
                                 {({ onClose }) => (
                                     <CustomFilterDropdown message={message.data as Message} onClose={onClose} />
@@ -379,7 +384,6 @@ const HeaderExpanded = ({
                             </HeaderDropdown>
                             <HeaderDropdown
                                 icon
-                                group
                                 autoClose={false}
                                 noMaxSize
                                 content={<Icon name="folder" alt={c('Action').t`Move to`} />}
@@ -388,6 +392,7 @@ const HeaderExpanded = ({
                                 title={titleMoveTo}
                                 loading={!messageLoaded}
                                 externalToggleRef={moveDropdownToggleRef}
+                                data-testid="message-header-expanded:folder-dropdown"
                             >
                                 {({ onClose, onLock }) => (
                                     <MoveDropdown
@@ -403,7 +408,6 @@ const HeaderExpanded = ({
                             </HeaderDropdown>
                             <HeaderDropdown
                                 icon
-                                group
                                 autoClose={false}
                                 noMaxSize
                                 content={<Icon name="label" alt={c('Action').t`Label as`} />}
@@ -412,6 +416,7 @@ const HeaderExpanded = ({
                                 title={titleLabelAs}
                                 loading={!messageLoaded}
                                 externalToggleRef={labelDropdownToggleRef}
+                                data-testid="message-header-expanded:label-dropdown"
                             >
                                 {({ onClose, onLock }) => (
                                     <LabelDropdown
@@ -431,38 +436,32 @@ const HeaderExpanded = ({
                 <ButtonGroup className="mb0-5">
                     <Tooltip title={titleReply}>
                         <Button
-                            group
                             icon
-                            disabled={!messageLoaded || !bodyLoaded || isOutboxMessage}
-                            color="norm"
+                            disabled={!messageLoaded || !bodyLoaded || isSendingMessage}
                             onClick={handleCompose(MESSAGE_ACTIONS.REPLY)}
-                            data-test-id="message-view:reply"
+                            data-testid="message-view:reply"
                         >
-                            <Icon name="reply" size={20} alt={c('Title').t`Reply`} />
+                            <Icon name="reply" alt={c('Title').t`Reply`} />
                         </Button>
                     </Tooltip>
                     <Tooltip title={titleReplyAll}>
                         <Button
-                            group
                             icon
-                            disabled={!messageLoaded || !bodyLoaded || isOutboxMessage}
-                            color="norm"
+                            disabled={!messageLoaded || !bodyLoaded || isSendingMessage}
                             onClick={handleCompose(MESSAGE_ACTIONS.REPLY_ALL)}
-                            data-test-id="message-view:reply-all"
+                            data-testid="message-view:reply-all"
                         >
-                            <Icon name="reply-all" size={20} alt={c('Title').t`Reply all`} />
+                            <Icon name="reply-all" alt={c('Title').t`Reply all`} />
                         </Button>
                     </Tooltip>
                     <Tooltip title={titleForward}>
                         <Button
-                            group
                             icon
-                            disabled={!messageLoaded || !bodyLoaded || isOutboxMessage}
-                            color="norm"
+                            disabled={!messageLoaded || !bodyLoaded || isSendingMessage}
                             onClick={handleCompose(MESSAGE_ACTIONS.FORWARD)}
-                            data-test-id="message-view:forward"
+                            data-testid="message-view:forward"
                         >
-                            <Icon name="forward" size={20} alt={c('Title').t`Forward`} />
+                            <Icon name="forward" alt={c('Title').t`Forward`} />
                         </Button>
                     </Tooltip>
                 </ButtonGroup>

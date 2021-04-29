@@ -1,5 +1,6 @@
 import React from 'react';
 import { MESSAGE_BUTTONS } from 'proton-shared/lib/constants';
+import { MailSettings } from 'proton-shared/lib/interfaces';
 import { Icon, useLoading, useMailSettings, ToolbarButton } from 'react-components';
 import { c } from 'ttag';
 
@@ -10,7 +11,7 @@ const { READ, UNREAD } = MARK_AS_STATUS;
 
 interface Props {
     labelID: string;
-    mailSettings: any;
+    mailSettings: MailSettings;
     selectedIDs: string[];
     onBack: () => void;
 }
@@ -58,7 +59,7 @@ const ReadUnreadButtons = ({ labelID, mailSettings, selectedIDs, onBack }: Props
             disabled={loading || !selectedIDs.length}
             onClick={() => withLoading(handleMarkAs(READ))}
             className="no-tablet no-mobile"
-            data-test-id="toolbar:read"
+            data-testid="toolbar:read"
             icon={<Icon name="read" alt={c('Action').t`Mark as read`} />}
         />,
         <ToolbarButton
@@ -66,7 +67,7 @@ const ReadUnreadButtons = ({ labelID, mailSettings, selectedIDs, onBack }: Props
             title={titleUnread}
             disabled={loading || !selectedIDs.length}
             onClick={() => withLoading(handleMarkAs(UNREAD))}
-            data-test-id="toolbar:unread"
+            data-testid="toolbar:unread"
             icon={<Icon name="unread" alt={c('Action').t`Mark as unread`} />}
         />,
     ];

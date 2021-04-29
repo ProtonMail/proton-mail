@@ -1,17 +1,18 @@
 import React from 'react';
 import { Icon, DropdownMenu, DropdownMenuButton, useApi, useEventManager, useLoading } from 'react-components';
 import { VIEW_LAYOUT } from 'proton-shared/lib/constants';
+import { MailSettings } from 'proton-shared/lib/interfaces';
 import { updateViewLayout } from 'proton-shared/lib/api/mailSettings';
 import { c } from 'ttag';
 
 import ToolbarDropdown from './ToolbarDropdown';
 
 interface Props {
-    mailSettings: any;
+    mailSettings: MailSettings;
 }
 
-const LayoutDropdown = ({ mailSettings = {} }: Props) => {
-    const { ViewLayout = VIEW_LAYOUT.COLUMN } = mailSettings;
+const LayoutDropdown = ({ mailSettings }: Props) => {
+    const { ViewLayout = VIEW_LAYOUT.COLUMN } = mailSettings || {};
 
     const api = useApi();
     const { call } = useEventManager();
@@ -27,11 +28,12 @@ const LayoutDropdown = ({ mailSettings = {} }: Props) => {
         <ToolbarDropdown
             title={c('Action').t`Change layout`}
             content={<Icon className="toolbar-icon" name={currentLayoutIcon} />}
+            data-testid="toolbar:layout-dropdown"
         >
             {() => (
                 <DropdownMenu>
                     <DropdownMenuButton
-                        data-test-id="toolbar-layout:column-layout"
+                        data-testid="toolbar-layout:column-layout"
                         aria-current={ViewLayout === VIEW_LAYOUT.COLUMN}
                         loading={loading}
                         className="text-left"
@@ -41,7 +43,7 @@ const LayoutDropdown = ({ mailSettings = {} }: Props) => {
                         {c('Action').t`Column layout`}
                     </DropdownMenuButton>
                     <DropdownMenuButton
-                        data-test-id="toolbar-layout:row-layout"
+                        data-testid="toolbar-layout:row-layout"
                         aria-current={ViewLayout === VIEW_LAYOUT.ROW}
                         loading={loading}
                         className="text-left"

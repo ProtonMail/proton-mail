@@ -1,14 +1,17 @@
-import React, { ChangeEvent, useRef, useEffect } from 'react';
-import { ButtonLike, classnames, Icon } from 'react-components';
+import React, { ChangeEvent, useRef, useEffect, forwardRef, Ref } from 'react';
+import { ButtonLike, ButtonLikeProps, classnames, Icon } from 'react-components';
 
-interface Props {
+interface Props extends ButtonLikeProps<'label'> {
     disabled?: boolean;
     onAddAttachments: (files: File[]) => void;
     attachmentTriggerRef: React.MutableRefObject<() => void>;
     isAttachments?: boolean;
 }
 
-const AttachmentsButton = ({ onAddAttachments, disabled, isAttachments, attachmentTriggerRef }: Props) => {
+const AttachmentsButton = (
+    { onAddAttachments, disabled, isAttachments, attachmentTriggerRef, ...rest }: Props,
+    ref: Ref<HTMLLabelElement>
+) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
         const input = event.target;
@@ -33,12 +36,16 @@ const AttachmentsButton = ({ onAddAttachments, disabled, isAttachments, attachme
                 color={isAttachments ? 'norm' : 'weak'}
                 shape="outline"
                 className={classnames([disabled && 'is-disabled'])}
+                ref={ref}
+                {...rest}
+                data-testid="composer:attachment-button"
             >
                 <Icon name="attach" />
                 <input
                     ref={inputRef}
                     type="file"
                     multiple
+                    disabled={disabled}
                     onChange={handleChange}
                     className="composer-attachments-button"
                     data-testid="composer-attachments-button"
@@ -48,4 +55,4 @@ const AttachmentsButton = ({ onAddAttachments, disabled, isAttachments, attachme
     );
 };
 
-export default AttachmentsButton;
+export default forwardRef(AttachmentsButton);

@@ -20,9 +20,23 @@ interface Props {
     onBack: () => void;
     onCompose: OnCompose;
     breakpoints: Breakpoints;
+    onMessageReady: () => void;
+    columnLayout: boolean;
+    isComposerOpened: boolean;
 }
 
-const MessageOnlyView = ({ hidden, labelID, messageID, mailSettings, onBack, onCompose, breakpoints }: Props) => {
+const MessageOnlyView = ({
+    hidden,
+    labelID,
+    messageID,
+    mailSettings,
+    onBack,
+    onCompose,
+    breakpoints,
+    onMessageReady,
+    columnLayout,
+    isComposerOpened,
+}: Props) => {
     const [labels = []] = useLabels();
 
     const { message, addAction, loading, messageLoaded } = useMessage(messageID);
@@ -76,10 +90,12 @@ const MessageOnlyView = ({ hidden, labelID, messageID, mailSettings, onBack, onC
                 breakpoints={breakpoints}
             />
             <div
-                className={classnames(['scroll-if-needed flex-item-fluid pt0-5 max-w100', hidden && 'hidden'])}
+                className={classnames([
+                    'scroll-if-needed flex-item-fluid pt0-5 max-w100 no-outline',
+                    hidden && 'hidden',
+                ])}
                 ref={messageContainerRef}
                 tabIndex={-1}
-                style={{ outline: 'none' }}
             >
                 <MessageView
                     ref={messageRef}
@@ -92,6 +108,9 @@ const MessageOnlyView = ({ hidden, labelID, messageID, mailSettings, onBack, onC
                     onBack={onBack}
                     onCompose={onCompose}
                     breakpoints={breakpoints}
+                    onMessageReady={onMessageReady}
+                    columnLayout={columnLayout}
+                    isComposerOpened={isComposerOpened}
                 />
             </div>
         </>

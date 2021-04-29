@@ -64,7 +64,7 @@ const MoveButtons = ({
             title={titleInbox}
             onClick={() => withLoading(handleMove(INBOX))}
             disabled={loading || !selectedIDs.length}
-            data-test-id="toolbar:movetoinbox"
+            data-testid="toolbar:movetoinbox"
             icon={<Icon name="inbox" alt={c('Action').t`Move to inbox`} />}
         />
     );
@@ -85,7 +85,7 @@ const MoveButtons = ({
             title={titleArchive}
             onClick={() => withLoading(handleMove(ARCHIVE))}
             disabled={!selectedIDs.length}
-            data-test-id="toolbar:movetoarchive"
+            data-testid="toolbar:movetoarchive"
             icon={<Icon name="archive" alt={c('Action').t`Move to archive`} />}
         />
     );
@@ -106,7 +106,7 @@ const MoveButtons = ({
             title={titleSpam}
             onClick={() => withLoading(handleMove(SPAM))}
             disabled={loading || !selectedIDs.length}
-            data-test-id="toolbar:movetospam"
+            data-testid="toolbar:movetospam"
             icon={<Icon name="spam" alt={c('Action').t`Move to spam`} />}
         />
     );
@@ -127,7 +127,7 @@ const MoveButtons = ({
             title={titleNoSpam}
             onClick={() => withLoading(handleMove(INBOX))}
             disabled={loading || !selectedIDs.length}
-            data-test-id="toolbar:movetonospam"
+            data-testid="toolbar:movetonospam"
             icon={<Icon name="nospam" alt={c('Action').t`Move to inbox (not spam)`} />}
         />
     );
@@ -148,7 +148,7 @@ const MoveButtons = ({
             title={titleTrash}
             onClick={() => withLoading(handleMove(TRASH))}
             disabled={loading || !selectedIDs.length}
-            data-test-id="toolbar:movetotrash"
+            data-testid="toolbar:movetotrash"
             icon={<Icon name="trash" alt={c('Action').t`Move to trash`} />}
         />
     );

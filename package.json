@@ -16,6 +16,7 @@
         "deploy": "proton-bundler --git",
         "deploy:standalone": "proton-bundler --git --appMode=standalone",
         "test": "jest --runInBand --ci",
+        "test:dev": "jest --watch --coverage=false",
         "build": "cross-env NODE_ENV=production proton-pack compile $npm_package_config_publicPathFlag",
         "build:sso": "cross-env NODE_ENV=production proton-pack compile --appMode=sso",
         "build:standalone": "cross-env NODE_ENV=production proton-pack compile --appMode=standalone",
@@ -37,8 +38,10 @@
     },
     "homepage": "https://github.com/ProtonMail/proton-mail#readme",
     "dependencies": {
+        "@babel/plugin-transform-runtime": "^7.13.15",
         "abortcontroller-polyfill": "^1.3.0",
         "core-js": "^3.3.6",
+        "css-loader": "^5.2.4",
         "date-fns": "^2.4.1",
         "declassify": "^2.1.0",
         "design-system": "github:ProtonMail/design-system#master",
@@ -55,6 +58,7 @@
         "proton-version": "github:ProtonMail/proton-version#semver:^1.0.0",
         "psl": "^1.8.0",
         "react-components": "github:ProtonMail/react-components#master",
+        "react-refresh": "^0.10.0",
         "ttag": "^1.7.14",
         "turndown": "^5.0.3",
         "yetch": "^1.1.0"

@@ -65,7 +65,7 @@ const MailSidebarList = ({ labelID: currentLabelID, location }: Props) => {
             setFoldersUI(
                 folders.map((folder) => ({
                     ...folder,
-                    Expanded: getItem(formatFolderID(folder.ID)) === '0' ? 0 : 1,
+                    Expanded: getItem(formatFolderID(folder.ID)) === 'false' ? 0 : 1,
                 }))
             );
         }
@@ -186,8 +186,8 @@ const MailSidebarList = ({ labelID: currentLabelID, location }: Props) => {
     useHotkeys(sidebarRef, shortcutHandlers);
 
     // We want to show the loader only at inital loading, not on updates
-    const loadingConversationCounts = actualLoadingConversationCounts && conversationCounts.length === 0;
-    const loadingMessageCounts = actualLoadingMessageCounts && messageCounts.length === 0;
+    const loadingConversationCounts = actualLoadingConversationCounts && conversationCounts?.length === 0;
+    const loadingMessageCounts = actualLoadingMessageCounts && messageCounts?.length === 0;
 
     const { ShowMoved } = mailSettings || { ShowMoved: 0 };
 
@@ -312,6 +312,7 @@ const MailSidebarList = ({ labelID: currentLabelID, location }: Props) => {
                                     className="flex navigation-link-header-group-control flex-item-noshrink"
                                     onClick={() => createModal(<LabelModal type="folder" />)}
                                     title={c('Title').t`Create a new folder`}
+                                    data-testid="navigation-link:add-folder"
                                 >
                                     <Icon name="plus" />
                                 </button>
@@ -323,6 +324,7 @@ const MailSidebarList = ({ labelID: currentLabelID, location }: Props) => {
                                 title={c('Info').t`Manage your folders`}
                                 info={c('Link').t`Manage your folders`}
                                 target="_self"
+                                data-testid="navigation-link:folders-settings"
                             />
                         </div>
                     }
@@ -353,6 +355,7 @@ const MailSidebarList = ({ labelID: currentLabelID, location }: Props) => {
                                     className="flex navigation-link-header-group-control flex-item-noshrink"
                                     onClick={() => createModal(<LabelModal />)}
                                     title={c('Title').t`Create a new label`}
+                                    data-testid="navigation-link:add-label"
                                 >
                                     <Icon name="plus" />
                                 </button>
@@ -364,6 +367,7 @@ const MailSidebarList = ({ labelID: currentLabelID, location }: Props) => {
                                 title={c('Info').t`Manage your labels`}
                                 info={c('Link').t`Manage your labels`}
                                 target="_self"
+                                data-testid="navigation-link:labels-settings"
                             />
                         </div>
                     }
