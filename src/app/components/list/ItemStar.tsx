@@ -14,7 +14,7 @@ interface Props {
 const ItemStar = ({ element = {}, size }: Props) => {
     const [loading, withLoading] = useLoading();
     const star = useStar();
-    const [{ Shortcuts = 1 } = {}] = useMailSettings();
+    const [{ Shortcuts = 0 } = {}] = useMailSettings();
 
     const isStarred = testIsStarred(element);
 

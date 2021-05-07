@@ -41,12 +41,12 @@ const PageContainer = ({
     const history = useHistory();
     const [mailSettings] = useMailSettings();
     const [userSettings] = useUserSettings();
-
     const { createModal } = useModals();
     const [welcomeFlags, setWelcomeFlagsDone] = useWelcomeFlags();
+
     useEffect(() => {
         if (welcomeFlags.isWelcomeFlow) {
-            createModal(<MailOnboardingModal onClose={setWelcomeFlagsDone} />);
+            createModal(<MailOnboardingModal onDone={setWelcomeFlagsDone} />);
         }
     }, []);
 
@@ -72,7 +72,6 @@ const PageContainer = ({
             history={history}
             breakpoints={breakpoints}
             onCompose={onCompose}
-            onOpenShortcutsModal={handleOpenShortcutsModal}
         >
             <LocationErrorBoundary>
                 <MailboxContainer
