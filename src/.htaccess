@@ -9,6 +9,11 @@ RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 # Redirect nothing to app
 RewriteRule ^$ /index.html [NC,L]
 
+# Redirect to mail.protonmail from beta.protonmail
+RewriteBase /
+RewriteCond %{HTTP_HOST} !mail.protonmail.com$ [NC]
+RewriteRule ^(.*)$ https://mail.protonmail.com/$1 [L,R=301]
+
 # Hide .git stuff
 RewriteRule ^.*?\.git.* /index.html [NC,L]
 
