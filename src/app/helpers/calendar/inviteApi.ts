@@ -1,14 +1,5 @@
 import { getUnixTime } from 'date-fns';
-import {
-    CreateCalendarEventSyncData,
-    CreateLinkedCalendarEventsSyncData,
-    CreateSinglePersonalEventData,
-    DeleteCalendarEventSyncData,
-    syncMultipleEvents,
-    updateAttendeePartstat,
-    UpdateCalendarEventSyncData,
-    updatePersonalEventPart,
-} from 'proton-shared/lib/api/calendars';
+import { syncMultipleEvents, updateAttendeePartstat, updatePersonalEventPart } from 'proton-shared/lib/api/calendars';
 import { processApiRequestsSafe } from 'proton-shared/lib/api/helpers/safeApiRequests';
 import {
     getAttendeeEmail,
@@ -23,6 +14,13 @@ import {
     ICAL_EVENT_STATUS,
     ICAL_METHOD,
 } from 'proton-shared/lib/calendar/constants';
+import {
+    CreateCalendarEventSyncData,
+    CreateLinkedCalendarEventsSyncData,
+    CreateSinglePersonalEventData,
+    DeleteCalendarEventSyncData,
+    UpdateCalendarEventSyncData,
+} from 'proton-shared/lib/interfaces/calendar/Api';
 import { GetCalendarInfo } from 'proton-shared/lib/interfaces/hooks/GetCalendarInfo';
 import getCreationKeys from 'proton-shared/lib/calendar/integration/getCreationKeys';
 import getPaginatedEventsByUID from 'proton-shared/lib/calendar/integration/getPaginatedEventsByUID';
@@ -119,14 +117,18 @@ const getVeventWithAlarms = async ({
     };
 };
 
-const getIsNonSoughtEvent = (event: CalendarEventWithMetadata, vevent: VcalVeventComponent) => {
+const getIsNonSoughtEvent = (
+    event: CalendarEventWithMetadata,
+    vevent: VcalVeventComponent,
+    supportedRecurrenceId?: VcalDateOrDateTimeProperty
+) => {
     if (!event.RecurrenceID) {
         return false;
     }
     if (!getHasRecurrenceId(vevent)) {
         return true;
     }
-    return getUnixTime(propertyToUTCDate(vevent['recurrence-id'])) !== event.RecurrenceID;
+    return getUnixTime(propertyToUTCDate(supportedRecurrenceId || vevent['recurrence-id'])) !== event.RecurrenceID;
 };
 
 export type FetchAllEventsByUID = ({
@@ -177,7 +179,7 @@ const fetchAllEventsByUID: FetchAllEventsByUID = async ({ uid, api, recurrenceId
                       otherEvents: otherRecoveredEvents,
                       parentEvent,
                       otherParentEvents,
-                      recurrenceId: supportedRecurrenceId,
+                      supportedRecurrenceId,
                   }
                 : { event: parentEvent, otherEvents: otherParentEvents, supportedRecurrenceId };
         } catch (e) {
@@ -242,7 +244,7 @@ export const fetchEventInvitation: FetchEventInvitation = async ({
         calendarKeys: decryptedCalendarKeys,
     };
     // if we retrieved a single edit when not looking for one, or looking for another one, do not return it
-    if (!calendarEvent || getIsNonSoughtEvent(calendarEvent, veventComponent)) {
+    if (!calendarEvent || getIsNonSoughtEvent(calendarEvent, veventComponent, supportedRecurrenceId)) {
         return { calendarData };
     }
     const singleEditData = getSingleEditWidgetData(allEventsWithUID);
@@ -709,6 +711,12 @@ export const createCalendarEventFromInvitation = async ({
         veventToSave.attendee[attendeeIndex] = vcalAttendeeToSave;
     }
     const veventToSaveWithPmAttendees = await withPmAttendees(veventToSave, getCanonicalEmailsMap);
+    const vcalPmAttendeeToSave = pmData
+        ? veventToSaveWithPmAttendees?.attendee?.[0]
+        : veventToSaveWithPmAttendees?.attendee?.[attendeeIndex];
+    if (!vcalPmAttendeeToSave) {
+        throw new Error('Failed to generate PM attendee');
+    }
     // create calendar event
     const payload = {
         eventComponent: veventToSaveWithPmAttendees,
@@ -759,7 +767,7 @@ export const createCalendarEventFromInvitation = async ({
     return {
         savedEvent: Event,
         savedVevent: veventToSaveWithPmAttendees,
-        savedVcalAttendee: vcalAttendeeToSave,
+        savedVcalAttendee: vcalPmAttendeeToSave,
     };
 };
 
