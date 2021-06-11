@@ -1,6 +1,6 @@
 import { MAILBOX_LABEL_IDS } from 'proton-shared/lib/constants';
 import { c } from 'ttag';
-import { CachedMessage } from './models/encryptedSearch';
+import { CachedMessage, ESDBStatus, ESSearchStatus } from './models/encryptedSearch';
 
 export const MAIN_ROUTE_PATH = '/:labelID?/:elementID?/:messageID?';
 
@@ -8,9 +8,11 @@ export const EXPIRATION_CHECK_FREQUENCY = 10000; // each 10 seconds
 export const MAX_EXPIRATION_TIME = 672; // hours
 export const PAGE_SIZE = 50;
 export const ELEMENTS_CACHE_REQUEST_SIZE = 100;
-export const SEARCH_PLACEHOLDERS_COUNT = 20;
+export const DEFAULT_PLACEHOLDERS_COUNT = PAGE_SIZE;
 export const ATTACHMENT_MAX_SIZE = 25000000; // bytes -> 25MB
 export const LARGE_KEY_SIZE = 50 * 1024;
+export const LOAD_RETRY_COUNT = 3;
+export const LOAD_RETRY_DELAY = 3000; // in ms => 3s
 
 export const UNDO_SEND_DELAY = 5000;
 
@@ -52,6 +54,17 @@ export const LABEL_IDS_TO_I18N = {
     [MAILBOX_LABEL_IDS.OUTBOX]: c('Link').t`Outbox`,
 };
 
+// List of location where messages are marked automatically as read after moving by the API
+export const LABELS_AUTO_READ = [MAILBOX_LABEL_IDS.TRASH];
+
+// List of location that cannot be change by user interaction
+export const LABELS_UNMODIFIABLE_BY_USER = [
+    MAILBOX_LABEL_IDS.ALL_MAIL,
+    MAILBOX_LABEL_IDS.ALL_SENT,
+    MAILBOX_LABEL_IDS.ALL_DRAFTS,
+    MAILBOX_LABEL_IDS.OUTBOX,
+];
+
 export enum ENCRYPTED_STATUS {
     PGP_MIME = 8, // Used for attachment
 }
@@ -74,19 +87,9 @@ export const DRAG_ELEMENT_ID_KEY = 'drag-element-id';
 export const DRAG_ADDRESS_KEY = 'drag-address';
 export const DRAG_ADDRESS_SIZE_KEY = 'drag-address-size';
 
-export const PROTON_DOMAINS = [
-    'protonmail.com',
-    'protonmail.ch',
-    'protonvpn.com',
-    'protonstatus.com',
-    'gdpr.eu',
-    'protonvpn.net',
-    'pm.me',
-    'protonirockerxow.onion',
-];
-
 export const MAX_ELEMENT_LIST_LOAD_RETRIES = 3;
 
+export const OPENPGP_REFRESH_CUTOFF = 10;
 export const ES_LIMIT = 150;
 export const ES_MAX_CONCURRENT = 10;
 export const ES_MAX_CACHE = 500000000; // 500 MB
@@ -120,7 +123,7 @@ export const localisedForwardFlags = [
     'pd:',
     'i̇lt:',
 ];
-export const defaultESDBStatus = {
+export const defaultESDBStatus: ESDBStatus = {
     dbExists: false,
     isBuilding: false,
     isDBLimited: false,
@@ -129,7 +132,7 @@ export const defaultESDBStatus = {
     isCacheLimited: false,
     isRefreshing: false,
 };
-export const defaultESSearchStatus = {
+export const defaultESSearchStatus: ESSearchStatus = {
     permanentResults: [],
     setElementsCache: () => {},
     labelID: '',

@@ -28,7 +28,6 @@ import MessageOnlyView from '../../components/message/MessageOnlyView';
 import { PAGE_SIZE } from '../../constants';
 import { isMessage, isSearch as testIsSearch } from '../../helpers/elements';
 import { Breakpoints } from '../../models/utils';
-import { OnCompose } from '../../hooks/composer/useCompose';
 import { useWelcomeFlag } from '../../hooks/mailbox/useWelcomeFlag';
 import useNewEmailNotification from '../../hooks/mailbox/useNewEmailNotification';
 import { useDeepMemo } from '../../hooks/useDeepMemo';
@@ -37,6 +36,7 @@ import { useMailboxHotkeys } from '../../hooks/mailbox/useMailboxHotkeys';
 import { useMailboxFocus } from '../../hooks/mailbox/useMailboxFocus';
 
 import './MailboxContainer.scss';
+import { useOnCompose } from '../ComposeProvider';
 
 interface Props {
     labelID: string;
@@ -47,7 +47,6 @@ interface Props {
     messageID?: string;
     location: Location;
     history: History;
-    onCompose: OnCompose;
     isComposerOpened: boolean;
 }
 
@@ -60,7 +59,6 @@ const MailboxContainer = ({
     messageID,
     location,
     history,
-    onCompose,
     isComposerOpened,
 }: Props) => {
     const getElementsFromIDs = useGetElementsFromIDs();
@@ -110,7 +108,7 @@ const MailboxContainer = ({
     const onMessageLoad = () => setIsMessageOpening(true);
     const onMessageReady = () => setIsMessageOpening(false);
 
-    const { labelID, elements, loading, expectedLength, total } = useElements({
+    const { labelID, elements, loading, placeholderCount, total } = useElements({
         conversationMode: isConversationMode(inputLabelID, mailSettings, location),
         labelID: inputLabelID,
         page: pageFromUrl(location),
@@ -121,6 +119,8 @@ const MailboxContainer = ({
     });
 
     const handleBack = useCallback(() => history.push(setParamsInLocation(history.location, { labelID })), [labelID]);
+
+    const onCompose = useOnCompose();
 
     useEffect(() => setPage({ ...page, page: pageFromUrl(location) }), [searchParams.page]);
     useEffect(() => setPage({ ...page, total }), [total]);
@@ -147,9 +147,10 @@ const MailboxContainer = ({
     useCalendars();
     useCalendarUserSettings();
 
+    const elementsLength = loading ? placeholderCount : elements.length;
     const showToolbar = !breakpoints.isNarrow || !elementID;
     const showList = columnMode || !elementID;
-    const showContentPanel = (columnMode && !!expectedLength) || !!elementID;
+    const showContentPanel = (columnMode && !!elementsLength) || !!elementID;
     const showPlaceholder = !breakpoints.isNarrow && (!elementID || !!checkedIDs.length);
     const showContentView = showContentPanel && !!elementID;
     const elementIDForList = checkedIDs.length ? undefined : elementID;
@@ -205,7 +206,6 @@ const MailboxContainer = ({
             selectedIDs,
             focusIndex,
             columnLayout,
-            showContentView,
             isMessageOpening,
             location,
         },
@@ -254,7 +254,7 @@ const MailboxContainer = ({
                         conversationMode={conversationMode}
                         labelID={labelID}
                         loading={loading}
-                        expectedLength={expectedLength}
+                        placeholderCount={placeholderCount}
                         columnLayout={columnLayout}
                         mailSettings={mailSettings}
                         elementID={elementIDForList}
@@ -297,7 +297,6 @@ const MailboxContainer = ({
                                     mailSettings={mailSettings}
                                     conversationID={elementID as string}
                                     onBack={handleBack}
-                                    onCompose={onCompose}
                                     breakpoints={breakpoints}
                                     onMessageReady={onMessageReady}
                                     columnLayout={columnLayout}
@@ -311,7 +310,6 @@ const MailboxContainer = ({
                                     mailSettings={mailSettings}
                                     messageID={elementID as string}
                                     onBack={handleBack}
-                                    onCompose={onCompose}
                                     breakpoints={breakpoints}
                                     onMessageReady={onMessageReady}
                                     columnLayout={columnLayout}

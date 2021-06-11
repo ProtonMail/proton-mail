@@ -1,9 +1,10 @@
-import React, { createContext, ReactNode, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, ReactNode, useContext, useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { c } from 'ttag';
 import {
     useApi,
     useGetUserKeys,
+    useMessageCounts,
     useNotifications,
     useOnLogout,
     useSubscribeEventManager,
@@ -12,7 +13,6 @@ import {
 import { getItem, removeItem, setItem } from 'proton-shared/lib/helpers/storage';
 import { wait } from 'proton-shared/lib/helpers/promise';
 import { openDB, deleteDB } from 'idb';
-import { useAttachmentCache } from './AttachmentProvider';
 import { useGetMessageKeys } from '../hooks/message/useGetMessageKeys';
 import { Event } from '../models/event';
 import {
@@ -23,9 +23,10 @@ import {
     EncryptedSearchFunctions,
     ESDBStatus,
     ESSearchStatus,
+    LastEmail,
     MessageForSearch,
 } from '../models/encryptedSearch';
-import { defaultESDBStatus, defaultESSearchStatus } from '../constants';
+import { defaultESDBStatus, defaultESSearchStatus, ES_MAX_CACHE } from '../constants';
 import { extractSearchParameters } from '../helpers/mailboxUrl';
 import { isSearch as testIsSearch } from '../helpers/elements';
 import {
@@ -37,9 +38,17 @@ import {
     wasIndexingDone,
     getTotalFromBuildEvent,
     getBuildEvent,
+    getCatchUpFail,
 } from '../helpers/encryptedSearch/esUtils';
 import { buildDB, encryptToDB, fetchMessage, getIndexKey, initialiseDB } from '../helpers/encryptedSearch/esBuild';
-import { cacheDB, hybridSearch, normaliseSearchParams, sizeOfCache } from '../helpers/encryptedSearch/esSearch';
+import {
+    cacheDB,
+    checkIsCacheLimited,
+    hybridSearch,
+    normaliseSearchParams,
+    sizeOfCache,
+    updateCache,
+} from '../helpers/encryptedSearch/esSearch';
 import {
     checkIsDBLimited,
     correctDecryptionErrors,
@@ -60,10 +69,10 @@ const EncryptedSearchProvider = ({ children }: Props) => {
     const location = useLocation();
     const getUserKeys = useGetUserKeys();
     const getMessageKeys = useGetMessageKeys();
-    const attachmentsCache = useAttachmentCache();
     const api = useApi();
     const [{ ID: userID }] = useUser();
     const { createNotification } = useNotifications();
+    const [messageCounts] = useMessageCounts();
 
     // Keep a state of cached messages and search results to update in case of new events
     const [esSearchStatus, setESSearchStatus] = useState<ESSearchStatus>(defaultESSearchStatus);
@@ -71,8 +80,8 @@ const EncryptedSearchProvider = ({ children }: Props) => {
     const [esDBStatus, setESDBStatus] = useState<ESDBStatus>(defaultESDBStatus);
     // Allow to abort indexing
     const abortControllerRef = useRef<AbortController>(new AbortController());
-    // Allow to track progress during indexing, caching or uncached search
-    const progressRecorderRef = useRef<number>(0);
+    // Allow to track progress during indexing or refreshing
+    const progressRecorderRef = useRef<[number, number]>([0, 0]);
 
     /**
      * Delete localStorage blobs and IDB
@@ -87,13 +96,17 @@ const EncryptedSearchProvider = ({ children }: Props) => {
         removeItem(`ES:${userID}:SyncFail`);
         removeItem(`ES:${userID}:Pause`);
         removeItem(`ES:${userID}:ESEnabled`);
+        removeItem(`ES:${userID}:SizeIDB`);
+        removeItem(`ES:${userID}:CatchUpFail`);
         return deleteDB(`ES:${userID}:DB`).catch(() => undefined);
     };
 
     /**
-     * Trigger deletion upon signout
+     * Abort ongoing operations if the user logs out
      */
-    useOnLogout(useCallback(esDelete, [userID]));
+    useOnLogout(async () => {
+        abortControllerRef.current.abort();
+    });
 
     /**
      * Notify the user the DB is deleted. Typically this is needed if the key is no
@@ -113,7 +126,7 @@ const EncryptedSearchProvider = ({ children }: Props) => {
      * Store progress of indexing, caching or uncached search
      */
     const recordProgress = (progress: number, total: number) => {
-        progressRecorderRef.current += progress / total;
+        progressRecorderRef.current = [progress, total];
     };
 
     /**
@@ -151,7 +164,7 @@ const EncryptedSearchProvider = ({ children }: Props) => {
     /**
      * Cache the whole IndexedDB and returns the cache promise
      */
-    const cacheIndexedDB: CacheIndexedDB = async (force?: boolean) => {
+    const cacheIndexedDB: CacheIndexedDB = async (force) => {
         const { esEnabled, dbExists } = esDBStatus;
         const esCache = await esSearchStatus.cachePromise;
         const defaultResult = {
@@ -159,20 +172,14 @@ const EncryptedSearchProvider = ({ children }: Props) => {
             isCacheLimited: false,
         };
 
-        if (dbExists && esEnabled && (!esCache.length || force)) {
+        if (dbExists && esEnabled && (!esCache.length || !!force)) {
             const indexKey = await getIndexKey(getUserKeys, userID);
             if (!indexKey) {
                 await dbCorruptError();
                 return defaultResult;
             }
 
-            progressRecorderRef.current = 0;
-            const total = await getNumMessagesDB(userID);
-            const recordProgressLocal = (progress: number) => {
-                recordProgress(progress, total);
-            };
-
-            const cacheDBPromise = cacheDB(indexKey, userID, recordProgressLocal);
+            const cacheDBPromise = cacheDB(indexKey, userID);
             const cachePromise = cacheDBPromise
                 .then((result) => {
                     setESDBStatus((esDBStatus) => {
@@ -208,7 +215,7 @@ const EncryptedSearchProvider = ({ children }: Props) => {
             return;
         }
 
-        progressRecorderRef.current = 0;
+        progressRecorderRef.current = [0, 0];
 
         setESDBStatus((esDBStatus) => {
             return {
@@ -217,14 +224,7 @@ const EncryptedSearchProvider = ({ children }: Props) => {
             };
         });
 
-        const newMessagesFound = await correctDecryptionErrors(
-            userID,
-            indexKey,
-            api,
-            getMessageKeys,
-            attachmentsCache,
-            recordProgress
-        );
+        const newMessagesFound = await correctDecryptionErrors(userID, indexKey, api, getMessageKeys, recordProgress);
 
         setESDBStatus((esDBStatus) => {
             return {
@@ -235,7 +235,7 @@ const EncryptedSearchProvider = ({ children }: Props) => {
 
         if (newMessagesFound) {
             // Check if DB became limited after this update
-            const isDBLimited = await checkIsDBLimited(userID, api);
+            const isDBLimited = await checkIsDBLimited(userID, messageCounts);
             setESDBStatus((esDBStatus) => {
                 return {
                     ...esDBStatus,
@@ -269,13 +269,7 @@ const EncryptedSearchProvider = ({ children }: Props) => {
         const isSearch = testIsSearch(searchParameters);
         const normalisedSearchParams = normaliseSearchParams(searchParameters, labelID);
 
-        const {
-            failedMessageEvents,
-            newESCache,
-            newPermanentResults,
-            cacheChanged,
-            searchChanged,
-        } = await syncMessageEvents(
+        const { failedMessageEvents, cacheChanged, searchChanged } = await syncMessageEvents(
             Messages,
             userID,
             esCache,
@@ -283,48 +277,44 @@ const EncryptedSearchProvider = ({ children }: Props) => {
             isSearch,
             api,
             getMessageKeys,
-            attachmentsCache,
             indexKey,
             normalisedSearchParams
         );
 
-        // Trigger re-renders only if strictly necessary
-        if (cacheChanged && !(cacheChanged && searchChanged)) {
-            setESSearchStatus((esSearchStatus) => {
-                return {
-                    ...esSearchStatus,
-                    cachePromise: new Promise((resolve) => resolve(newESCache)),
-                };
-            });
-        } else if (searchChanged && !(cacheChanged && searchChanged)) {
-            setESSearchStatus((esSearchStatus) => {
-                return {
-                    ...esSearchStatus,
-                    permanentResults: newPermanentResults,
-                };
-            });
-        } else if (cacheChanged && searchChanged) {
-            setESSearchStatus((esSearchStatus) => {
-                return {
-                    ...esSearchStatus,
-                    permanentResults: searchChanged ? newPermanentResults : esSearchStatus.permanentResults,
-                    cachePromise: cacheChanged
-                        ? new Promise((resolve) => resolve(newESCache))
-                        : esSearchStatus.cachePromise,
-                };
-            });
-        }
-
         if (searchChanged) {
-            setElementsCache(newPermanentResults);
+            setElementsCache(permanentResults);
+            setESSearchStatus((esSearchStatus) => {
+                return {
+                    ...esSearchStatus,
+                    permanentResults,
+                };
+            });
         }
 
-        // Check if DB became limited after this update
-        const isDBLimited = await checkIsDBLimited(userID, api);
+        if (cacheChanged) {
+            // In case messages were deleted and the resulting cache is smaller, it is updated to
+            // make room to more messages
+            if (await checkIsCacheLimited(userID, esCache.length)) {
+                const lastEmail: LastEmail = { Time: esCache[0].Time, Order: esCache[0].Order };
+                const cacheLimit = ES_MAX_CACHE - sizeOfCache(esCache);
+                await updateCache(indexKey, userID, lastEmail, esCache, cacheLimit);
+            }
+            setESSearchStatus((esSearchStatus) => {
+                return {
+                    ...esSearchStatus,
+                    cachePromise: Promise.resolve(esCache),
+                };
+            });
+        }
+
+        // Check if DB or cache became limited after this update
+        const isCacheLimited = await checkIsCacheLimited(userID, esCache.length);
+        const isDBLimited = await checkIsDBLimited(userID, messageCounts);
         setESDBStatus((esDBStatus) => {
             return {
                 ...esDBStatus,
                 isDBLimited,
+                isCacheLimited,
             };
         });
 
@@ -343,7 +333,7 @@ const EncryptedSearchProvider = ({ children }: Props) => {
             }
 
             if (messageEvent.Refresh) {
-                progressRecorderRef.current = 0;
+                progressRecorderRef.current = [0, 0];
 
                 setESDBStatus((esDBStatus) => {
                     return {
@@ -352,10 +342,19 @@ const EncryptedSearchProvider = ({ children }: Props) => {
                     };
                 });
 
-                await refreshIndex(userID, api, indexKey, getMessageKeys, attachmentsCache, recordProgress);
+                abortControllerRef.current = new AbortController();
+                await refreshIndex(
+                    userID,
+                    api,
+                    indexKey,
+                    getMessageKeys,
+                    recordProgress,
+                    abortControllerRef,
+                    messageCounts
+                );
 
                 // Check if DB became limited after this update
-                const isDBLimited = await checkIsDBLimited(userID, api);
+                const isDBLimited = await checkIsDBLimited(userID, messageCounts);
                 setESDBStatus((esDBStatus) => {
                     return {
                         ...esDBStatus,
@@ -391,22 +390,26 @@ const EncryptedSearchProvider = ({ children }: Props) => {
         // Otherwise, we catch up from the last "seen" event
         const previousEvent = getItem(`ES:${userID}:Event`);
 
-        let eventToCheck: Event | undefined;
-        if (buildEvent) {
-            eventToCheck = await dealWithEvent(buildEvent, indexKey, `ES:${userID}:BuildEvent`);
-        } else if (previousEvent) {
-            eventToCheck = await dealWithEvent(previousEvent, indexKey);
+        try {
+            let eventToCheck: Event | undefined;
+            if (buildEvent) {
+                eventToCheck = await dealWithEvent(buildEvent, indexKey, `ES:${userID}:BuildEvent`);
+            } else if (previousEvent) {
+                eventToCheck = await dealWithEvent(previousEvent, indexKey);
+            }
+            if (eventToCheck) {
+                await syncIndexedDB(eventToCheck, indexKey);
+            }
+        } catch (error) {
+            return false;
         }
-        if (eventToCheck) {
-            await syncIndexedDB(eventToCheck, indexKey);
-        }
+        return true;
     };
 
     /**
      * Pause a running indexig
      */
     const pauseIndexing = async () => {
-        setItem(`ES:${userID}:Pause`, 'true');
         abortControllerRef.current.abort();
         setESDBStatus((esDBStatus) => {
             return {
@@ -414,6 +417,7 @@ const EncryptedSearchProvider = ({ children }: Props) => {
                 isBuilding: false,
             };
         });
+        setItem(`ES:${userID}:Pause`, 'true');
     };
 
     /**
@@ -422,13 +426,13 @@ const EncryptedSearchProvider = ({ children }: Props) => {
     const resumeIndexing = async () => {
         const isResumed = isPaused(userID);
 
-        setItem(`ES:${userID}:ESEnabled`, 'true');
         setESDBStatus((esDBStatus) => {
             return {
                 ...esDBStatus,
                 esEnabled: true,
             };
         });
+        setItem(`ES:${userID}:ESEnabled`, 'true');
 
         const showError = (notSupported?: boolean) => {
             createNotification({
@@ -461,10 +465,8 @@ const EncryptedSearchProvider = ({ children }: Props) => {
         }
 
         const totalMessages = getTotalFromBuildEvent(userID) || 0;
-        progressRecorderRef.current = (await getNumMessagesDB(userID)) / totalMessages;
-        const recordProgressLocal = (progress: number) => {
-            recordProgress(progress, totalMessages);
-        };
+        const mailboxEmpty = totalMessages === 0;
+        progressRecorderRef.current = [await getNumMessagesDB(userID), totalMessages];
 
         setESDBStatus((esDBStatus) => {
             return {
@@ -473,39 +475,44 @@ const EncryptedSearchProvider = ({ children }: Props) => {
             };
         });
 
-        let success = false;
+        let success = mailboxEmpty;
         while (!success) {
-            success = await buildDB(
-                userID,
-                indexKey,
-                getMessageKeys,
-                attachmentsCache,
-                api,
-                abortControllerRef,
-                recordProgressLocal
-            );
+            const currentMessages = await getNumMessagesDB(userID);
+            progressRecorderRef.current = [currentMessages, totalMessages];
+            const recordProgressLocal = (progress: number) => {
+                recordProgress(currentMessages + progress, totalMessages);
+            };
+
+            success = await buildDB(userID, indexKey, getMessageKeys, api, abortControllerRef, recordProgressLocal);
 
             // Kill switch in case user logs out or pauses
-            if (!indexKeyExists(userID) || (!success && isPaused(userID))) {
+            if (abortControllerRef.current.signal.aborted || isPaused(userID)) {
                 return;
             }
 
-            await wait(500);
-        }
-
-        // If the process exits but there are no messages in IDB, it means some error has
-        // occured and user should ty again
-        const totalFromIDB = await getNumMessagesDB(userID);
-        if (totalFromIDB === 0) {
-            await dbCorruptError();
-            return;
+            await wait(2000);
         }
 
         // Finalise IndexedDB building by catching up with new messages
-        await catchUpWithEvents(indexKey);
+        const buildEvent = getBuildEvent(userID);
+        const didCatchUp = await catchUpWithEvents(indexKey);
+        if (!didCatchUp) {
+            // In case an error occurs, indexing is finalised anyways but
+            // the next time an event happens, the current "latest" event
+            // is overwritten. This prevents that
+            setItem(`ES:${userID}:CatchUpFail`, 'true');
+            if (buildEvent) {
+                setItem(`ES:${userID}:Event`, buildEvent);
+            } else {
+                // If not even the build event can be retrieved, IDB/LS are likely
+                // in a corrupt state so it is safer to re-index
+                await dbCorruptError();
+                return;
+            }
+        }
 
         // The check whether the DB is limited is performed after sync to account for new messages
-        const isDBLimited = await checkIsDBLimited(userID, api);
+        const isDBLimited = await checkIsDBLimited(userID, messageCounts);
         setESDBStatus((esDBStatus) => {
             return {
                 ...esDBStatus,
@@ -531,7 +538,6 @@ const EncryptedSearchProvider = ({ children }: Props) => {
             return false;
         }
 
-        progressRecorderRef.current = 0;
         const normalisedSearchParams = normaliseSearchParams(searchParams, labelID);
 
         // Wait for the cache to be built, falls back to uncached search if caching fails
@@ -562,7 +568,6 @@ const EncryptedSearchProvider = ({ children }: Props) => {
                 isCacheLimited,
                 getUserKeys,
                 userID,
-                recordProgress,
                 incrementMessagesSearched
             );
         } catch (error) {
@@ -616,6 +621,16 @@ const EncryptedSearchProvider = ({ children }: Props) => {
             return;
         }
 
+        // If a previous catch up with event failed, we attempt it again to avoid
+        // losing any changes in the previously stored event
+        if (getCatchUpFail(userID)) {
+            if (await catchUpWithEvents(indexKey)) {
+                removeItem(`ES:${userID}:CatchUpFail`);
+            } else {
+                return;
+            }
+        }
+
         // If a previous sync failed, messages are re-fetched
         const syncBlob = getItem(`ES:${userID}:SyncFail`);
         if (syncBlob) {
@@ -626,7 +641,7 @@ const EncryptedSearchProvider = ({ children }: Props) => {
 
             await Promise.all(
                 syncFailures.map(async (messageID) => {
-                    const messageToStore = await fetchMessage(messageID, api, getMessageKeys, attachmentsCache);
+                    const messageToStore = await fetchMessage(messageID, api, getMessageKeys);
                     if (!messageToStore) {
                         newSyncFailures.push(messageID);
                         return;
@@ -653,20 +668,20 @@ const EncryptedSearchProvider = ({ children }: Props) => {
         }
 
         // In case no recovery is needed, sync the DB with the current event only
+        try {
+            await syncIndexedDB(event, indexKey);
+        } catch (error) {
+            // In case an error happens, we don't save the event id to localStorage
+            return;
+        }
         const { EventID } = event;
         if (EventID) {
             setItem(`ES:${userID}:Event`, EventID);
         }
-        await syncIndexedDB(event, indexKey);
     });
 
     useEffect(() => {
-        // Remove encrypted search DB in case there is a corrupt leftover
         if (!indexKeyExists(userID)) {
-            // TODO: Just for jest since it doesn't exist there
-            if (window.indexedDB) {
-                deleteDB(`ES:${userID}:DB`).catch(() => undefined);
-            }
             return;
         }
 
@@ -702,7 +717,11 @@ const EncryptedSearchProvider = ({ children }: Props) => {
             // Compare the last event "seen" by the DB (saved in localStorage) and
             // the present one to check whether any event has happened while offline,
             // but only if indexing was successful
-            void catchUpWithEvents(indexKey);
+            if (!(await catchUpWithEvents(indexKey))) {
+                // In case an error occurs, we don't want subsequent events synced,
+                // because that would overwrite the current one in localStorage.
+                setItem(`ES:${userID}:CatchUpFail`, 'true');
+            }
         };
 
         void run();

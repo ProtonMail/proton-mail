@@ -8,28 +8,29 @@ import SendingMessageNotification, {
 } from '../../components/notifications/SendingMessageNotification';
 import { MessageAction, MessageExtended, MessageExtendedWithData } from '../../models/message';
 import { useSendMessage } from './useSendMessage';
-import { OnCompose } from './useCompose';
 import { useSendVerifications } from './useSendVerifications';
+import { useOnCompose } from '../../containers/ComposeProvider';
+import { MapSendInfo } from '../../models/crypto';
 
 export interface UseSendHandlerParameters {
     modelMessage: MessageExtended;
     ensureMessageContent: () => void;
+    mapSendInfo: MapSendInfo;
     promiseUpload: Promise<void>;
     pendingSave: RefObject<boolean>;
     autoSave: ((message: MessageExtended) => Promise<void>) & Abortable;
     addAction: <T>(action: MessageAction<T>) => Promise<T>;
-    onCompose: OnCompose;
     onClose: () => void;
 }
 
 export const useSendHandler = ({
     modelMessage,
     ensureMessageContent,
+    mapSendInfo,
     promiseUpload,
     pendingSave,
     autoSave,
     addAction,
-    onCompose,
     onClose,
 }: UseSendHandlerParameters) => {
     const { createNotification, hideNotification } = useNotifications();
@@ -37,10 +38,12 @@ export const useSendHandler = ({
     const { preliminaryVerifications, extendedVerifications } = useSendVerifications();
     const sendMessage = useSendMessage();
 
+    const onCompose = useOnCompose();
+
     const handleSendAfterUploads = useHandler(async (notifManager: SendingMessageNotificationManager) => {
         let verificationResults;
         try {
-            verificationResults = await extendedVerifications(modelMessage as MessageExtendedWithData);
+            verificationResults = await extendedVerifications(modelMessage as MessageExtendedWithData, mapSendInfo);
         } catch {
             hideNotification(notifManager.ID);
             onCompose({ existingDraft: modelMessage, fromUndo: true });
@@ -78,10 +81,10 @@ export const useSendHandler = ({
             disableAutoClose: true,
         });
 
+        ensureMessageContent();
+
         // Closing the composer instantly, all the send process will be in background
         onClose();
-
-        ensureMessageContent();
 
         try {
             await promiseUpload;

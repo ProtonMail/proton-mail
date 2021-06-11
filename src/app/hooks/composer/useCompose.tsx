@@ -16,10 +16,10 @@ import { isOutbox, isScheduledSend, isDraft } from 'proton-shared/lib/mail/messa
 import { forceSend } from 'proton-shared/lib/api/messages';
 
 import { MessageExtended, PartialMessageExtended } from '../../models/message';
-import { MESSAGE_ACTIONS } from '../../constants';
 import { useDraft } from '../useDraft';
 import { isDirtyAddress } from '../../helpers/addresses';
 import { useMessageCache, getLocalID } from '../../containers/MessageProvider';
+import { MESSAGE_ACTIONS } from '../../constants';
 
 export interface ComposeExisting {
     existingDraft: MessageExtended;
@@ -31,7 +31,9 @@ export interface ComposeNew {
     referenceMessage?: PartialMessageExtended;
 }
 
-export type ComposeArgs = ComposeExisting | ComposeNew;
+export type ComposeArgs = (ComposeExisting | ComposeNew) & {
+    returnFocusTo?: HTMLElement;
+};
 
 export const getComposeExisting = (composeArgs: ComposeArgs) =>
     (composeArgs as ComposeExisting).existingDraft ? (composeArgs as ComposeExisting) : undefined;
@@ -42,6 +44,7 @@ export const getComposeNew = (composeArgs: ComposeArgs) =>
 export const getComposeArgs = (composeArgs: ComposeArgs) => ({
     composeExisting: getComposeExisting(composeArgs),
     composeNew: getComposeNew(composeArgs),
+    returnFocusTo: composeArgs.returnFocusTo || (document.activeElement as HTMLElement),
 });
 
 export interface OnCompose {
@@ -50,7 +53,7 @@ export interface OnCompose {
 
 export const useCompose = (
     openComposers: string[],
-    openComposer: (messageID: string) => void,
+    openComposer: (messageID: string, returnFocusTo?: HTMLElement) => void,
     focusComposer: (messageID: string) => void,
     maxActiveComposer: number
 ) => {
@@ -114,13 +117,14 @@ export const useCompose = (
             return;
         }
 
-        const { composeExisting, composeNew } = getComposeArgs(composeArgs);
+        const { composeExisting, composeNew, returnFocusTo } = getComposeArgs(composeArgs);
 
         if (composeExisting) {
             const { existingDraft, fromUndo } = composeExisting;
             const localID = getLocalID(messageCache, existingDraft.localID);
 
             const existingMessage = messageCache.get(localID);
+
             if (existingMessage) {
                 // Plaintext drafts have a different sanitization as plaintext mail content
                 // So we have to restart the sanitization process on a cached draft
@@ -130,15 +134,17 @@ export const useCompose = (
                     existingMessage.plainText = undefined;
                 }
                 existingMessage.openDraftFromUndo = fromUndo;
+                existingMessage.inComposer = true;
             }
 
             const existingMessageID = openComposers.find((id) => id === localID);
+
             if (existingMessageID) {
                 focusComposer(existingMessageID);
                 return;
             }
 
-            openComposer(localID);
+            openComposer(localID, returnFocusTo);
             focusComposer(localID);
             return;
         }
@@ -172,7 +178,7 @@ export const useCompose = (
 
             const newMessageID = await createDraft(action, referenceMessage);
 
-            openComposer(newMessageID);
+            openComposer(newMessageID, returnFocusTo);
             focusComposer(newMessageID);
         }
     });

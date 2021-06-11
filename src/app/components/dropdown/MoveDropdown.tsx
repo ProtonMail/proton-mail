@@ -13,9 +13,8 @@ import {
     Icon,
     Button,
 } from 'react-components';
-import { MAILBOX_LABEL_IDS, LABEL_COLORS, ROOT_FOLDER, LABEL_TYPE } from 'proton-shared/lib/constants';
+import { MAILBOX_LABEL_IDS } from 'proton-shared/lib/constants';
 import { normalize } from 'proton-shared/lib/helpers/string';
-import { randomIntFromInterval } from 'proton-shared/lib/helpers/function';
 import { buildTreeview } from 'proton-shared/lib/helpers/folder';
 import { Folder, FolderWithSubFolders } from 'proton-shared/lib/interfaces/Folder';
 import isTruthy from 'proton-shared/lib/helpers/isTruthy';
@@ -114,13 +113,7 @@ const MoveDropdown = ({ selectedIDs, labelID, conversationMode, onClose, onLock,
 
     const handleCreate = () => {
         setContainFocus(false);
-        const newLabel: Pick<Folder, 'Name' | 'Color' | 'ParentID' | 'Type'> = {
-            Name: search,
-            Color: LABEL_COLORS[randomIntFromInterval(0, LABEL_COLORS.length - 1)],
-            ParentID: ROOT_FOLDER,
-            Type: LABEL_TYPE.MESSAGE_FOLDER,
-        };
-        createModal(<LabelModal label={newLabel} onClose={() => setContainFocus(true)} />);
+        createModal(<LabelModal type="folder" onClose={() => setContainFocus(true)} />);
     };
 
     // The dropdown is several times in the view, native html ids has to be different each time
@@ -142,6 +135,7 @@ const MoveDropdown = ({ selectedIDs, labelID, conversationMode, onClose, onLock,
                         onClick={handleCreate}
                         className="flex flex-align-items-center"
                         data-testid="folder-dropdown:add-folder"
+                        data-prevent-arrow-navigation
                     >
                         <Icon name="folder" /> +
                     </Button>
@@ -155,6 +149,7 @@ const MoveDropdown = ({ selectedIDs, labelID, conversationMode, onClose, onLock,
                     placeholder={c('Placeholder').t`Filter folders`}
                     autoFocus={autoFocusSearch}
                     data-testid="folder-dropdown:search-folder"
+                    data-prevent-arrow-navigation
                 />
             </div>
             <div
@@ -174,7 +169,11 @@ const MoveDropdown = ({ selectedIDs, labelID, conversationMode, onClose, onLock,
                                     onClick={() => withLoading(handleMove(folder))}
                                     data-testid={`folder-dropdown:folder-${folder.Name}`}
                                 >
-                                    <FolderIcon folder={folder} className="flex-item-noshrink mr0-5" />
+                                    <FolderIcon
+                                        folder={folder}
+                                        name={folder.icon}
+                                        className="flex-item-noshrink mr0-5"
+                                    />
                                     <span className="text-ellipsis" title={folder.Name}>
                                         <Mark value={search}>{folder.Name}</Mark>
                                     </span>

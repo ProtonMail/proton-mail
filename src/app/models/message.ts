@@ -211,6 +211,16 @@ export interface MessageExtended {
      * Flag meaning we are reopening the draft from an undo action
      */
     openDraftFromUndo?: boolean;
+
+    /**
+     * Counter of load retry
+     */
+    loadRetry?: number;
+
+    /**
+     * Flag to know whether the message is currently being composed or not
+     */
+    inComposer?: boolean;
 }
 
 /**

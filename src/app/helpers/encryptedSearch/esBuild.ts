@@ -1,11 +1,12 @@
 import { Message } from 'proton-shared/lib/interfaces/mail/Message';
 import { Api } from 'proton-shared/lib/interfaces';
 import { getItem, removeItem, setItem } from 'proton-shared/lib/helpers/storage';
+import { destroyOpenPGP, loadOpenPGP } from 'proton-shared/lib/openpgp';
+import { wait } from 'proton-shared/lib/helpers/promise';
 import { openDB, IDBPDatabase, deleteDB } from 'idb';
 import { decryptMessage as pmcryptoDecryptMessage, getMessage as pmcryptoGetMessage, encryptMessage } from 'pmcrypto';
 import runInQueue from 'proton-shared/lib/helpers/runInQueue';
 import { decryptMessage } from '../message/messageDecrypt';
-import { AttachmentsCache } from '../../containers/AttachmentProvider';
 import { GetMessageKeys } from '../../hooks/message/useGetMessageKeys';
 import { locateBlockquote } from '../message/messageBlockquote';
 import { CLASSNAME_SIGNATURE_CONTAINER } from '../message/messageSignature';
@@ -17,9 +18,16 @@ import {
     RecoveryPoint,
     StoredCiphertext,
 } from '../../models/encryptedSearch';
-import { AesKeyGenParams, ES_MAX_CONCURRENT, KeyUsages, localisedForwardFlags } from '../../constants';
-import { indexKeyExists, isPaused } from './esUtils';
+import {
+    AesKeyGenParams,
+    ES_MAX_CONCURRENT,
+    KeyUsages,
+    localisedForwardFlags,
+    OPENPGP_REFRESH_CUTOFF,
+} from '../../constants';
+import { updateSizeIDB } from './esUtils';
 import { queryEvents, queryMessage, queryMessagesCount, queryMessagesMetadata } from './esAPI';
+import { sizeOfCachedMessage } from './esSearch';
 
 /**
  * Retrieve and decrypt the index key from localStorage. Return undefined if something goes wrong.
@@ -163,7 +171,6 @@ export const fetchMessage = async (
     messageID: string,
     api: Api,
     getMessageKeys: GetMessageKeys,
-    attachmentsCache: AttachmentsCache,
     signal?: AbortSignal
 ) => {
     const message = await queryMessage(api, messageID, signal);
@@ -176,7 +183,7 @@ export const fetchMessage = async (
     let decryptionError = true;
     try {
         const keys = await getMessageKeys(message);
-        const decryptionResult = await decryptMessage(message, keys.privateKeys, attachmentsCache);
+        const decryptionResult = await decryptMessage(message, keys.privateKeys, undefined);
         if (!decryptionResult.errors) {
             decryptedSubject = decryptionResult.decryptedSubject;
             decryptedBody = decryptionResult.decryptedBody;
@@ -208,33 +215,20 @@ const storeMessages = async (
     indexKey: CryptoKey,
     api: Api,
     getMessageKeys: GetMessageKeys,
-    attachmentsCache: AttachmentsCache,
-    userID: string,
     abortControllerRef: React.MutableRefObject<AbortController>
 ) => {
+    const numMessagesBefore = await esDB.count('messages');
     const messagesToStore: StoredCiphertext[] = [];
+    let batchSize = 0;
 
     const esIteratee = async (message: Message) => {
-        if (message.ExpirationTime) {
-            return;
-        }
-        // Kill switch in case user logs out
-        if (!indexKeyExists(userID)) {
-            throw new Error('Key was removed');
-        }
-
-        const messageToCache = await fetchMessage(
-            message.ID,
-            api,
-            getMessageKeys,
-            attachmentsCache,
-            abortControllerRef.current.signal
-        );
+        const messageToCache = await fetchMessage(message.ID, api, getMessageKeys, abortControllerRef.current.signal);
 
         if (!messageToCache) {
             throw new Error('Plaintext to store is undefined');
         }
 
+        batchSize += sizeOfCachedMessage(messageToCache);
         const newCiphertextToStore = await encryptToDB(messageToCache, indexKey);
 
         if (!newCiphertextToStore) {
@@ -267,7 +261,12 @@ const storeMessages = async (
     );
     await tx.done;
 
-    return recoveryPoint;
+    const numMessagesAfter = await esDB.count('messages');
+    if (numMessagesBefore + messagesMetadata.length !== numMessagesAfter) {
+        throw new Error('Messages not stored correctly');
+    }
+
+    return { recoveryPoint, batchSize };
 };
 
 /**
@@ -278,7 +277,6 @@ const storeMessagesBatches = async (
     esDB: IDBPDatabase<EncryptedSearchDB>,
     indexKey: CryptoKey,
     getMessageKeys: GetMessageKeys,
-    attachmentsCache: AttachmentsCache,
     api: Api,
     abortControllerRef: React.MutableRefObject<AbortController>,
     inputLastMessage: RecoveryPoint | undefined,
@@ -303,26 +301,31 @@ const storeMessagesBatches = async (
         return false;
     }
 
+    let batchCount = 0;
+    let progress = 0;
     while (Messages.length) {
-        const recoveryPoint = await storeMessages(
+        const storeOutput = await storeMessages(
             Messages,
             esDB,
             indexKey,
             api,
             getMessageKeys,
-            attachmentsCache,
-            userID,
             abortControllerRef
         ).catch((error) => {
             if (error.name === 'QuotaExceededError') {
                 const quotaRecoveryPoint: RecoveryPoint = { ID: '', Time: -1 };
-                return quotaRecoveryPoint;
+                return {
+                    recoveryPoint: quotaRecoveryPoint,
+                    batchSize: 0,
+                };
             }
         });
 
-        if (!recoveryPoint) {
+        if (!storeOutput) {
             return false;
         }
+        const { recoveryPoint, batchSize } = storeOutput;
+
         if (recoveryPoint.ID === '' && recoveryPoint.Time === -1) {
             // If the quota has been reached, indexing is condisered to be successful. Since
             // messages are fetched in chronological order, IndexedDB is guaranteed to contain
@@ -331,13 +334,9 @@ const storeMessagesBatches = async (
         }
 
         setItem(`ES:${userID}:Recover`, JSON.stringify(recoveryPoint));
-
-        recordProgress(Messages.length);
-
-        // Kill switch in case user logs out or pauses
-        if (!indexKeyExists(userID) || isPaused(userID)) {
-            return false;
-        }
+        updateSizeIDB(userID, batchSize);
+        progress += Messages.length;
+        recordProgress(progress);
 
         resultMetadata = await queryMessagesMetadata(
             api,
@@ -353,19 +352,33 @@ const storeMessagesBatches = async (
         }
 
         Messages = resultMetadata.Messages;
+
+        if (batchCount++ >= OPENPGP_REFRESH_CUTOFF) {
+            const { openpgp } = window as any;
+            // In case the workers are performing some operations, wait until they are done
+            const openpgpWorkers = openpgp.getWorker();
+            if (!openpgpWorkers) {
+                continue;
+            }
+            while (openpgpWorkers.workers.some((worker: any) => worker.requests)) {
+                await wait(1000);
+            }
+            await destroyOpenPGP();
+            await loadOpenPGP();
+            batchCount = 0;
+        }
     }
 
     return true;
 };
 
 /**
- * Try to recover indexing if something went wrong
+ * Opens the DB and starts indexing
  */
 export const buildDB = async (
     userID: string,
     indexKey: CryptoKey,
     getMessageKeys: GetMessageKeys,
-    attachmentsCache: AttachmentsCache,
     api: Api,
     abortControllerRef: React.MutableRefObject<AbortController>,
     recordProgress: (progress: number) => void
@@ -386,7 +399,6 @@ export const buildDB = async (
         esDB,
         indexKey,
         getMessageKeys,
-        attachmentsCache,
         api,
         abortControllerRef,
         recoveryPoint,
@@ -422,15 +434,18 @@ export const initialiseDB = async (userID: string, getUserKeys: GetUserKeys, api
     // new messages will be synced only after indexing has completed. The first message is set
     // as first recovery point
     const initialiser = await queryMessagesCount(api);
-    if (!initialiser || initialiser.Total === 0) {
+    if (!initialiser) {
         return result;
     }
-    // +1 is added so that firstMessage will be included in the very first batch of messages
-    const firstRecoveryPoint: RecoveryPoint = {
-        ID: initialiser.firstMessage.ID,
-        Time: initialiser.firstMessage.Time + 1,
-    };
-    setItem(`ES:${userID}:Recover`, JSON.stringify(firstRecoveryPoint));
+
+    if (initialiser.Total !== 0) {
+        // +1 is added so that firstMessage will be included in the very first batch of messages
+        const firstRecoveryPoint: RecoveryPoint = {
+            ID: initialiser.firstMessage.ID,
+            Time: initialiser.firstMessage.Time + 1,
+        };
+        setItem(`ES:${userID}:Recover`, JSON.stringify(firstRecoveryPoint));
+    }
 
     // Save the event before starting building IndexedDB
     const previousEvent = await queryEvents(api);
@@ -482,6 +497,8 @@ export const initialiseDB = async (userID: string, getUserKeys: GetUserKeys, api
         removeItem(`ES:${userID}:BuildEvent`);
         return result;
     }
+
+    setItem(`ES:${userID}:SizeIDB`, '0');
 
     return {
         ...result,

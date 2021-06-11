@@ -15,7 +15,6 @@ import { Element } from '../../models/element';
 import { useMessage } from '../../hooks/message/useMessage';
 import { useMarkAs, MARK_AS_STATUS } from '../../hooks/useMarkAs';
 import { isUnread } from '../../helpers/elements';
-import { OnCompose } from '../../hooks/composer/useCompose';
 import { Breakpoints } from '../../models/utils';
 import { useLoadMessage } from '../../hooks/message/useLoadMessage';
 import { useInitializeMessage } from '../../hooks/message/useInitializeMessage';
@@ -25,6 +24,8 @@ import { useVerifyMessage } from '../../hooks/message/useVerifyMessage';
 import { useMessageHotkeys } from '../../hooks/message/useMessageHotkeys';
 
 import './MessageView.scss';
+import { useOnCompose } from '../../containers/ComposeProvider';
+import { LOAD_RETRY_COUNT } from '../../constants';
 
 interface Props {
     labelID: string;
@@ -36,7 +37,6 @@ interface Props {
     conversationIndex?: number;
     conversationID?: string;
     onBack: () => void;
-    onCompose: OnCompose;
     breakpoints: Breakpoints;
     onFocus?: (index: number) => void;
     onMessageReady?: () => void;
@@ -63,7 +63,6 @@ const MessageView = (
         conversationIndex = 0,
         conversationID,
         onBack,
-        onCompose,
         breakpoints,
         onFocus = noop,
         onMessageReady,
@@ -87,7 +86,10 @@ const MessageView = (
 
     const elementRef = useRef<HTMLElement>(null);
 
-    const { message, addAction, messageLoaded, bodyLoaded } = useMessage(inputMessage.ID, conversationID);
+    const { message, addAction, messageLoaded, bodyLoaded, loading: messageLoading } = useMessage(
+        inputMessage.ID,
+        conversationID
+    );
     const load = useLoadMessage(inputMessage);
     const initialize = useInitializeMessage(message.localID, labelID);
     const verify = useVerifyMessage(message.localID);
@@ -95,6 +97,8 @@ const MessageView = (
     const loadEmbeddedImages = useLoadEmbeddedImages(message.localID);
     const resignContact = useResignContact(message.localID);
     const markAs = useMarkAs();
+
+    const onCompose = useOnCompose();
 
     const draft = !loading && isDraft(message.data);
     const outbox = !loading && (isOutbox(message.data) || message.sending);
@@ -191,7 +195,7 @@ const MessageView = (
             if (!isDraft(message.data)) {
                 setExpanded(true);
                 if (!columnLayout) {
-                    elementRef.current?.focus();
+                    elementRef.current?.parentElement?.focus();
                 }
             }
         },
@@ -208,20 +212,26 @@ const MessageView = (
             if (onMessageReady) {
                 setTimeout(onMessageReady);
             }
-            elementRef.current?.focus();
+            if (!columnLayout) {
+                elementRef.current?.parentElement?.focus();
+            }
         }
-    }, [loading, messageLoaded, message.data?.ID]);
+    }, [loading, messageLoaded, bodyLoaded, message.data?.ID, messageLoading]);
 
     // Manage preparing the content of the message
     useEffect(() => {
         if (!loading && expanded && message.initialized === undefined) {
+            if ((message.loadRetry || 0) > LOAD_RETRY_COUNT) {
+                // Max retries reach, aborting
+                return;
+            }
             void addAction(initialize);
         }
     }, [loading, expanded, message.initialized]);
 
     // Manage recomputing signature verification (happens when invalidated after initial load)
     useEffect(() => {
-        if (!loading && expanded && message.initialized && message.verification === undefined) {
+        if (!loading && expanded && message.initialized && message.data && message.verification === undefined) {
             void addAction(() => verify(message.decryptedRawContent as string, message.signature));
         }
     }, [loading, expanded, message.initialized, message.verification]);
@@ -276,7 +286,6 @@ const MessageView = (
         },
         {
             onFocus,
-            onCompose,
             setExpanded,
             toggleOriginalMessage,
             handleLoadRemoteImages,
@@ -319,7 +328,6 @@ const MessageView = (
                         mailSettings={mailSettings}
                         onToggle={handleToggle(false)}
                         onBack={onBack}
-                        onCompose={onCompose}
                         onSourceMode={setSourceMode}
                         breakpoints={breakpoints}
                         labelDropdownToggleRef={labelDropdownToggleRef}
@@ -346,7 +354,6 @@ const MessageView = (
                     isSentMessage={sent}
                     isUnreadMessage={unread}
                     onExpand={handleToggle(true)}
-                    onCompose={onCompose}
                     breakpoints={breakpoints}
                 />
             )}

@@ -1,4 +1,4 @@
-import React, { ReactElement, useRef } from 'react';
+import React, { ReactElement, ReactNode, useRef } from 'react';
 import {
     CacheProvider,
     NotificationsProvider,
@@ -32,12 +32,12 @@ interface RenderResult extends OriginalRenderResult {
     rerender: (ui: React.ReactElement) => Promise<void>;
 }
 
-export const authentication = {
+export const authentication = ({
     getUID: jest.fn(),
     getLocalID: jest.fn(),
     getPassword: jest.fn(),
     onLogout: jest.fn(),
-} as unknown as PrivateAuthenticationStore;
+} as unknown) as PrivateAuthenticationStore;
 
 let history: MemoryHistory;
 export const getHistory = () => history;
@@ -45,10 +45,6 @@ export const resetHistory = () => {
     history = createMemoryHistory({ initialEntries: ['/inbox'] });
 };
 resetHistory();
-
-interface Props {
-    children: JSX.Element;
-}
 
 export const config = {
     APP_NAME: APPS.PROTONMAIL,
@@ -61,6 +57,10 @@ const mockDomApi = () => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
     window.URL.createObjectURL = jest.fn();
 };
+
+interface Props {
+    children: ReactNode;
+}
 
 const TestProvider = ({ children }: Props) => {
     const contentRef = useRef<HTMLDivElement>(null);
@@ -122,7 +122,13 @@ export const render = async (ui: ReactElement, useMinimalCache = true): Promise<
         await tick(); // Should not be necessary, would be better not to use it, but fails without
     };
 
-    return { ...result, rerender };
+    const unmount = () => {
+        // Unmounting the component not the whole context
+        result.rerender(<TestProvider>{null}</TestProvider>);
+        return true;
+    };
+
+    return { ...result, rerender, unmount };
 };
 
 export const renderHook = (callback: (props: any) => any, useMinimalCache = true) => {

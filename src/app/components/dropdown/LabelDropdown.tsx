@@ -193,8 +193,13 @@ const LabelDropdown = ({ selectedIDs, labelID, labels = [], onClose, onLock, bre
         );
     };
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await withLoading(handleApply());
+    };
+
     return (
-        <>
+        <form onSubmit={handleSubmit}>
             <div className="flex flex-justify-space-between flex-align-items-center m1 mb0">
                 <span className="text-bold" tabIndex={-2}>
                     {c('Label').t`Label as`}
@@ -207,6 +212,7 @@ const LabelDropdown = ({ selectedIDs, labelID, labels = [], onClose, onLock, bre
                         onClick={handleCreate}
                         className="flex flex-align-items-center"
                         data-testid="label-dropdown:add-label"
+                        data-prevent-arrow-navigation
                     >
                         <Icon name="label" /> +
                     </Button>
@@ -220,6 +226,7 @@ const LabelDropdown = ({ selectedIDs, labelID, labels = [], onClose, onLock, bre
                     placeholder={c('Placeholder').t`Filter labels`}
                     autoFocus={autoFocusSearch}
                     data-test-selector="label-dropdown:search-label"
+                    data-prevent-arrow-navigation
                 />
             </div>
             <div
@@ -272,6 +279,7 @@ const LabelDropdown = ({ selectedIDs, labelID, labels = [], onClose, onLock, bre
                     checked={alsoArchive}
                     onChange={({ target }) => updateAlsoArchive(target.checked)}
                     data-testid="label-dropdown:also-archive"
+                    data-prevent-arrow-navigation
                 />
                 <label htmlFor={archiveCheckID} className="flex-item-fluid">
                     {c('Label').t`Also archive`}
@@ -281,14 +289,15 @@ const LabelDropdown = ({ selectedIDs, labelID, labels = [], onClose, onLock, bre
                 <PrimaryButton
                     className="w100"
                     loading={loading}
-                    onClick={() => withLoading(handleApply())}
                     disabled={applyDisabled}
                     data-testid="label-dropdown:apply"
+                    data-prevent-arrow-navigation
+                    type="submit"
                 >
                     {c('Action').t`Apply`}
                 </PrimaryButton>
             </div>
-        </>
+        </form>
     );
 };
 

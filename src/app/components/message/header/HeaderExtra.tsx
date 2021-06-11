@@ -12,26 +12,25 @@ import ExtraAskResign from '../extras/ExtraAskResign';
 import { MessageExtended } from '../../../models/message';
 import ExtraErrors from '../extras/ExtraErrors';
 import ExtraDecryptedSubject from '../extras/ExtraDecryptedSubject';
-import { OnCompose } from '../../../hooks/composer/useCompose';
 
 interface Props {
     message: MessageExtended;
     sourceMode: boolean;
     onResignContact: () => void;
     messageLoaded: boolean;
+    bodyLoaded: boolean;
     onLoadRemoteImages: () => void;
     onLoadEmbeddedImages: () => void;
-    onCompose: OnCompose;
 }
 
 const HeaderExtra = ({
     message,
     sourceMode,
     messageLoaded,
+    bodyLoaded,
     onResignContact,
     onLoadRemoteImages,
     onLoadEmbeddedImages,
-    onCompose,
 }: Props) => {
     const received = message.data && isReceived(message.data);
     return (
@@ -39,8 +38,8 @@ const HeaderExtra = ({
             <ExtraExpirationTime message={message} />
             <ExtraDecryptedSubject message={message} />
             <ExtraSpamScore message={message} />
-            <ExtraErrors message={message} />
-            <ExtraUnsubscribe message={message} onCompose={onCompose} />
+            {bodyLoaded && <ExtraErrors message={message} />}
+            <ExtraUnsubscribe message={message} />
             <ExtraReadReceipt message={message} />
             <ExtraAutoReply message={message} />
             {messageLoaded && <ExtraPinKey message={message.data} messageVerification={message.verification} />}

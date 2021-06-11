@@ -1,5 +1,6 @@
 import React, { useEffect, memo, useRef } from 'react';
 import { useLabels, useToggle, classnames } from 'react-components';
+import { useLinkHandler } from 'react-components/hooks/useLinkHandler';
 import { Message } from 'proton-shared/lib/interfaces/mail/Message';
 import { MailSettings } from 'proton-shared/lib/interfaces';
 import { MAILBOX_LABEL_IDS } from 'proton-shared/lib/constants';
@@ -10,7 +11,6 @@ import { useConversation } from '../../hooks/conversation/useConversation';
 import { findMessageToExpand } from '../../helpers/message/messageExpandable';
 import TrashWarning from './TrashWarning';
 import { hasLabel } from '../../helpers/elements';
-import { OnCompose } from '../../hooks/composer/useCompose';
 import { useShouldMoveOut } from '../../hooks/useShouldMoveOut';
 import { usePlaceholders } from '../../hooks/usePlaceholders';
 import ConversationHeader from './ConversationHeader';
@@ -19,6 +19,8 @@ import { Breakpoints } from '../../models/utils';
 import UnreadMessages from './UnreadMessages';
 import { useConversationFocus } from '../../hooks/conversation/useConversationFocus';
 import { useConversationHotkeys } from '../../hooks/conversation/useConversationHotkeys';
+import { useOnMailTo } from '../../containers/ComposeProvider';
+import ConversationErrorBanner from './ConversationErrorBanner';
 
 const { TRASH } = MAILBOX_LABEL_IDS;
 
@@ -29,7 +31,6 @@ interface Props {
     messageID?: string;
     mailSettings: MailSettings;
     onBack: () => void;
-    onCompose: OnCompose;
     breakpoints: Breakpoints;
     onMessageReady: () => void;
     columnLayout: boolean;
@@ -46,7 +47,6 @@ const ConversationView = ({
     messageID,
     mailSettings,
     onBack,
-    onCompose,
     breakpoints,
     onMessageReady,
     columnLayout,
@@ -56,25 +56,32 @@ const ConversationView = ({
     const [labels = []] = useLabels();
     const {
         conversationID,
-        conversation: conversationResult,
+        conversation: conversationCacheEntry,
         pendingRequest,
         loadingConversation,
         loadingMessages,
+        handleRetry,
     } = useConversation(inputConversationID, messageID);
     const { state: filter, toggle: toggleFilter, set: setFilter } = useToggle(DEFAULT_FILTER_VALUE);
     useShouldMoveOut(true, conversationID, pendingRequest, onBack);
     const messageViewsRefs = useRef({} as { [messageID: string]: MessageViewRef | undefined });
 
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const onMailTo = useOnMailTo();
 
-    const { Conversation: conversation = {}, Messages: inputMessages = [] } = conversationResult || {};
+    useLinkHandler(wrapperRef, onMailTo);
+
+    const { Conversation: conversation = {}, Messages: inputMessages = [] } = conversationCacheEntry || {};
     const messages = usePlaceholders(inputMessages, loadingMessages, conversation?.NumMessages || 1) as Message[];
 
     const inTrash = labelID === TRASH;
     const filteredMessages = messages.filter((message) => inTrash === hasLabel(message, TRASH));
     const messagesToShow = !loadingMessages && filter ? filteredMessages : messages;
     const showTrashWarning = !loadingMessages && filteredMessages.length !== messages.length;
-    const messageInUrl = conversationResult?.Messages?.find((message) => message.ID === messageID);
+    const messageInUrl = conversationCacheEntry?.Messages?.find((message) => message.ID === messageID);
+    const loading = loadingConversation || loadingMessages;
+    const showConversationError = !loading && !conversationCacheEntry?.Conversation;
+    const showMessagesError = !loading && !showConversationError && !conversationCacheEntry?.Messages;
 
     const expandMessage = (messageID: string | undefined) => {
         messageViewsRefs.current[messageID || '']?.expand();
@@ -117,12 +124,14 @@ const ConversationView = ({
             // unblock J/K shortcuts
             setTimeout(onMessageReady);
             if (!columnLayout) {
-                trashWarningRef.current?.focus();
+                trashWarningRef.current?.parentElement?.focus();
             }
         }
     }, [onlyTrashInConversation, conversationID, columnLayout]);
 
-    return (
+    return showConversationError ? (
+        <ConversationErrorBanner errors={conversationCacheEntry?.errors} onRetry={handleRetry} />
+    ) : (
         <>
             <ConversationHeader
                 className={classnames([hidden && 'hidden'])}
@@ -136,6 +145,9 @@ const ConversationView = ({
                     ref={elementRef}
                     tabIndex={-1}
                 >
+                    {showMessagesError ? (
+                        <ConversationErrorBanner errors={conversationCacheEntry?.errors} onRetry={handleRetry} />
+                    ) : null}
                     {showTrashWarning && (
                         <TrashWarning ref={trashWarningRef} inTrash={inTrash} filter={filter} onToggle={toggleFilter} />
                     )}
@@ -154,7 +166,6 @@ const ConversationView = ({
                             conversationIndex={index}
                             conversationID={conversationID}
                             onBack={onBack}
-                            onCompose={onCompose}
                             breakpoints={breakpoints}
                             onFocus={handleFocus}
                             onMessageReady={onMessageReady}
@@ -168,7 +179,7 @@ const ConversationView = ({
             </div>
             <UnreadMessages
                 conversationID={conversationID}
-                messages={conversationResult?.Messages}
+                messages={conversationCacheEntry?.Messages}
                 onClick={handleClickUnread}
             />
         </>
