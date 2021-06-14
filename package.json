@@ -56,7 +56,6 @@
         "proton-shared": "github:ProtonMail/proton-shared#master",
         "proton-translations": "github:ProtonMail/proton-translations#fe-mail",
         "proton-version": "github:ProtonMail/proton-version#semver:^1.0.0",
-        "psl": "^1.8.0",
         "react-components": "github:ProtonMail/react-components#master",
         "react-refresh": "^0.10.0",
         "ttag": "^1.7.14",
