@@ -46,6 +46,7 @@ import {
     MAX_ELEMENT_LIST_LOAD_RETRIES,
 } from '../../constants';
 import { useEncryptedSearchContext } from '../../containers/EncryptedSearchProvider';
+import { ESSetsElementsCache } from '../../models/encryptedSearch';
 
 interface Options {
     conversationMode: boolean;
@@ -122,9 +123,10 @@ export const useElements: UseElements = ({ conversationMode, labelID, search, pa
     const counts = conversationMode ? conversationCounts : messageCounts;
     const loadingCounts = conversationMode ? loadingConversationCounts : loadingMessageCounts;
 
-    const { getESDBStatus, encryptedSearch } = useEncryptedSearchContext();
-    const { dbExists, esEnabled } = getESDBStatus();
+    const { getESDBStatus, encryptedSearch, incrementSearch } = useEncryptedSearchContext();
+    const { dbExists, esEnabled, isCacheLimited, isSearchPartial } = getESDBStatus();
     const { createNotification } = useNotifications();
+    const useES = dbExists && esEnabled && isSearch(search) && (!!search.keyword || !isCacheLimited);
 
     const cache = useElementsCache(emptyCache(page, { labelID, sort, filter, esEnabled, ...search }));
     const setCache = useSetElementsCache();
@@ -253,8 +255,45 @@ export const useElements: UseElements = ({ conversationMode, labelID, search, pa
 
     const shouldUpdatePage = () => pageChanged() && pageCached();
 
-    const updatePage = () => {
-        setCache({ ...cache, page });
+    const setEncryptedSearchResults: ESSetsElementsCache = (Elements, inputPage) => {
+        const Total = Elements.length;
+        const pages = [0];
+        for (let page = 1; page < Math.ceil(Total / PAGE_SIZE); page++) {
+            pages.push(page);
+        }
+        // Retry is disabled for encrypted search results, to avoid re-triggering the search several times
+        // when there are no results
+        setCache((cache) => {
+            return {
+                params: cache.params,
+                bypassFilter: [],
+                beforeFirstLoad: false,
+                invalidated: false,
+                pendingRequest: false,
+                page: inputPage || page,
+                total: Total,
+                pages,
+                elements: toMap(Elements, 'ID'),
+                updatedElements: [],
+                retry: { payload: undefined, count: MAX_ELEMENT_LIST_LOAD_RETRIES, error: undefined },
+            };
+        });
+    };
+
+    const shouldLoadMoreES = () => useES && isCacheLimited && isSearchPartial && pageChanged() && !pageCached();
+
+    const setPendingRequest = () => setCache((cache) => ({ ...cache, pendingRequest: true }));
+
+    const updatePage = async () => {
+        if (useES) {
+            if (shouldLoadMoreES()) {
+                setPendingRequest();
+            }
+            void incrementSearch(page, setEncryptedSearchResults, shouldLoadMoreES());
+        }
+        if (!shouldLoadMoreES()) {
+            setCache({ ...cache, page });
+        }
     };
 
     const queryElement = async (elementID: string): Promise<Element> => {
@@ -360,49 +399,34 @@ export const useElements: UseElements = ({ conversationMode, labelID, search, pa
         }
     };
 
-    const setEncryptedSearchResults = (Elements: Element[]) => {
-        const Total = Elements.length;
-        const pages = [0];
-        for (let page = 1; page < Math.ceil(Total / PAGE_SIZE); page++) {
-            pages.push(page);
-        }
-        // Retry is disabled for encrypted search results, to avoid re-triggering the search several times
-        // when there are no results
-        setCache((cache) => {
-            return {
-                ...cache,
-                beforeFirstLoad: false,
-                invalidated: false,
-                pendingRequest: false,
-                page,
-                total: Total,
-                pages,
-                elements: toMap(Elements, 'ID'),
-                updatedElements: [],
-                retry: { payload: undefined, count: MAX_ELEMENT_LIST_LOAD_RETRIES, error: undefined },
-            };
-        });
-    };
-
-    const sendRequest = () => {
-        if (isSearch(search)) {
-            setCache((cache) => ({ ...cache, pendingRequest: true }));
-            void encryptedSearch(search, labelID, setEncryptedSearchResults)
-                .then((success) => {
-                    if (!success) {
-                        void load();
-                    }
-                })
-                .catch(() => {
+    const executeSearch = async () => {
+        setCache((cache) => ({ ...cache, pendingRequest: true }));
+        try {
+            let success = false;
+            if (useES) {
+                success = await encryptedSearch(search, labelID, setEncryptedSearchResults);
+            }
+            if (!success) {
+                if (page >= 200) {
+                    // This block will most likely be called two times
+                    // Fortunately notification system use a de-duplication system
                     createNotification({
                         text: c('Error')
-                            .t`There has been an issue with content search. Default search has been used instead`,
+                            .t`Your search matched too many results. Please limit your search and try again`,
                         type: 'error',
                     });
-                    void load();
-                });
-        } else {
-            void load();
+                    setCache((cache) => ({ ...cache, pendingRequest: false }));
+                    onPage(0);
+                } else {
+                    await load();
+                }
+            }
+        } catch (error) {
+            createNotification({
+                text: c('Error').t`There has been an issue with content search. Default search has been used instead`,
+                type: 'error',
+            });
+            await load();
         }
     };
 
@@ -412,9 +436,13 @@ export const useElements: UseElements = ({ conversationMode, labelID, search, pa
             resetCache();
         }
         if (shouldSendRequest()) {
-            sendRequest();
+            if (isSearch(search)) {
+                void executeSearch();
+            } else {
+                void load();
+            }
         }
-        if (shouldUpdatePage()) {
+        if (shouldUpdatePage() || shouldLoadMoreES()) {
             updatePage();
         }
     }, [
@@ -440,7 +468,7 @@ export const useElements: UseElements = ({ conversationMode, labelID, search, pa
 
     // Move to the last page if the current one becomes empty
     useEffect(() => {
-        if (expectingLength && expectedLength === 0 && page > 0) {
+        if (expectingLength && expectedLength === 0 && page > 0 && (!useES || !(isCacheLimited && isSearchPartial))) {
             const count = pageCount(total);
             if (count === 0 && page !== 0) {
                 onPage(0);
@@ -486,7 +514,7 @@ export const useElements: UseElements = ({ conversationMode, labelID, search, pa
             const Counts: LabelCount[] = conversationMode ? ConversationCounts : MessageCounts;
 
             // If it's an encrypted search, its event manager will deal with the change
-            if (dbExists && esEnabled && isSearch(search)) {
+            if (useES) {
                 return;
             }
 
