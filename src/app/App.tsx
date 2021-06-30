@@ -13,7 +13,7 @@ import PrivateApp from './PrivateApp';
 import './app.scss';
 
 const enhancedConfig = {
-    APP_VERSION_DISPLAY: '4.0.1',
+    APP_VERSION_DISPLAY: '4.0.2',
     ...config,
 };
 
