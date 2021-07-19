@@ -9,7 +9,6 @@ import {
     FloatingButton,
     MainLogo,
     TopNavbarListItemSettingsDropdown,
-    TopNavbarListItemHelpDropdown,
     TopNavbarListItemContactsDropdown,
     TopNavbarListItemFeedbackButton,
     Icon,
@@ -105,7 +104,6 @@ const MailHeader = ({
             expanded={!!expanded}
             onToggleExpand={onToggleExpand}
             isNarrow={breakpoints.isNarrow}
-            helpDropdown={<TopNavbarListItemHelpDropdown />}
             floatingButton={
                 <FloatingButton onClick={() => onCompose({ action: MESSAGE_ACTIONS.NEW })}>
                     <Icon size={24} name="compose" className="mauto" />
